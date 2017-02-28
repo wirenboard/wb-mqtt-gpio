@@ -9,7 +9,7 @@
 using namespace std;
 
 TSysfsGpioBaseCounter::TSysfsGpioBaseCounter(int gpio, bool inverted, string interrupt_edge,
-        string type, int multiplier, int decimal_points_total, int decimal_points_current)
+        string type, float multiplier, int decimal_points_total, int decimal_points_current)
     : TSysfsGpio( gpio, inverted, interrupt_edge)
     , Type(type)
     , Multiplier(multiplier)
@@ -23,7 +23,7 @@ TSysfsGpioBaseCounter::TSysfsGpioBaseCounter(int gpio, bool inverted, string int
         Value_Topic2 = "power";
         Topic1 = "_total";
         Value_Topic1 = "power_consumption";
-        ConvertingMultiplier = 1000;// convert  kW to W
+        ConvertingMultiplier = 1000;// convert kW to W (1/h)
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 2 : DecimalPlacesCurrent;
         DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 3 : DecimalPlacesTotal;
     } else if (Type == WATER_METER) {
@@ -31,7 +31,7 @@ TSysfsGpioBaseCounter::TSysfsGpioBaseCounter(int gpio, bool inverted, string int
         Value_Topic2 = "water_flow";
         Topic1 = "_total";
         Value_Topic1 = "water_consumption";
-        ConvertingMultiplier = 1.0;
+        ConvertingMultiplier = 1.0 / 3600; // convert 1/h to 1/s
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 3 : DecimalPlacesCurrent;
         DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 2 : DecimalPlacesTotal;
     } else {

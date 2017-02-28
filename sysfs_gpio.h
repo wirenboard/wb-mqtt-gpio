@@ -130,7 +130,7 @@ class TSysfsGpioBaseCounter : public TSysfsGpio
 {
   public:
     explicit TSysfsGpioBaseCounter(int gpio, bool inverted, string interrupt_edge, string type,
-                                   int multiplier, int decimal_points_total, int decimal_points_current);
+                                   float multiplier, int decimal_points_total, int decimal_points_current);
     TSysfsGpioBaseCounter(const TSysfsGpioBaseCounter &other) = delete;
     TSysfsGpioBaseCounter(TSysfsGpioBaseCounter &&tmp) ;
     ~TSysfsGpioBaseCounter();
@@ -143,8 +143,8 @@ class TSysfsGpioBaseCounter : public TSysfsGpio
   private:
     string SetDecimalPlaces(float value, int decimal_points);
     string Type;
-    int Multiplier;
-    int ConvertingMultiplier;// multiplier that converts value to appropriate measuring unit according to meter type
+    float Multiplier;
+    float ConvertingMultiplier;// multiplier that converts value to appropriate measuring unit according to meter type
     float Total;
     float Power;
     string Topic1;

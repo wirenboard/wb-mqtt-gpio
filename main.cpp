@@ -36,7 +36,7 @@ struct TGpioDesc {
     TGpioDirection Direction = TGpioDirection::Output;
     string InterruptEdge = "";
     string Type = "";
-    int Multiplier;
+    float Multiplier;
     int Order;
     int DecimalPlacesTotal = -1;
     int DecimalPlacesCurrent = -1;
@@ -419,7 +419,7 @@ int main(int argc, char *argv[])
             if (item.isMember("type"))
                 gpio_desc.Type = item["type"].asString();
             if (item.isMember("multiplier"))
-                gpio_desc.Multiplier = item["multiplier"].asInt();
+                gpio_desc.Multiplier = item["multiplier"].asFloat();
             if (item.isMember("edge"))
                 gpio_desc.InterruptEdge = item["edge"].asString();
             if (item.isMember("decimal_points_current")) {
