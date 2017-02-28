@@ -1,3 +1,9 @@
+wb-homa-gpio (1.15.2) stable; urgency=medium
+
+  * fix water meter rates
+
+ -- Nikita Maslov <n.maslov@contactless.ru>  Tue, 28 Feb 2017 12:42:10 +0300
+
 wb-homa-gpio (1.15.1) stable; urgency=medium
 
   * fixes build
