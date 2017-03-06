@@ -1,3 +1,9 @@
+wb-homa-gpio (1.15.3) stable; urgency=medium
+
+  * Add fatal error in case of duplicate GPIO
+
+ -- Yury Usishchev <y.usishchev@contactless.ru>  Mon, 06 Mar 2017 19:00:56 +0300
+
 wb-homa-gpio (1.15.2) stable; urgency=medium
 
   * fix water meter rates
