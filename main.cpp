@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 #include <getopt.h>
 
@@ -47,9 +48,21 @@ struct TGpioDesc {
 class THandlerConfig
 {
   public:
+    set<string> Names;
+    set<int> GpioNums;
     vector<TGpioDesc> Gpios;
     void AddGpio(TGpioDesc &gpio_desc)
     {
+        if (Names.find(gpio_desc.Name) != Names.end()) {
+            cerr << "ERROR: Duplicate GPIO Name in config: " << gpio_desc.Name << endl;
+            exit(1);
+        }
+        if (GpioNums.find(gpio_desc.Gpio) != GpioNums.end()) {
+            cerr << "ERROR: Duplicate GPIO in config: " << gpio_desc.Gpio << endl;
+            exit(1);
+        }
+        Names.insert(gpio_desc.Name);
+        GpioNums.insert(gpio_desc.Gpio);
         Gpios.push_back(gpio_desc);
     };
 
