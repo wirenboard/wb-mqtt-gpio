@@ -66,8 +66,7 @@
 		{
             "gpio" : 72,
             "name" : "V_OUT_ST",
-            "direction": "input",
-            "initial_state" : true
+            "direction": "input"
         },
     ]
 }
