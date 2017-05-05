@@ -57,13 +57,13 @@
             "direction": "output",
             "initial_state" : true
         },
-		{
+        {
             "gpio" : 73,
             "name" : "V_OUT",
             "direction": "output",
             "initial_state" : true
         },
-		{
+        {
             "gpio" : 72,
             "name" : "V_OUT_OK",
             "direction": "input"
