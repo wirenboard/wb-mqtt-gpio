@@ -67,6 +67,6 @@
             "gpio" : 72,
             "name" : "V_OUT_OK",
             "direction": "input"
-        },
+        }
     ]
 }
