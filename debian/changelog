@@ -1,3 +1,9 @@
+wb-homa-gpio (1.17) stable; urgency=medium
+
+  * adds WB6.1 support
+
+ -- Evgeny Boger <boger@contactless.ru>  Fri, 05 May 2017 16:48:17 +0300
+
 wb-homa-gpio (1.16) stable; urgency=medium
 
   * adds WB6.0 support
