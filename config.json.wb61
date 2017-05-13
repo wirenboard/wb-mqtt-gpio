@@ -28,45 +28,21 @@
             "inverted" : false
         },
         {
-            "gpio" : 4,
-            "name" : "A1_IN",
-            "inverted" : true,
-            "direction": "input"
-        },
-        {
-            "gpio" : 2,
-            "name" : "A2_IN",
-            "inverted" : true,
-            "direction": "input"
-        },
-        {
-            "gpio" : 1,
-            "name" : "A3_IN",
-            "inverted" : true,
-            "direction": "input"
-        },
-        {
-            "gpio" : 3,
-            "name" : "A4_IN",
-            "inverted" : true,
-            "direction": "input"
-        },
-        {
             "gpio" : 27,
             "name" : "5V_OUT",
             "direction": "output",
             "initial_state" : true
         },
-		{
+        {
             "gpio" : 73,
             "name" : "V_OUT",
             "direction": "output",
             "initial_state" : true
         },
-		{
+        {
             "gpio" : 72,
-            "name" : "V_OUT_ST",
+            "name" : "V_OUT_OK",
             "direction": "input"
-        },
+        }
     ]
 }
