@@ -1,40 +1,52 @@
 #!/bin/bash
 . /etc/wb_env.sh
+wb_source "of"
+wb_source "json"
 
-CONFFILE=/etc/wb-homa-gpio.conf
+OF_NODE="$WB_OF_ROOT/gpios"
+WB_GPIO_CONFIG="/etc/wb-homa-gpio.conf"
 
-case "$WB_VERSION" in
-    "61" | "60" | "58" | "55" | "52" )
-        BOARD_CONF="wb${WB_VERSION}"
-    ;;
+wb_gpio_dt_to_jq() {
+	local node="$OF_NODE/$1"
+	local gpio extra=()
 
-    "50" )
-        BOARD_CONF="wbsh5"
-    ;;
+	gpio=$(of_get_prop_gpio "$node" gpios)
 
-    "41" )
-        BOARD_CONF="wbsh4"
-    ;;
+	if of_has_prop "$node" input; then
+		extra+=("direction: \"input\"")
+	fi
+	
+	if of_gpio_is_inverted "$node"; then
+		extra+=("inverted: true")
+	fi
 
-    "32" )
-        BOARD_CONF="wbsh3"
-    ;;
+	echo "{
+		name: \"$1\",
+		gpio: $(of_gpio_to_num "$gpio"),
+		$(join , "${extra[@]}")
+	}"
+}
 
-    "KMON1" )
-        BOARD_CONF="mka3"
-    ;;
-
-    "CQC10" )
-        BOARD_CONF="cqc10"
-    ;;
-
-    * )
-        BOARD_CONF="default"
-    ;;
-esac
-
-
-ucf --debconf-ok "/usr/share/wb-homa-gpio/wb-homa-gpio.conf.$BOARD_CONF" $CONFFILE
+if of_node_exists "$OF_NODE"; then
+	gpios=()
+	for gpio in $(of_node_children "$OF_NODE"); do
+		gpios+=( "$(wb_gpio_dt_to_jq "$gpio")" )
+	done
+	
+	JSON="/usr/share/wb-homa-gpio/wb-homa-gpio.conf.default"
+	json_edit_noreplace ".channels = [$(join , "${gpios[@]}")]" > ${WB_GPIO_CONFIG}.default
+	ucf --debconf-ok "${WB_GPIO_CONFIG}.default" "$WB_GPIO_CONFIG"
+else
+	BOARD_CONF=$(of_machine_match \
+		'contactless,imx28-wirenboard50'        wb5 \
+		'contactless,imx28-wirenboard41'        wbsh4 \
+		'contactless,imx23-wirenboard32-kmon1'  mka3 \
+		'contactless,imx23-wirenboard32-cqc10'  cqc10 \
+		'contactless,imx23-wirenboard32'        wbsh3 \
+		'' "default"
+	)
+	ucf --debconf-ok "/usr/share/wb-homa-gpio/wb-homa-gpio.conf.$BOARD_CONF" "$WB_GPIO_CONFIG"
+fi
 
 
 #DEBHELPER#
