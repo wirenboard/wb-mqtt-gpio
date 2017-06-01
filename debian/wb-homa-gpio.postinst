@@ -14,6 +14,12 @@ wb_gpio_dt_to_jq() {
 
 	if of_has_prop "$node" input; then
 		extra+=("direction: \"input\"")
+	else
+		extra+=("direction: \"output\"")
+	fi
+
+	if of_has_prop "$node" output-high; then
+		extra+=("initial_state: true")
 	fi
 	
 	if of_gpio_is_inverted "$node"; then
