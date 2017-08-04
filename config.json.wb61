@@ -28,6 +28,30 @@
             "inverted" : false
         },
         {
+            "gpio" : 109,
+            "name" : "A1_IN",
+            "inverted" : false,
+            "direction": "input"
+        },
+        {
+            "gpio" : 111,
+            "name" : "A2_IN",
+            "inverted" : false,
+            "direction": "input"
+        },
+        {
+            "gpio" : 110,
+            "name" : "A3_IN",
+            "inverted" : false,
+            "direction": "input"
+        },
+        {
+            "gpio" : 0,
+            "name" : "A4_IN",
+            "inverted" : false,
+            "direction": "input"
+        },
+        {
             "gpio" : 27,
             "name" : "5V_OUT",
             "direction": "output",

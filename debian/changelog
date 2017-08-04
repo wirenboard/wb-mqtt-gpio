@@ -1,3 +1,9 @@
+wb-homa-gpio (1.18) stable; urgency=medium
+
+  * adds digital inputs on WB6.2 (WB_VERSION stays at 6.1)
+
+ -- Evgeny Boger <boger@contactless.ru>  Thu, 03 Aug 2017 22:04:46 +0300
+
 wb-homa-gpio (1.17) stable; urgency=medium
 
   * adds WB6.1 support
