@@ -1,21 +1,18 @@
-#include <iostream>
-#include <cstdio>
-#include <cstring>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <set>
+#include "sysfs_gpio.h"
+#include "log.h"
+#include "config.h"
+
+#include <wblib/wbmqtt.h>
+#include <wblib/signal_handling.h>
 
 #include <getopt.h>
 
-// This is the JSON header
-#include "jsoncpp/json/json.h"
+#include <cstdio>
+#include <cstring>
 
-#include <mosquittopp.h>
-
-#include "sysfs_gpio.h"
-#include <wbmqtt/utils.h>
-#include <wbmqtt/mqtt_wrapper.h>
+#include <sstream>
+#include <algorithm>
+#include <set>
 #include <chrono>
 #include <thread>
 
@@ -25,50 +22,9 @@ using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::steady_clock;
 
-enum class TGpioDirection {
-    Input,
-    Output
-};
-
-struct TGpioDesc {
-    int Gpio;
-    bool Inverted = false;
-    string Name = "";
-    TGpioDirection Direction = TGpioDirection::Output;
-    string InterruptEdge = "";
-    string Type = "";
-    float Multiplier;
-    int Order;
-    int DecimalPlacesTotal = -1;
-    int DecimalPlacesCurrent = -1;
-    bool InitialState = false;
-};
 
 
-class THandlerConfig
-{
-  public:
-    set<string> Names;
-    set<int> GpioNums;
-    vector<TGpioDesc> Gpios;
-    void AddGpio(TGpioDesc &gpio_desc)
-    {
-        if (Names.find(gpio_desc.Name) != Names.end()) {
-            cerr << "ERROR: Duplicate GPIO Name in config: " << gpio_desc.Name << endl;
-            exit(1);
-        }
-        if (GpioNums.find(gpio_desc.Gpio) != GpioNums.end()) {
-            cerr << "ERROR: Duplicate GPIO in config: " << gpio_desc.Gpio << endl;
-            exit(1);
-        }
-        Names.insert(gpio_desc.Name);
-        GpioNums.insert(gpio_desc.Gpio);
-        Gpios.push_back(gpio_desc);
-    };
 
-    string DeviceName;
-
-};
 
 typedef pair<TGpioDesc, std::shared_ptr<TSysfsGpio>> TChannelDesc;
 
@@ -137,7 +93,7 @@ TMQTTGpioHandler::TMQTTGpioHandler(const TMQTTGpioHandler::TConfig &mqtt_config,
 
             Channels.emplace_back(gpio_desc, gpio_handler);
         } else {
-            cerr << "ERROR: unable to export gpio " << gpio_desc.Gpio << endl;
+            Error.Log() << "unable to export gpio " << gpio_desc.Gpio;
         }
     }
     sort(Channels.begin(), Channels.end(), FuncComp);
@@ -222,7 +178,7 @@ void TMQTTGpioHandler::OnMessage(const struct mosquitto_message *message)
         } else if (payload == "0") {
             val = 0;
         } else {
-            cerr << "WARNING: invalid payload for /on topic: " << payload << endl;
+            Warn.Log() << "invalid payload for /on topic: " << payload;
             return;
         }
 
@@ -238,7 +194,7 @@ void TMQTTGpioHandler::OnMessage(const struct mosquitto_message *message)
                     // echo, retained
                     Publish(NULL, GetChannelTopic(gpio_desc), to_string(val), 0, true);
                 } else {
-                    cerr << "DEBUG : couldn't set value" << endl;
+                    Debug.Log() << "couldn't set value";
                 }
             }
         }
@@ -312,7 +268,7 @@ void TMQTTGpioHandler::InitInterrupts(int epfd)
             n = epoll_ctl(epfd, EPOLL_CTL_ADD, gpio_handler.GetFileDes(),
                           &gpio_handler.GetEpollStruct()); // adding new instance to epoll
             if (n != 0 ) {
-                cerr << "epoll_ctl gained error with GPIO" << gpio_desc.Gpio << endl;
+                Error.Log() << "epoll_ctl gained error with GPIO" << gpio_desc.Gpio;
             }
         }
     }
@@ -337,38 +293,68 @@ void TMQTTGpioHandler::CatchInterrupts(int count, struct epoll_event *events)
 
 }
 
+const auto driverName      = "wb-gpio";
+const auto libwbmqttDbFile = "/var/lib/wb-homa-gpio/libwbmqtt.db";
+
 int main(int argc, char *argv[])
 {
+    WBMQTT::TMosquittoMqttConfig mqttConfig {};
+    mqttConfig.Id = driverName;
+
     int rc;
-    THandlerConfig handler_config;
-    TMQTTGpioHandler::TConfig mqtt_config;
-    mqtt_config.Host = "localhost";
-    mqtt_config.Port = 1883;
-    string config_fname;
+    string configFileName;
     int epfd;
     struct epoll_event events[20];
 
-    int c, n;
+    WBMQTT::SignalHandling::Handle({ SIGINT });
+    WBMQTT::SignalHandling::OnSignal(SIGINT, [&]{ WBMQTT::SignalHandling::Stop(); });
+    WBMQTT::SetThreadName("main");
+
+    int c, n, debug;
     //~ int digit_optind = 0;
     //~ int aopt = 0, bopt = 0;
     //~ char *copt = 0, *dopt = 0;
-    while ( (c = getopt(argc, argv, "c:h:p:")) != -1) {
+    while ( (c = getopt(argc, argv, "c:h:p:d:T:u:P:")) != -1) {
         //~ int this_option_optind = optind ? optind : 1;
         switch (c) {
             case 'c':
                 printf ("option c with value '%s'\n", optarg);
-                config_fname = optarg;
+                configFileName = optarg;
                 break;
+
             case 'p':
                 printf ("option p with value '%s'\n", optarg);
-                mqtt_config.Port = stoi(optarg);
+                mqttConfig.Port = stoi(optarg);
                 break;
+
             case 'h':
                 printf ("option h with value '%s'\n", optarg);
-                mqtt_config.Host = optarg;
+                mqttConfig.Host = optarg;
                 break;
+
+            case 'T':
+                printf ("option T with value '%s'\n", optarg);
+                mqttConfig.Prefix = optarg;
+                break;
+
+            case 'u':
+                printf ("option T with value '%s'\n", optarg);
+                mqttConfig.User = optarg;
+                break;
+
+            case 'P':
+                printf ("option T with value '%s'\n", optarg);
+                mqttConfig.Password = optarg;
+                break;
+
+            case 'd':
+                printf ("option d with value '%s'\n", optarg);
+                debug = stoi(optarg);
+                break;
+
             case '?':
                 break;
+
             default:
                 printf ("?? Getopt returned character code 0%o ??\n", c);
         }
@@ -380,87 +366,32 @@ int main(int argc, char *argv[])
     //~ printf ("\n");
     //~ }
 
+    switch(debug) {
+        case 3:
+            WBMQTT::Debug.SetEnabled(true);
+        case 2:
+            Debug.SetEnabled(true);
+        case 1:
+            Info.SetEnabled(true);
+            WBMQTT::Info.SetEnabled(true);
+        default:
+            break;
+    }
 
-
-
-
-
-    {
-        // Let's parse it
-        Json::Value root;
-        Json::Reader reader;
-
-        if (config_fname.empty()) {
-            cerr << "Please specify config file with -c option" << endl;
-            return 1;
-        }
-
-        ifstream myfile (config_fname);
-
-        bool parsedSuccess = reader.parse(myfile,
-                                          root,
-                                          false);
-
-        if (not parsedSuccess) {
-            // Report failures and their locations
-            // in the document.
-            cerr << "Failed to parse JSON" << endl
-                 << reader.getFormatedErrorMessages()
-                 << endl;
-            return 1;
-        }
-
-
-        handler_config.DeviceName = root["device_name"].asString();
-
-        // Let's extract the array contained
-        // in the root object
-        const auto &array = root["channels"];
-
-        // Iterate over sequence elements and
-        // print its values
-        for(unsigned int index = 0; index < array.size();
-                ++index) {
-            const auto &item = array[index];
-            TGpioDesc gpio_desc;
-            gpio_desc.Gpio = item["gpio"].asInt();
-            gpio_desc.Name = item["name"].asString();
-            if (item.isMember("inverted"))
-                gpio_desc.Inverted = item["inverted"].asBool();
-            if (item.isMember("direction") && item["direction"].asString() == "input")
-                gpio_desc.Direction = TGpioDirection::Input;
-            if (item.isMember("type"))
-                gpio_desc.Type = item["type"].asString();
-            if (item.isMember("multiplier"))
-                gpio_desc.Multiplier = item["multiplier"].asFloat();
-            if (item.isMember("edge"))
-                gpio_desc.InterruptEdge = item["edge"].asString();
-            if (item.isMember("decimal_points_current")) {
-                gpio_desc.DecimalPlacesCurrent = item["decimal_points_current"].asInt();
-            }
-            if (item.isMember("decimal_points_total")) {
-                gpio_desc.DecimalPlacesTotal = item["decimal_points_total"].asInt();
-            }
-
-            gpio_desc.InitialState = item.get("initial_state", false).asBool();
-
-            gpio_desc.Order = index;
-            handler_config.AddGpio(gpio_desc);
-
-        }
+    if (configFileName.empty()) {
+        Error.Log() << "Please specify config file with -c option";
+        return 1;
     }
 
 
+    THandlerConfig handlerConfig(configFileName);
 
-    mosqpp::lib_init();
-
-    mqtt_config.Id = "wb-gpio";
     std::shared_ptr<TMQTTGpioHandler> mqtt_handler(new TMQTTGpioHandler(mqtt_config, handler_config));
     mqtt_handler->Init();
 
     rc = mqtt_handler->loop_start();
     if (rc != 0 ) {
-        cerr << "couldn't start mosquitto_loop_start ! " << rc << endl;
+        Error.Log() << "couldn't start mosquitto_loop_start ! " << rc;
     } else {
         epfd = epoll_create(1);// creating epoll for Interrupts
         mqtt_handler->InitInterrupts(epfd);

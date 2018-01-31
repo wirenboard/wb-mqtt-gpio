@@ -1,4 +1,6 @@
 #include "sysfs_gpio.h"
+#include "log.h"
+
 #include <iostream>
 #include <memory>
 #include <string.h>
@@ -35,7 +37,7 @@ TSysfsGpioBaseCounter::TSysfsGpioBaseCounter(int gpio, bool inverted, string int
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 3 : DecimalPlacesCurrent;
         DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 2 : DecimalPlacesTotal;
     } else {
-        cerr << "Uknown gpio type\n";
+        Error.Log() << "Uknown gpio type";
         exit(EXIT_FAILURE);
     }
 }

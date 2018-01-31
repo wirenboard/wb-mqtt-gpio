@@ -34,3 +34,6 @@ wb-homa-ninja-bridge/debian/wb-homa-ninja-bridge/
 wb-mqtt-lirc/debian/wb-mqtt-lirc/
 wb-mqtt-db/debian/wb-mqtt-db/
 .d
+
+# Visual Studio Code
+.vscode
