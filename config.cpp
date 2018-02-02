@@ -32,6 +32,7 @@ THandlerConfig::THandlerConfig(const std::string & fileName)
 
     {
         DeviceName = root["device_name"].asString();
+        Path = root["path"].asString();
 
         // Let's extract the array contained
         // in the root object

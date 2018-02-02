@@ -30,6 +30,7 @@ public:
     std::set<int> GpioNums;
     std::vector<TGpioDesc> Gpios;
     std::string DeviceName;
+    std::string Path;
 
     explicit THandlerConfig(const std::string & fileName);
 
