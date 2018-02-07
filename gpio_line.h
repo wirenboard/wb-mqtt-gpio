@@ -4,22 +4,26 @@
 
 class TGpioLine
 {
-    PWGpioChipDriver    Chip;
-    uint32_t            Offset;
-    bool                IsOutput,
-                        IsActiveLow,
-                        IsUsed,
-                        IsOpenDrain,
-                        IsOpenSource;
+    PWGpioChip    Chip;
+    uint32_t            Offset,
+                        Flags;
     std::string         Name,
                         Consumer;
 public:
-    TGpioLine(const PGpioChipDriver & chip, uint32_t offset);
+    TGpioLine(const PGpioChip & chip, uint32_t offset);
 
     std::string Describe() const;
     const std::string & GetName() const;
     const std::string & GetConsumer() const;
+    uint32_t GetOffset() const;
+    uint32_t GetFlags() const;
+    bool IsOutput() const;
+    bool IsActiveLow() const;
+    bool IsUsed() const;
+    bool IsOpenDrain() const;
+    bool IsOpenSource() const;
+    uint8_t GetValue() const;
 
 private:
-    PGpioChipDriver AccessChip() const;
+    PGpioChip AccessChip() const;
 }

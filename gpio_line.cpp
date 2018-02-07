@@ -10,7 +10,7 @@
 using namespace std;
 
 
-TGpioLine::TGpioLine(const PGpioChipDriver & chip, uint32_t offset)
+TGpioLine::TGpioLine(const PGpioChip & chip, uint32_t offset)
     : Chip(chip)
     , Offset(offset)
 {
@@ -25,13 +25,8 @@ TGpioLine::TGpioLine(const PGpioChipDriver & chip, uint32_t offset)
         wb_throw(TGpioDriverException, "unable to load " + Describe())
     }
 
-    IsOutput     = info.flags & GPIOLINE_FLAG_IS_OUT;
-    IsActiveLow  = info.flags & GPIOLINE_FLAG_ACTIVE_LOW;
-    IsUsed       = info.flags & GPIOLINE_FLAG_KERNEL;
-    IsOpenDrain  = info.flags & GPIOLINE_FLAG_OPEN_DRAIN;
-    IsOpenSource = info.flags & GPIOLINE_FLAG_OPEN_SOURCE;
-
     Name     = info.name;
+    Flags    = info.flags;
     Consumer = info.consumer;
 }
 
@@ -46,7 +41,7 @@ std::string TGpioLine::Describe() const
         ss << "'" << Name << "'"
     }
 
-    ss << " of chip '" << AccessChip()->GetName() << "'";
+    ss << " of " << AccessChip()->Describe();
 
     return ss.str();
 }
@@ -61,7 +56,47 @@ const std::string & TGpioLine::GetConsumer() const
     return Consumer;
 }
 
-PGpioChipDriver TGpioLine::AccessChip() const
+uint32_t TGpioLine::GetOffset() const
+{
+    return Offset;
+}
+
+uint32_t TGpioLine::GetFlags() const
+{
+    return Flags;
+}
+
+bool TGpioLine::IsOutput() const
+{
+    return Flags & GPIOLINE_FLAG_IS_OUT;
+}
+
+bool TGpioLine::IsActiveLow() const
+{
+    return Flags & GPIOLINE_FLAG_ACTIVE_LOW;
+}
+
+bool TGpioLine::IsUsed() const
+{
+    return Flags & GPIOLINE_FLAG_KERNEL;
+}
+
+bool TGpioLine::IsOpenDrain() const
+{
+    return Flags & GPIOLINE_FLAG_OPEN_DRAIN;
+}
+
+bool TGpioLine::IsOpenSource() const
+{
+    return Flags & GPIOLINE_FLAG_OPEN_SOURCE;
+}
+
+uint8_t TGpioLine::GetValue() const
+{
+    return AccessChip()->GetLineValue(Offset);
+}
+
+PGpioChip TGpioLine::AccessChip() const
 {
     auto chip = Chip.lock();
 

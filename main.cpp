@@ -1,4 +1,4 @@
-#include "sysfs_gpio.h"
+#include "gpio_driver.h"
 #include "log.h"
 #include "config.h"
 
@@ -23,7 +23,7 @@ using std::chrono::milliseconds;
 using std::chrono::steady_clock;
 
 
-
+#define LOG(logger) ::logger.Log() << "[main] "
 
 
 typedef pair<TGpioDesc, std::shared_ptr<TSysfsGpio>> TChannelDesc;
@@ -367,13 +367,32 @@ int main(int argc, char *argv[])
     //~ }
 
     switch(debug) {
+        case -1:
+            Info.SetEnabled(false);
+            break;
+
+        case -2:
+            WBMQTT::Info.SetEnabled(false);
+            break;
+
+        case -3:
+            WBMQTT::Info.SetEnabled(false);
+            Info.SetEnabled(false);
+            break;
+
+        case 1:
+            Debug.SetEnabled(true);
+            break;
+
+        case 2:
+            WBMQTT::Debug.SetEnabled(true);
+            break;
+
         case 3:
             WBMQTT::Debug.SetEnabled(true);
-        case 2:
             Debug.SetEnabled(true);
-        case 1:
-            Info.SetEnabled(true);
-            WBMQTT::Info.SetEnabled(true);
+            break;
+
         default:
             break;
     }
@@ -383,8 +402,30 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    auto mqttDriver = WBMQTT::NewDriver(WBMQTT::TDriverArgs{}
+        .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
+        .SetId(driverName)
+        .SetUseStorage(true)
+        .SetReownUnknownDevices(true)
+        .SetStoragePath(libwbmqttDbFile)
+    );
 
-    THandlerConfig handlerConfig(configFileName);
+    PConfig config = nullptr;
+
+    if (!config) {
+        try {
+            config = make_shared<THandlerConfig>(configFileName);
+        } catch (const exception & e) {
+            LOG()
+        }
+    }
+
+    mqttDriver->StartLoop();
+    WBMQTT::SignalHandling::OnSignal(SIGINT, [&]{ mqttDriver->StopLoop(); });
+
+    mqttDriver->WaitForReady();
+
+    TGpioDriver driver(mqttDriver, )
 
     std::shared_ptr<TMQTTGpioHandler> mqtt_handler(new TMQTTGpioHandler(mqtt_config, handler_config));
     mqtt_handler->Init();
