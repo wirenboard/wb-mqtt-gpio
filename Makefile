@@ -18,26 +18,31 @@ endif
 
 #CFLAGS=-Wall -ggdb -std=c++0x -O0 -I.
 CFLAGS=-Wall -std=c++0x -Os -I.
-LDFLAGS= -lmosquittopp -lmosquitto -ljsoncpp -lwbmqtt
+LDFLAGS= -ljsoncpp -l:libwbmqtt1.a
 
 GPIO_BIN=wb-homa-gpio
 
-.PHONY: all clean
+GPIO_SOURCES= \
+  gpio_chip.cpp \
+  gpio_line.cpp \
+  config.cpp \
+  utils.cpp \
+  log.cpp \
+  exceptions.cpp
+
+GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)
 
 all : $(GPIO_BIN)
 
 
 # GPIO
-main.o : main.cpp
+%.o : %.cpp
 	${CXX} -c $< -o $@ ${CFLAGS}
 
-sysfs_gpio.o : sysfs_gpio.cpp
-	${CXX} -c $< -o $@ ${CFLAGS}
+wb-homa-gpio-test : test.o $(GPIO_OBJECTS)
+	${CXX} $^ ${LDFLAGS} -o $@
 
-sysfs_gpio_base_counter.o : sysfs_gpio_base_counter.cpp
-	${CXX} -c $< -o $@ ${CFLAGS}
-
-$(GPIO_BIN) : main.o sysfs_gpio.o sysfs_gpio_base_counter.o
+$(GPIO_BIN) : main.o $(GPIO_OBJECTS)
 	${CXX} $^ ${LDFLAGS} -o $@
 
 clean :
@@ -69,3 +74,6 @@ install: all
 	install -m 0755  $(GPIO_BIN) $(DESTDIR)/usr/bin/$(GPIO_BIN)
 	install -m 0644  wb-homa-gpio.schema.json $(DESTDIR)/usr/share/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json
 	install -m 0644  wb-homa-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-homa-gpio
+
+
+.PHONY: all clean

@@ -1,5 +1,18 @@
 #include "gpio_chip.h"
 #include "gpio_line.h"
+#include "exceptions.h"
+#include "utils.h"
+#include "log.h"
+
+#include <sys/ioctl.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cassert>
+#include <fstream>
 
 #define LOG(logger) ::logger.Log() << "[gpio chip] "
 
@@ -13,17 +26,17 @@ TGpioChip::TGpioChip(const std::string & path)
     , Path(path)
     , SupportsInterrupts(-1)
 {
-    Fd = open(Path.c_str(), O_RDWD | O_CLOEXEC);
+    Fd = open(Path.c_str(), O_RDWR | O_CLOEXEC);
     if (Fd < 0) {
-        wb_throw(TGpioDriverException, "unable to open device path '" + Path + "'")
+        wb_throw(TGpioDriverException, "unable to open device path '" + Path + "'");
     }
 
-    SCOPE_THROW_EXIT( close(Fd); )
+    WB_SCOPE_THROW_EXIT( close(Fd); )
 
     gpiochip_info info {};
     int retVal = ioctl(Fd, GPIO_GET_CHIPINFO_IOCTL, &info);
     if (retVal < 0) {
-        wb_throw(TGpioDriverException, "unable to get GPIO chip info from '" + Path + "'")
+        wb_throw(TGpioDriverException, "unable to get GPIO chip info from '" + Path + "'");
     }
 
     Lines.resize(info.lines);
@@ -44,25 +57,52 @@ TGpioChip::~TGpioChip()
 
 void TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
 {
+    ofstream unexportGpio("/sys/class/gpio/unexport");
+
     for (size_t offset = 0; offset < Lines.size(); ++offset) {
         auto line = make_shared<TGpioLine>(shared_from_this(), offset);
-        Lines[offset] = line;
 
         if (linesConfigs.count(offset) == 0) {
-            LOG(Info) << line->Describe() << " is not in config. Skipping."
+            LOG(Info) << line->Describe() << " is not in config. Skipping.";
             continue;
         }
 
+        if (line->IsUsed()) {
+            {
+                auto logTx = move(LOG(Warn) << line->Describe() << " is used by '" << line->GetConsumer() << "'. ");
+                if (line->GetConsumer() == "sysfs") {
+                    if (unexportGpio.is_open()) {
+                        logTx << "Trying to unexport...";
+                        unexportGpio << ToSysfsGpio(line);
+                    } else {
+                        logTx << "Unable to unexport. Skipping.";
+                        continue;
+                    }
+                } else {
+                    logTx << "Skipping.";
+                    continue;
+                }
+            }
+            LOG(Info) << "line usage successfully resolved";
+        }
+
+        Lines[offset] = line;
+
         const auto & config = linesConfigs.at(offset);
-        if (SupportsInterrupts != 0) {
-            if (!TryListenLine(line, config)) {
-                LOG(Info) << Describe() << " does not support events. Polling will be used instead."
-                AddToPolling(line, config)
+        if (SupportsInterrupts != 0 && config.Direction == TGpioDirection::Input) {
+            auto interruptSupport = TryListenLine(line, config);
+            if (interruptSupport == EInterruptSupport::NO) {
+                LOG(Info) << Describe() << " does not support events. Polling will be used instead.";
+                AddToPolling(line, config);
                 assert(SupportsInterrupts != 1);   // fail after success is not expected: chip either supports events or not.
                 SupportsInterrupts = 0;
-            } else {
+            } else if (interruptSupport == EInterruptSupport::YES) {
                 SupportsInterrupts = 1;
             }
+        }
+
+        if (SupportsInterrupts == -1) {
+            SupportsInterrupts = 0;
         }
     }
 
@@ -72,16 +112,18 @@ void TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
 void TGpioChip::PollLinesValues()
 {
     for (auto & flagsLines: PollingLines) {
+        const auto & pollingLines = flagsLines.second;
+        const auto & lines = pollingLines.Lines;
+
         gpiohandle_data data {};
-        if (ioctl(req.fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+        if (ioctl(pollingLines.Fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
             LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-            wb_throw(TGpioDriverException, "unable to poll lines values")
+            wb_throw(TGpioDriverException, "unable to poll lines values");
         }
 
-        for (uint32_t i = 0; i < req.lines; ++i) {
-            const auto & line = flagsLines.second.Lines[i];
+        for (uint32_t i = 0; i < lines.size(); ++i) {
             auto value = data.values[i];
-            LinesValues[line->GetOffset()] = value;
+            LinesValues[lines[i]->GetOffset()] = value;
         }
     }
 }
@@ -106,9 +148,19 @@ uint32_t TGpioChip::GetLineCount() const
     return static_cast<uint32_t>(Lines.size());
 }
 
+const std::vector<PGpioLine> & TGpioChip::GetLines() const
+{
+    return Lines;
+}
+
 uint32_t TGpioChip::GetNumber() const
 {
-    return stoul(Path.substr(13));
+    return GpioPathToChipNumber(Path);
+}
+
+PGpioLine TGpioChip::GetLine(uint32_t offset) const
+{
+    return Lines[offset];
 }
 
 string TGpioChip::Describe() const
@@ -130,12 +182,12 @@ void TGpioChip::AddToEpoll(int epfd)
         ep_event.data.fd = listenedLine.Fd;
 
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, listenedLine.Fd, &ep_event) < 0) {
-            LOG(Error) << "epoll_ctl error: '" << strerror(errno) << "' with " << listenedLine.Line->Describe();
+            LOG(Error) << "epoll_ctl error: '" << strerror(errno) << "' at " << listenedLine.Line->DescribeShort();
         }
     }
 }
 
-bool TGpioChip::TryListenLine(const PGpioLine & line, const TGpioLineConfig & config)
+TGpioChip::EInterruptSupport TGpioChip::TryListenLine(const PGpioLine & line, const TGpioLineConfig & config)
 {
     gpioevent_request req {};
 
@@ -157,16 +209,25 @@ bool TGpioChip::TryListenLine(const PGpioLine & line, const TGpioLineConfig & co
     else if(config.InterruptEdge == TGpioEdge::BOTH)
         req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
 
+    errno = 0;
     auto retVal = ioctl(Fd, GPIO_GET_LINEEVENT_IOCTL, &req);
+    auto error = errno;
 
     if (retVal < 0) {
-        LOG(Error) << "GPIO_GET_LINEEVENT_IOCTL failed: " << strerror(errno);
-    } else (retVal >= 0) {
+        LOG(Error) << "GPIO_GET_LINEEVENT_IOCTL failed: " << strerror(error) << " at " << line->DescribeShort();
+    } else {
         ListenedLines.push_back({ line, req.fd });
         LOG(Info) << "Listening to " << line->Describe();
     }
 
-    return retVal >= 0;
+    switch(errno) {
+        case 0:
+            return EInterruptSupport::YES;
+        case EBUSY:
+            return EInterruptSupport::UNKNOWN;
+        default:
+            return EInterruptSupport::NO;
+    }
 }
 
 void TGpioChip::AddToPolling(const PGpioLine & line, const TGpioLineConfig & config)
@@ -206,7 +267,7 @@ void TGpioChip::InitPolling()
 
         if (ioctl(Fd, GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
             LOG(Error) << "GPIO_GET_LINEHANDLE_IOCTL failed: " << strerror(errno);
-            wb_throw(TGpioDriverException, "unable to poll lines values")
+            wb_throw(TGpioDriverException, "unable to poll lines values");
         }
 
         flagsLines.second.Fd = req.fd;
@@ -217,7 +278,7 @@ uint8_t TGpioChip::GetLineValue(uint32_t offset) const
 {
     assert(offset < GetLineCount());
 
-    return LinesValues[line->GetOffset()];
+    return LinesValues[offset];
 }
 
 int TGpioChip::GetFd() const

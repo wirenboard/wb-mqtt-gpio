@@ -293,13 +293,12 @@ void TMQTTGpioHandler::CatchInterrupts(int count, struct epoll_event *events)
 
 }
 
-const auto driverName      = "wb-gpio";
 const auto libwbmqttDbFile = "/var/lib/wb-homa-gpio/libwbmqtt.db";
 
 int main(int argc, char *argv[])
 {
     WBMQTT::TMosquittoMqttConfig mqttConfig {};
-    mqttConfig.Id = driverName;
+    mqttConfig.Id = TGpioDriver::Name;
 
     int rc;
     string configFileName;

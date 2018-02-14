@@ -10,12 +10,6 @@ enum class TGpioDirection {
     Output
 };
 
-struct TConfig
-{
-    virtual bool IsOldFormat() const = 0;
-    virtual ~TConfig() = default;
-};
-
 struct TGpioDesc {
     int Gpio;
     bool Inverted = false;
@@ -30,7 +24,7 @@ struct TGpioDesc {
     bool InitialState = false;
 };
 
-class THandlerConfig final: public TConfig
+class THandlerConfig
 {
 public:
     std::set<std::string> Names;
@@ -41,10 +35,12 @@ public:
     explicit THandlerConfig(const std::string & fileName);
 
     void AddGpio(TGpioDesc &gpio_desc);
-    bool IsOldFormat() const override;
 };
 
 enum class TGpioEdge { RISING, FALLING, BOTH };
+
+void EnumerateGpioEdge(const std::string &, TGpioEdge &);
+std::string GpioEdgeToString(TGpioEdge);
 
 struct TGpioLineConfig
 {
@@ -71,12 +67,13 @@ struct TGpioChipConfig
     TLinesConfig Lines;
 };
 
-struct TGpioDriverConfig final: public TConfig
+struct TGpioDriverConfig
 {
+    std::string DeviceName;
     std::vector<TGpioChipConfig> Chips;
 
     TGpioDriverConfig() = default;
     explicit TGpioDriverConfig(const std::string & fileName);
-
-    bool IsOldFormat() const override;
 };
+
+TGpioDriverConfig GetConvertConfig(const std::string & fileName);

@@ -6,5 +6,5 @@ class TGpioDriverException: public WBMQTT::TBaseException
 {
 public:
     TGpioDriverException(const char * file, int line, const std::string & message);
-    ~TGpioDriverException() = default;
+    ~TGpioDriverException() noexcept = default;
 };

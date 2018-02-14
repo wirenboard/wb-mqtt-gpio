@@ -20,7 +20,12 @@ class TGpioChip: public std::enable_shared_from_this<TGpioChip>
     struct TListenedLine
     {
         PGpioLine Line;
-        int       Fd = -1;
+        int       Fd;
+
+        TListenedLine(const PGpioLine & line, int fd = -1)
+            : Line(line)
+            , Fd(fd)
+        {}
     };
 
     int                                          Fd;
@@ -45,12 +50,16 @@ public:
     const std::string & GetPath() const;
     std::string Describe() const;
     uint32_t GetLineCount() const;
+    const std::vector<PGpioLine> & GetLines() const;
     uint32_t GetNumber() const;
+    PGpioLine GetLine(uint32_t offset) const;
     bool DoesSupportInterrupts() const;
     void AddToEpoll(int epfd);
 
 private:
-    bool TryListenLine(const PGpioLine & line, const TGpioLineConfig & config);
+    enum class EInterruptSupport {UNKNOWN, YES, NO};
+
+    EInterruptSupport TryListenLine(const PGpioLine & line, const TGpioLineConfig & config);
     void AddToPolling(const PGpioLine & line, const TGpioLineConfig & config);
     void InitPolling();
     uint8_t GetLineValue(uint32_t offset) const;

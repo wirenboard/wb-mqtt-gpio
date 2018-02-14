@@ -1,124 +1,59 @@
 #include "gpio_driver.h"
 #include "gpio_chip.h"
+#include "gpio_line.h"
+#include "exceptions.h"
 #include "config.h"
-#include "utils.h"
+#include "log.h"
+
+#include <wblib/wbmqtt.h>
 
 #define LOG(logger) ::logger.Log() << "[gpio driver] "
 
 using namespace std;
+using namespace WBMQTT;
+
+const char * const TGpioDriver::Name = "wb-gpio";
 
 TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const string & configFileName)
 {
-    PConfig config = nullptr
-
     try {
-        config = make_shared<TGpioDriverConfig>(configFileName);
+        auto config = GetConvertConfig(configFileName);
+        auto tx = mqttDriver->BeginTx();
+        auto device = tx->CreateDevice(TLocalDeviceArgs{}
+            .SetId(Name)
+            .SetTitle(config.DeviceName)
+        ).GetValue();
+
+        for (const auto & chipConfig: config.Chips) {
+            Chips.push_back(make_shared<TGpioChip>(chipConfig.Path));
+            const auto & chip = Chips.back();
+            chip->LoadLines(chipConfig.Lines);
+
+            size_t lineNumber = 0;
+            for (const auto & offsetLineConfig: chipConfig.Lines) {
+                const auto & lineConfig = offsetLineConfig.second;
+                const auto & futureControl = device->CreateControl(tx, TControlArgs{}
+                    .SetId(lineConfig.Name)
+                    .SetType(lineConfig.Type)
+                    .SetOrder(lineConfig.Order)
+                    .SetReadonly(lineConfig.Direction == TGpioDirection::Input)
+                    .SetUserData(chip->GetLine(lineConfig.Offset))
+                );
+
+                ++lineNumber;
+
+                if (lineNumber == chipConfig.Lines.size()) {
+                    futureControl.Wait();   // wait for last control
+                }
+            }
+        }
+
     } catch (const exception & e) {
-        LOG(Warn) << "unable to read config in new format: '" << e.what() << "'";
+        LOG(Error) << "unable to create GPIO driver: " << e.what();
+        throw;
     }
 
-    if (!config) {
-        LOG(Info) << "trying to read config in deprecated format...";
-        try {
-            config = make_shared<THandlerConfig>(configFileName);
-        } catch (const exception & e) {
-            LOG(Warn) << "unable to read config in deprecated format: '" << e.what() << "'";
-        }
-    }
-
-    if (!config) {
-        wb_throw(TGpioDriverException, "unable to read config");
-    }
-
-    if (config->IsOldFormat()) {
-
-    }
-}
-
-PConfig TGpioDriver::ToNewFormat(const PConfig & config)
-{
-    auto oldConfig = dynamic_pointer_cast<THandlerConfig>(config);
-    auto newConfig = make_shared<TGpioDriverConfig>();
-
-    assert(oldConfig);
-
-    struct TRange
-    {
-        PGpioChip Chip;
-        uint32_t  Begin, End;
-
-        TRange(uint32_t begin, uint32_t end)
-            : Chip(nullptr)
-            , Begin(begin)
-            , End(end)
-        {}
-
-        TRange(const PGpioChip & chip, uint32_t positionOffset)
-            : Chip(chip)
-            , Begin(positionOffset)
-            , End(positionOffset + chip->GetLineCount())
-        {}
-
-        bool InRange(uint32_t gpio) const
-        {
-            return Begin <= gpio && gpio < End;
-        }
-    };
-
-    struct TRangeCompare
-    {
-        bool operator(const TRange & a, const TRange & b) const {
-            return a.End <= b.Begin;
-        }
-    };
-
-    set<TRange, TRangeCompare> ranges;
-
-    {   // init all available chips
-        const auto & paths = EnumerateGpioChipsSorted();
-        vector<PGpioChip> availableChips;
-        availableChips.reserve(paths.size());
-
-        for (const auto & path: paths) {
-            const auto & chip = make_shared<TGpioChip>(path);
-
-            uint32_t positionOffset = 0;
-
-            if (!ranges.empty()) {
-                positionOffset = (--ranges.end())->End;
-            }
-
-            ranges.insert(TRange(chip, positionOffset));
-
-            availableChips.push_back(chip);
-        }
-
-        map<string, size_t> addedChips;
-
-        for (const auto desc: oldConfig->Gpios) {
-            TRange searchRange {desc.Gpio, desc.Gpio};
-
-            auto itRange = ranges.find(searchRange);
-
-            if (itRange == ranges.end()) {
-                wb_throw(TGpioDriverException, "GPIO index is out of range");
-            }
-
-            const auto & range = *itRange;
-
-            const auto & insRes = addedChips.insert(range->Chip->GetPath(), 0);
-            if (insRes.second) {
-                TGpioChipConfig chipConfig;
-
-                chipConfig.Path = insRes.first->first;
-
-                insRes.first->second = newConfig->Chips.size();
-                newConfig->Chips.push_back(move(chipConfig));
-
-                // TODO: continue
-            }
-        }
-    }
-
-
+    mqttDriver->On<TControlOnValueEvent>([](const TControlOnValueEvent & event){
+        event.Control->GetUserData().As<PGpioLine>()->SetValue();
+    });
 }

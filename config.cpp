@@ -1,4 +1,7 @@
 #include "config.h"
+#include "gpio_chip.h"
+#include "gpio_line.h"
+#include "utils.h"
 #include "log.h"
 #include "exceptions.h"
 
@@ -12,6 +15,29 @@
 
 using namespace std;
 
+void EnumerateGpioEdge(const std::string & edge, TGpioEdge & enumEdge)
+{
+    if (edge == "rising")
+        enumEdge = TGpioEdge::RISING;
+    else if (edge == "falling")
+        enumEdge = TGpioEdge::FALLING;
+    else if (edge == "both")
+        enumEdge = TGpioEdge::BOTH;
+    else if (!edge.empty())
+        LOG(Warn) << "unable to determine edge from '" << edge << "': needs to be either 'rising', 'falling' or 'both'. Using: '" << GpioEdgeToString(enumEdge) << "'";
+}
+
+string GpioEdgeToString(TGpioEdge edge)
+{
+    switch(edge) {
+        case TGpioEdge::RISING: return "rising";
+        case TGpioEdge::FALLING: return "falling";
+        case TGpioEdge::BOTH: return "both";
+        default:
+            return "<unknown (" + to_string((int)edge) + ")>";
+    }
+}
+
 THandlerConfig::THandlerConfig(const std::string &fileName)
 {
     if (fileName.empty())
@@ -23,6 +49,10 @@ THandlerConfig::THandlerConfig(const std::string &fileName)
     { // read and parse file
         Json::Reader reader;
         ifstream file(fileName);
+
+        if (!file.is_open()) {
+            wb_throw(TGpioDriverException, "unable to open config file at '" + fileName + "': " + strerror(errno));
+        }
 
         if (!reader.parse(file, root, false))
         {
@@ -86,11 +116,6 @@ void THandlerConfig::AddGpio(TGpioDesc &gpio_desc)
     Gpios.push_back(gpio_desc);
 };
 
-bool THandlerConfig::IsOldFormat() const
-{
-    return true;
-}
-
 TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
 {
     if (fileName.empty())
@@ -102,6 +127,10 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
     { // read and parse file
         Json::Reader reader;
         ifstream file(fileName);
+
+        if (!file.is_open()) {
+            wb_throw(TGpioDriverException, "unable to open config file at '" + fileName + "': " + strerror(errno));
+        }
 
         if (!reader.parse(file, root, false))
         {
@@ -117,7 +146,12 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
             wb_throw(TGpioDriverException, "'chips' is required field");
         }
 
+        if (!root.isMember("device_name")) {
+            wb_throw(TGpioDriverException, "'device_name' is required field");
+        }
+
         const auto &chips = root["chips"];
+        DeviceName = root["device_name"].asString();
 
         if (!chips.isArray()) {
             wb_throw(TGpioDriverException, "'chips' must be array");
@@ -193,23 +227,11 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
                 if (line.isMember("multiplier"))
                     lineConfig.Multiplier = line["multiplier"].asFloat();
                 if (line.isMember("edge"))
-                {
-                    const auto &edge = line["edge"].asString();
-                    if (edge == "rising")
-                        lineConfig.InterruptEdge = TGpioEdge::RISING;
-                    else if (edge == "falling")
-                        lineConfig.InterruptEdge = TGpioEdge::FALLING;
-                    else if (edge == "both")
-                        lineConfig.InterruptEdge = TGpioEdge::BOTH;
-                }
+                    EnumerateGpioEdge(line["edge"].asString(), lineConfig.InterruptEdge);
                 if (line.isMember("decimal_points_current"))
-                {
                     lineConfig.DecimalPlacesCurrent = line["decimal_points_current"].asInt();
-                }
                 if (line.isMember("decimal_points_total"))
-                {
                     lineConfig.DecimalPlacesTotal = line["decimal_points_total"].asInt();
-                }
 
                 lineConfig.InitialState = line.get("initial_state", false).asBool();
 
@@ -223,7 +245,66 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
     }
 }
 
-bool TGpioDriverConfig::IsOldFormat() const
+TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
 {
-    return false;
+    TGpioDriverConfig newConfig;
+
+    newConfig.DeviceName = oldConfig.DeviceName;
+
+    map<uint32_t, size_t> addedChips; // chip path to index in new config
+
+    for (const auto & desc: oldConfig.Gpios) {
+        uint32_t chipNumber, lineOffset;
+
+        tie(chipNumber, lineOffset) = FromSysfsGpio((uint32_t)desc.Gpio);
+
+        TGpioChipConfig * pGpioChipConfig = nullptr;
+        {
+            const auto & insRes = addedChips.insert({chipNumber, 0});
+            if (insRes.second) {
+                insRes.first->second = newConfig.Chips.size();
+                newConfig.Chips.emplace_back();
+                auto & chipConfig = newConfig.Chips.back();
+                pGpioChipConfig = &chipConfig;
+
+                chipConfig.Path = GpioChipNumberToPath(chipNumber);
+            } else {
+                pGpioChipConfig = &newConfig.Chips.at(insRes.first->second);
+            }
+        }
+
+        auto & lineConfig = pGpioChipConfig->Lines[lineOffset];
+
+        lineConfig.Offset = lineOffset;
+        lineConfig.IsActiveLow = desc.Inverted;
+        lineConfig.Name = desc.Name;
+        lineConfig.Direction = desc.Direction;
+        EnumerateGpioEdge(desc.InterruptEdge, lineConfig.InterruptEdge);
+        lineConfig.Type = desc.Type;
+        lineConfig.Multiplier = desc.Multiplier;
+        lineConfig.Order = desc.Order;
+        lineConfig.DecimalPlacesTotal = desc.DecimalPlacesTotal;
+        lineConfig.DecimalPlacesCurrent = desc.DecimalPlacesCurrent;
+        lineConfig.InitialState = desc.InitialState;
+    }
+
+    return move(newConfig);
+}
+
+TGpioDriverConfig GetConvertConfig(const std::string & fileName)
+{
+    try {
+        return TGpioDriverConfig(fileName);
+    } catch (const exception & e) {
+        LOG(Warn) << "unable to read config in new format: '" << e.what() << "'";
+    }
+
+    LOG(Info) << "trying to read config in deprecated format...";
+    try {
+        return ToNewFormat(THandlerConfig(fileName));
+    } catch (const exception & e) {
+        LOG(Warn) << "unable to read config in deprecated format: '" << e.what() << "'";
+    }
+
+    wb_throw(TGpioDriverException, "unable to read config");
 }

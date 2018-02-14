@@ -11,9 +11,11 @@ class TGpioDriver
 {
     std::vector<PGpioChip> Chips;
 public:
+    static const char * const Name;
+
     TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const std::string & configFileName);
     ~TGpioDriver() = default;
 
 private:
-    static PConfig ToNewFormat(const PConfig & config);
+
 };
