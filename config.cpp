@@ -10,29 +10,30 @@
 
 #include <iostream>
 #include <fstream>
+#include <cassert>
 
 #define LOG(logger) ::logger.Log() << "[config] "
 
 using namespace std;
 
-void EnumerateGpioEdge(const std::string & edge, TGpioEdge & enumEdge)
+void EnumerateGpioEdge(const std::string & edge, EGpioEdge & enumEdge)
 {
     if (edge == "rising")
-        enumEdge = TGpioEdge::RISING;
+        enumEdge = EGpioEdge::RISING;
     else if (edge == "falling")
-        enumEdge = TGpioEdge::FALLING;
+        enumEdge = EGpioEdge::FALLING;
     else if (edge == "both")
-        enumEdge = TGpioEdge::BOTH;
+        enumEdge = EGpioEdge::BOTH;
     else if (!edge.empty())
         LOG(Warn) << "unable to determine edge from '" << edge << "': needs to be either 'rising', 'falling' or 'both'. Using: '" << GpioEdgeToString(enumEdge) << "'";
 }
 
-string GpioEdgeToString(TGpioEdge edge)
+string GpioEdgeToString(EGpioEdge edge)
 {
     switch(edge) {
-        case TGpioEdge::RISING: return "rising";
-        case TGpioEdge::FALLING: return "falling";
-        case TGpioEdge::BOTH: return "both";
+        case EGpioEdge::RISING: return "rising";
+        case EGpioEdge::FALLING: return "falling";
+        case EGpioEdge::BOTH: return "both";
         default:
             return "<unknown (" + to_string((int)edge) + ")>";
     }
@@ -238,7 +239,8 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
                 chipConfig.Lines[lineConfig.Offset] = (move(lineConfig));
             }
 
-            Chips.push_back(move(chipConfig));
+            bool inserted = Chips.insert({ chipConfig.Path, chipConfig }).second;
+            assert(inserted);
         }
     } catch (const exception & e) {
         wb_throw(TGpioDriverException, string("malformed JSON config: ") + e.what());
@@ -251,30 +253,16 @@ TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
 
     newConfig.DeviceName = oldConfig.DeviceName;
 
-    map<uint32_t, size_t> addedChips; // chip path to index in new config
-
     for (const auto & desc: oldConfig.Gpios) {
         uint32_t chipNumber, lineOffset;
 
         tie(chipNumber, lineOffset) = FromSysfsGpio((uint32_t)desc.Gpio);
 
-        TGpioChipConfig * pGpioChipConfig = nullptr;
-        {
-            const auto & insRes = addedChips.insert({chipNumber, 0});
-            if (insRes.second) {
-                insRes.first->second = newConfig.Chips.size();
-                newConfig.Chips.emplace_back();
-                auto & chipConfig = newConfig.Chips.back();
-                pGpioChipConfig = &chipConfig;
+        auto path = GpioChipNumberToPath(chipNumber);
+        auto & chipConfig = newConfig.Chips[path];
+        chipConfig.Path = move(path);
 
-                chipConfig.Path = GpioChipNumberToPath(chipNumber);
-            } else {
-                pGpioChipConfig = &newConfig.Chips.at(insRes.first->second);
-            }
-        }
-
-        auto & lineConfig = pGpioChipConfig->Lines[lineOffset];
-
+        auto & lineConfig = chipConfig.Lines[lineOffset];
         lineConfig.Offset = lineOffset;
         lineConfig.IsActiveLow = desc.Inverted;
         lineConfig.Name = desc.Name;

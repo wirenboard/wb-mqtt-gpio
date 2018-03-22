@@ -305,8 +305,8 @@ int main(int argc, char *argv[])
     int epfd;
     struct epoll_event events[20];
 
-    WBMQTT::SignalHandling::Handle({ SIGINT });
-    WBMQTT::SignalHandling::OnSignal(SIGINT, [&]{ WBMQTT::SignalHandling::Stop(); });
+    WBMQTT::SignalHandling::Handle({ SIGINT, SIGTERM });
+    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ WBMQTT::SignalHandling::Stop(); });
     WBMQTT::SetThreadName("main");
 
     int c, n, debug;
@@ -420,7 +420,7 @@ int main(int argc, char *argv[])
     }
 
     mqttDriver->StartLoop();
-    WBMQTT::SignalHandling::OnSignal(SIGINT, [&]{ mqttDriver->StopLoop(); });
+    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ mqttDriver->StopLoop(); });
 
     mqttDriver->WaitForReady();
 

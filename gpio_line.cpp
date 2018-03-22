@@ -1,4 +1,5 @@
 #include "gpio_line.h"
+#include "gpio_counter.h"
 #include "gpio_chip.h"
 #include "exceptions.h"
 #include "log.h"
@@ -14,12 +15,21 @@
 using namespace std;
 
 
-TGpioLine::TGpioLine(const PGpioChip & chip, uint32_t offset)
+TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     : Chip(chip)
-    , Offset(offset)
+    , Offset(config.Offset)
 {
-    assert(offset < AccessChip()->GetLineCount());
+    assert(Offset < AccessChip()->GetLineCount());
 
+    if (!config.Type.empty()) {
+        Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
+    }
+
+    UpdateInfo();
+}
+
+void TGpioLine::UpdateInfo()
+{
     gpioline_info info {};
 
     info.line_offset = Offset;
@@ -33,6 +43,7 @@ TGpioLine::TGpioLine(const PGpioChip & chip, uint32_t offset)
     Flags    = info.flags;
     Consumer = info.consumer;
 }
+
 std::string TGpioLine::DescribeShort() const
 {
     ostringstream ss;
@@ -125,7 +136,16 @@ bool TGpioLine::IsOpenSource() const
 
 uint8_t TGpioLine::GetValue() const
 {
-    return AccessChip()->GetLineValue(Offset);
+    assert(!IsOutput());
+
+    return InvertIfNeeded(AccessChip()->GetLineValue(Offset));
+}
+
+void TGpioLine::SetValue(uint8_t value)
+{
+    assert(IsOutput());
+
+    AccessChip()->SetLineValue(Offset, InvertIfNeeded(value));
 }
 
 PGpioChip TGpioLine::AccessChip() const
@@ -135,4 +155,26 @@ PGpioChip TGpioLine::AccessChip() const
     assert(chip);
 
     return chip;
+}
+
+bool TGpioLine::IsHandled() const
+{
+    return IsHandledByDriver;
+}
+
+void TGpioLine::SetIsHandled(bool isHandled)
+{
+    IsHandledByDriver = isHandled;
+}
+
+void TGpioLine::HandleInterrupt(EGpioEdge edge)
+{
+    if (Counter) {
+        Counter->HandleInterrupt(edge);
+    }
+}
+
+uint8_t TGpioLine::InvertIfNeeded(uint8_t value) const
+{
+    return value ^ IsActiveLow();
 }

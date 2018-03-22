@@ -9,13 +9,19 @@
 
 class TGpioDriver
 {
-    std::vector<PGpioChip> Chips;
+    std::vector<PGpioChip>          Chips;
+    std::unique_ptr<std::thread>    Worker;
+    std::atomic_bool                Active;
+
 public:
     static const char * const Name;
 
-    TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const std::string & configFileName);
+    TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDriverConfig & config);
     ~TGpioDriver() = default;
 
-private:
+    void Start();
+    void Stop();
 
+private:
+    void Poll();
 };

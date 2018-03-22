@@ -37,10 +37,10 @@ public:
     void AddGpio(TGpioDesc &gpio_desc);
 };
 
-enum class TGpioEdge { RISING, FALLING, BOTH };
+enum class EGpioEdge { RISING, FALLING, BOTH };
 
-void EnumerateGpioEdge(const std::string &, TGpioEdge &);
-std::string GpioEdgeToString(TGpioEdge);
+void EnumerateGpioEdge(const std::string &, EGpioEdge &);
+std::string GpioEdgeToString(EGpioEdge);
 
 struct TGpioLineConfig
 {
@@ -50,7 +50,7 @@ struct TGpioLineConfig
     bool IsActiveLow          = false;
     std::string Name          = "";
     TGpioDirection Direction  = TGpioDirection::Output;
-    TGpioEdge InterruptEdge   = TGpioEdge::BOTH;
+    EGpioEdge InterruptEdge   = EGpioEdge::BOTH;
     std::string Type          = "";
     float Multiplier;
     int Order;
@@ -70,7 +70,7 @@ struct TGpioChipConfig
 struct TGpioDriverConfig
 {
     std::string DeviceName;
-    std::vector<TGpioChipConfig> Chips;
+    std::unordered_map<std::string, TGpioChipConfig> Chips;
 
     TGpioDriverConfig() = default;
     explicit TGpioDriverConfig(const std::string & fileName);
