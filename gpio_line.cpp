@@ -15,17 +15,25 @@
 using namespace std;
 
 
-TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
+TGpioLine::TGpioLine(const PGpioChip & chip, uint32_t offset)
     : Chip(chip)
-    , Offset(config.Offset)
+    , Offset(offset)
+    , Fd(-1)
+    , Debouncing(false)
 {
     assert(Offset < AccessChip()->GetLineCount());
+
+    UpdateInfo();
+}
+
+TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
+    : TGpioLine(chip, config.Offset)
+{
+    Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 
     if (!config.Type.empty()) {
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
     }
-
-    UpdateInfo();
 }
 
 void TGpioLine::UpdateInfo()
@@ -48,6 +56,9 @@ std::string TGpioLine::DescribeShort() const
 {
     ostringstream ss;
     ss << "GPIO line " << AccessChip()->GetNumber() << ":" << Offset;
+    if (Config) {
+        ss << " (" << Config->Name << ")";
+    }
     return ss.str();
 }
 
@@ -134,10 +145,13 @@ bool TGpioLine::IsOpenSource() const
     return Flags & GPIOLINE_FLAG_OPEN_SOURCE;
 }
 
+bool TGpioLine::IsValueChanged() const
+{
+    return AccessChip()->IsLineValueChanged(Offset);
+}
+
 uint8_t TGpioLine::GetValue() const
 {
-    assert(!IsOutput());
-
     return InvertIfNeeded(AccessChip()->GetLineValue(Offset));
 }
 
@@ -159,19 +173,55 @@ PGpioChip TGpioLine::AccessChip() const
 
 bool TGpioLine::IsHandled() const
 {
-    return IsHandledByDriver;
+    return Fd > -1;
 }
 
-void TGpioLine::SetIsHandled(bool isHandled)
+void TGpioLine::SetFd(int fd)
 {
-    IsHandledByDriver = isHandled;
+    Fd = fd;
+}
+
+int TGpioLine::GetFd() const
+{
+    assert(Fd > -1);
+
+    return Fd;
 }
 
 void TGpioLine::HandleInterrupt(EGpioEdge edge)
 {
+    const auto now = std::chrono::steady_clock::now();
+    const auto isFirstInterruption = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero();
+    auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
+                                          : chrono::duration_cast<chrono::microseconds>(now - PreviousInterruptionTimePoint);
+
+    /* if interval of impulses is bigger than 1000 microseconds we consider it is not a debounnce */
+    Debouncing = isFirstInterruption ? false : intervalUs.count() <= 1000;
+
+    LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << (Debouncing ? " [debouncing]" : "");
+
     if (Counter) {
-        Counter->HandleInterrupt(edge);
+        Counter->HandleInterrupt(edge, intervalUs);
     }
+
+    PreviousInterruptionTimePoint = now;
+}
+
+const PUGpioCounter & TGpioLine::GetCounter() const
+{
+    return Counter;
+}
+
+const PUGpioLineConfig & TGpioLine::GetConfig() const
+{
+    assert(Config);
+
+    return Config;
+}
+
+bool TGpioLine::IsDebouncing() const
+{
+    return Debouncing;
 }
 
 uint8_t TGpioLine::InvertIfNeeded(uint8_t value) const

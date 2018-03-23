@@ -5,10 +5,13 @@
 #include <wblib/declarations.h>
 
 #include <vector>
+#include <atomic>
 
 
 class TGpioDriver
 {
+    WBMQTT::PDeviceDriver           MqttDriver;
+
     std::vector<PGpioChip>          Chips;
     std::unique_ptr<std::thread>    Worker;
     std::atomic_bool                Active;
@@ -21,7 +24,4 @@ public:
 
     void Start();
     void Stop();
-
-private:
-    void Poll();
 };

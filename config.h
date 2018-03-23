@@ -1,11 +1,13 @@
 #pragma once
 
+#include "types.h"
+
 #include <set>
 #include <unordered_map>
 #include <string>
 #include <vector>
 
-enum class TGpioDirection {
+enum class EGpioDirection {
     Input,
     Output
 };
@@ -14,7 +16,7 @@ struct TGpioDesc {
     int Gpio;
     bool Inverted = false;
     std::string Name = "";
-    TGpioDirection Direction = TGpioDirection::Output;
+    EGpioDirection Direction = EGpioDirection::Output;
     std::string InterruptEdge = "";
     std::string Type = "";
     float Multiplier;
@@ -37,11 +39,6 @@ public:
     void AddGpio(TGpioDesc &gpio_desc);
 };
 
-enum class EGpioEdge { RISING, FALLING, BOTH };
-
-void EnumerateGpioEdge(const std::string &, EGpioEdge &);
-std::string GpioEdgeToString(EGpioEdge);
-
 struct TGpioLineConfig
 {
     uint32_t Offset;
@@ -49,7 +46,7 @@ struct TGpioLineConfig
     bool IsOpenSource         = false;
     bool IsActiveLow          = false;
     std::string Name          = "";
-    TGpioDirection Direction  = TGpioDirection::Output;
+    EGpioDirection Direction  = EGpioDirection::Output;
     EGpioEdge InterruptEdge   = EGpioEdge::BOTH;
     std::string Type          = "";
     float Multiplier;

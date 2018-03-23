@@ -117,7 +117,6 @@ namespace
         }
 
         for (const auto & name: EnumerateGpioChipsSorted()) {
-            LOG(Debug) << "open chip " << name;
             const auto & chip = make_shared<TGpioChip>("/dev/" + name);
 
             uint32_t positionOffset = 0;
@@ -157,7 +156,7 @@ uint32_t ToSysfsGpio(const PGpioLine & line)
 
     uint32_t gpio = pRange->Begin + line->GetOffset();
 
-    LOG(Debug) << "converted " << line->DescribeShort() << " to GPIO number " << gpio;
+    LOG(Debug) << "Converted " << line->DescribeShort() << " to GPIO number " << gpio;
 
     return gpio;
 }
@@ -176,7 +175,7 @@ std::pair<uint32_t, uint32_t> FromSysfsGpio(uint32_t gpio)
 
     std::pair<uint32_t, uint32_t> res { pRange->ChipNumber, gpio - pRange->Begin };
 
-    LOG(Debug) << "converted sysfs GPIO number " << gpio << " to <chip number: offset>: " << res.first << ": " << res.second;
+    LOG(Debug) << "Converted sysfs GPIO number " << gpio << " to <chip number: offset>: " << res.first << ": " << res.second;
 
     return res;
 }

@@ -16,28 +16,6 @@
 
 using namespace std;
 
-void EnumerateGpioEdge(const std::string & edge, EGpioEdge & enumEdge)
-{
-    if (edge == "rising")
-        enumEdge = EGpioEdge::RISING;
-    else if (edge == "falling")
-        enumEdge = EGpioEdge::FALLING;
-    else if (edge == "both")
-        enumEdge = EGpioEdge::BOTH;
-    else if (!edge.empty())
-        LOG(Warn) << "unable to determine edge from '" << edge << "': needs to be either 'rising', 'falling' or 'both'. Using: '" << GpioEdgeToString(enumEdge) << "'";
-}
-
-string GpioEdgeToString(EGpioEdge edge)
-{
-    switch(edge) {
-        case EGpioEdge::RISING: return "rising";
-        case EGpioEdge::FALLING: return "falling";
-        case EGpioEdge::BOTH: return "both";
-        default:
-            return "<unknown (" + to_string((int)edge) + ")>";
-    }
-}
 
 THandlerConfig::THandlerConfig(const std::string &fileName)
 {
@@ -80,7 +58,7 @@ THandlerConfig::THandlerConfig(const std::string &fileName)
             if (item.isMember("inverted"))
                 gpio_desc.Inverted = item["inverted"].asBool();
             if (item.isMember("direction") && item["direction"].asString() == "input")
-                gpio_desc.Direction = TGpioDirection::Input;
+                gpio_desc.Direction = EGpioDirection::Input;
             if (item.isMember("type"))
                 gpio_desc.Type = item["type"].asString();
             if (item.isMember("multiplier"))
@@ -183,7 +161,7 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
             }
 
             if (lines.empty()) {
-                LOG(Warn) << "no lines for chip at '" << chipConfig.Path << "'. Skipping.";
+                LOG(Warn) << "No lines for chip at '" << chipConfig.Path << "'. Skipping.";
                 continue;
             }
 
@@ -222,7 +200,7 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
                 if (line.isMember("open_source"))
                     lineConfig.IsOpenSource = line["open_source"].asBool();
                 if (line.isMember("direction") && line["direction"].asString() == "input")
-                    lineConfig.Direction = TGpioDirection::Input;
+                    lineConfig.Direction = EGpioDirection::Input;
                 if (line.isMember("type"))
                     lineConfig.Type = line["type"].asString();
                 if (line.isMember("multiplier"))
@@ -284,14 +262,14 @@ TGpioDriverConfig GetConvertConfig(const std::string & fileName)
     try {
         return TGpioDriverConfig(fileName);
     } catch (const exception & e) {
-        LOG(Warn) << "unable to read config in new format: '" << e.what() << "'";
+        LOG(Warn) << "Unable to read config in new format: '" << e.what() << "'";
     }
 
-    LOG(Info) << "trying to read config in deprecated format...";
+    LOG(Info) << "Trying to read config in deprecated format...";
     try {
         return ToNewFormat(THandlerConfig(fileName));
     } catch (const exception & e) {
-        LOG(Warn) << "unable to read config in deprecated format: '" << e.what() << "'";
+        LOG(Warn) << "Unable to read config in deprecated format: '" << e.what() << "'";
     }
 
     wb_throw(TGpioDriverException, "unable to read config");

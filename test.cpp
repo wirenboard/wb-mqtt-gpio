@@ -1,5 +1,6 @@
 #include "gpio_chip.h"
 #include "gpio_line.h"
+#include "gpio_counter.h"
 #include "config.h"
 #include "utils.h"
 #include "log.h"
@@ -62,7 +63,13 @@ int main()
                     auto edge = lineEdge.second;
                     const auto & lineConfig = config.Chips.at(chip->GetPath()).Lines.at(line->GetOffset());
 
-                    cout << "interrupted line: " << lineConfig.Name << " (" << line->DescribeShort() << ") value: " << (int)line->GetValue() << " edge: " << GpioEdgeToString(edge) << endl;
+                    if (line->IsValueChanged()) {
+                        cout << "interrupted line: " << lineConfig.Name << " (" << line->DescribeShort() << ") value: " << (int)line->GetValue() << " edge: " << GpioEdgeToString(edge);
+                        if (const auto & counter = line->GetCounter()) {
+                            cout << " count: " << counter->GetCounts();
+                        }
+                        cout << endl;
+                    }
                 }
             }
         }

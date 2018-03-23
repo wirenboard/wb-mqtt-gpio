@@ -1,21 +1,28 @@
 #pragma once
 
 #include "declarations.h"
+#include "types.h"
 
 #include <string>
 
 class TGpioLine
 {
-    PWGpioChip    Chip;
-    PUGpioCounter Counter;
+    PWGpioChip          Chip;
+    PUGpioCounter       Counter;
+    PUGpioLineConfig    Config;
+
     uint32_t      Offset,
                   Flags;
+    int           Fd;
     std::string   Name,
                   Consumer;
 
-    bool          IsHandledByDriver;
+    TTimePoint    PreviousInterruptionTimePoint;
+
+    bool          Debouncing;
 
 public:
+    TGpioLine(const PGpioChip & chip, uint32_t offset);
     TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config);
 
     void UpdateInfo();
@@ -31,12 +38,17 @@ public:
     bool IsUsed() const;
     bool IsOpenDrain() const;
     bool IsOpenSource() const;
+    bool IsValueChanged() const;
     uint8_t GetValue() const;
     void SetValue(uint8_t);
     PGpioChip AccessChip() const;
     bool IsHandled() const;
-    void SetIsHandled(bool);
+    void SetFd(int);
+    int GetFd() const;
     void HandleInterrupt(EGpioEdge);
+    const PUGpioCounter & GetCounter() const;
+    const PUGpioLineConfig & GetConfig() const;
+    bool IsDebouncing() const;
 
 private:
     uint8_t InvertIfNeeded(uint8_t) const;

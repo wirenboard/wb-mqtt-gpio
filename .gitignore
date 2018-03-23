@@ -35,5 +35,8 @@ wb-mqtt-lirc/debian/wb-mqtt-lirc/
 wb-mqtt-db/debian/wb-mqtt-db/
 .d
 
+# Binaries
+wb-homa-gpio
+
 # Visual Studio Code
 .vscode

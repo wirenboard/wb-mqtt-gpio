@@ -1,5 +1,6 @@
 #include "gpio_chip.h"
 #include "gpio_line.h"
+#include "gpio_counter.h"
 #include "exceptions.h"
 #include "utils.h"
 #include "log.h"
@@ -26,9 +27,9 @@ namespace
     {
         uint32_t flags = 0;
 
-        if (config.Direction == TGpioDirection::Input)
+        if (config.Direction == EGpioDirection::Input)
             flags |= GPIOHANDLE_REQUEST_INPUT;
-        else if (config.Direction == TGpioDirection::Output)
+        else if (config.Direction == EGpioDirection::Output)
             flags |= GPIOHANDLE_REQUEST_OUTPUT;
 
         if (config.IsOpenDrain)
@@ -51,6 +52,8 @@ TGpioChip::TGpioChip(const string & path)
     if (Fd < 0) {
         wb_throw(TGpioDriverException, "unable to open device path '" + Path + "'");
     }
+
+    LOG(Debug) << "Open chip at " << Path;
 
     WB_SCOPE_THROW_EXIT( close(Fd); )
 
@@ -75,19 +78,23 @@ TGpioChip::TGpioChip(const string & path)
 TGpioChip::~TGpioChip()
 {
     close(Fd);
+    LOG(Debug) << "Close chip at " << Path;
 }
 
 void TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
 {
     for (size_t offset = 0; offset < Lines.size(); ++offset) {
-        auto line = make_shared<TGpioLine>(shared_from_this(), offset);
-
-        Lines[offset] = line;
-
         if (linesConfigs.count(offset) == 0) {
+            auto line = make_shared<TGpioLine>(shared_from_this(), offset);
             LOG(Info) << line->Describe() << " is not in config. Skipping.";
+            Lines[offset] = line;
             continue;
         }
+
+        const auto & config = linesConfigs.at(offset);
+        auto line = make_shared<TGpioLine>(shared_from_this(), config);
+
+        Lines[offset] = line;
 
         if (line->IsUsed()) {
             LOG(Warn) << line->Describe() << " is used by '" << line->GetConsumer() << "'. ";
@@ -108,9 +115,7 @@ void TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
             LOG(Info) << "Line usage successfully resolved";
         }
 
-        const auto & config = linesConfigs.at(offset);
-
-        if (config.Direction == TGpioDirection::Input) {
+        if (config.Direction == EGpioDirection::Input) {
             if (SupportsInterrupts != 0) {
                 auto interruptSupport = TryListenLine(line, config);
                 if (interruptSupport == EInterruptSupport::NO) {
@@ -126,7 +131,7 @@ void TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
             if (SupportsInterrupts == -1) {
                 SupportsInterrupts = 0;
             }
-        } else if (config.Direction == TGpioDirection::Output) {
+        } else if (config.Direction == EGpioDirection::Output) {
             InitOutput(line, config);
         } else {
             assert(false);
@@ -138,24 +143,29 @@ void TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
     for (const auto & line: Lines) {
         line->UpdateInfo();
     }
+
+    AutoDetectInterruptEdges();
 }
 
 void TGpioChip::PollLinesValues()
 {
     for (auto & flagsLines: PollingLines) {
-        const auto & pollingLines = flagsLines.second;
-        const auto & lines = pollingLines.Lines;
+        PollLinesValues(flagsLines.second);
+    }
+}
 
-        gpiohandle_data data {};
-        if (ioctl(pollingLines.Fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-            LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-            wb_throw(TGpioDriverException, "unable to poll lines values");
-        }
+void TGpioChip::PollLinesValues(const TPollingLines & pollingLines)
+{
+    const auto & lines = pollingLines.Lines;
 
-        for (uint32_t i = 0; i < lines.size(); ++i) {
-            auto value = data.values[i];
-            LinesValues[lines[i]->GetOffset()] = value;
-        }
+    gpiohandle_data data {};
+    if (ioctl(pollingLines.Fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        wb_throw(TGpioDriverException, "unable to poll lines values");
+    }
+
+    for (uint32_t i = 0; i < lines.size(); ++i) {
+        AcceptLineValue(lines[i]->GetOffset(), data.values[i]);
     }
 }
 
@@ -198,21 +208,23 @@ vector<pair<PGpioLine, EGpioEdge>> TGpioChip::HandleInterrupt(int count, struct 
             {
                 gpioevent_data data {};
                 if (read(fd, &data, sizeof(data)) < 0) {
-                    LOG(Error) << "read gpioevent_data failed: " << strerror(errno);
+                    LOG(Error) << "Read gpioevent_data failed: " << strerror(errno);
                     wb_throw(TGpioDriverException, "unable to read line event data");
                 }
                 edge = (data.id == GPIOEVENT_EVENT_RISING_EDGE) ? EGpioEdge::RISING
                                                                 : EGpioEdge::FALLING;
             }
 
-            {   // update value
+            line->HandleInterrupt(edge);
+
+            if (!line->IsDebouncing()) {   // update value
                 gpiohandle_data data {};
                 if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
                     LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to poll line value");
+                    wb_throw(TGpioDriverException, "unable to get line value");
                 }
 
-                LinesValues[line->GetOffset()] = data.values[0];
+                AcceptLineValue(line->GetOffset(), data.values[0]);
             }
 
             res.push_back({ line, edge });
@@ -258,7 +270,7 @@ void TGpioChip::AddToEpoll(int epfd)
 
 TGpioChip::EInterruptSupport TGpioChip::TryListenLine(const PGpioLine & line, const TGpioLineConfig & config)
 {
-    assert(config.Direction == TGpioDirection::Input);
+    assert(config.Direction == EGpioDirection::Input);
 
     gpioevent_request req {};
 
@@ -282,7 +294,7 @@ TGpioChip::EInterruptSupport TGpioChip::TryListenLine(const PGpioLine & line, co
     } else {
         auto inserted = ListenedLines.insert({req.fd, line}).second;
         assert(inserted);
-        line->SetIsHandled(true);
+        line->SetFd(req.fd);
         LOG(Info) << "Listening to " << line->Describe();
     }
 
@@ -298,11 +310,10 @@ TGpioChip::EInterruptSupport TGpioChip::TryListenLine(const PGpioLine & line, co
 
 void TGpioChip::AddToPolling(const PGpioLine & line, const TGpioLineConfig & config)
 {
-    assert(config.Direction == TGpioDirection::Input);
+    assert(config.Direction == EGpioDirection::Input);
 
     auto flags = GetFlagsFromConfig(config);
 
-    line->SetIsHandled(true);
     PollingLines[flags].Lines.push_back(line);
 }
 
@@ -328,12 +339,16 @@ void TGpioChip::InitInputs()
         }
 
         flagsLines.second.Fd = req.fd;
+
+        for (const auto & line: flagsLines.second.Lines) {
+            line->SetFd(req.fd);
+        }
     }
 }
 
 void TGpioChip::InitOutput(const PGpioLine & line, const TGpioLineConfig & config)
 {
-    assert(config.Direction == TGpioDirection::Output);
+    assert(config.Direction == EGpioDirection::Output);
 
     gpiohandle_request req;
 
@@ -351,7 +366,78 @@ void TGpioChip::InitOutput(const PGpioLine & line, const TGpioLineConfig & confi
     bool inserted = OutputLines.insert({ line, req.fd }).second;
     assert(inserted);
 
-    line->SetIsHandled(true);
+    line->SetFd(req.fd);
+}
+
+void TGpioChip::AutoDetectInterruptEdges()
+{
+    static auto doesNeedAutoDetect = [](const PGpioLine & line) {
+        if (line->IsHandled() && !line->IsOutput()) {
+            if (const auto & counter = line->GetCounter()) {
+                return counter->GetInterruptEdge() == EGpioEdge::BOTH;
+            }
+        }
+
+        return false;
+    };
+
+    unordered_map<int, TPollingLines> pollingLinesByFds;
+    unordered_map<PGpioLine, int> linesSum;
+
+    if (DoesSupportInterrupts()) {
+        for (const auto & line: Lines) {
+            if (doesNeedAutoDetect(line)) {
+                auto fd = line->GetFd();
+                auto & pollingLines = pollingLinesByFds[fd];
+
+                pollingLines.Fd = fd;
+                pollingLines.Lines.push_back(line);
+                linesSum[line] = 0;
+            }
+        }
+    } else {
+        for (const auto & line: Lines) {
+            if (doesNeedAutoDetect(line)) {
+                auto fd = line->GetFd();
+                auto & pollingLines = pollingLinesByFds[fd];
+
+                if (pollingLines.Lines.empty()) {
+                    assert(PollingLines.count(line->GetFlags()));
+
+                    pollingLines = PollingLines[line->GetFlags()];
+                } else {
+                    assert(PollingLines[line->GetFlags()].Fd == fd);
+                }
+                linesSum[line] = 0;
+            }
+        }
+    }
+
+    const auto testCount = 10;
+
+    for (auto i = 0; i < testCount; ++i) {
+        for (const auto & fdPollingLines: pollingLinesByFds) {
+            PollLinesValues(fdPollingLines.second);
+        }
+
+        for (auto & lineSum: linesSum) {
+            const auto & line = lineSum.first;
+            auto & sum = lineSum.second;
+
+            sum += line->GetValue();
+        }
+    }
+
+    for (auto & lineSum: linesSum) {
+        const auto & line = lineSum.first;
+        auto & sum = lineSum.second;
+
+        auto edge = sum < testCount ? EGpioEdge::RISING : EGpioEdge::FALLING;
+
+        LOG(Debug) << "Auto detected edge for line: " << line->DescribeShort() << ": " << GpioEdgeToString(edge);
+
+        line->GetCounter()->SetInterruptEdge(edge);
+    }
 }
 
 int TGpioChip::GetFd() const
@@ -364,6 +450,13 @@ uint8_t TGpioChip::GetLineValue(uint32_t offset) const
     assert(offset < GetLineCount());
 
     return LinesValues[offset];
+}
+
+bool TGpioChip::IsLineValueChanged(uint32_t offset) const
+{
+    assert(offset < GetLineCount());
+
+    return LinesValuesChanged[offset];
 }
 
 void TGpioChip::SetLineValue(uint32_t offset, uint8_t value)
@@ -382,12 +475,14 @@ void TGpioChip::SetLineValue(uint32_t offset, uint8_t value)
         wb_throw(TGpioDriverException, "unable to set value '" + to_string((int)value) + "' to line " + line->DescribeShort());
     }
 
-    LinesValues[offset] = value;
+    AcceptLineValue(offset, value);
 }
 
 void TGpioChip::AcceptLineValue(uint32_t offset, uint8_t value)
 {
     assert(offset < GetLineCount());
 
-
+    auto & currentValue = LinesValues[offset];
+    LinesValuesChanged[offset] = (value != currentValue);
+    currentValue = value;
 }
