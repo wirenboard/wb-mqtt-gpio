@@ -7,6 +7,7 @@
 #include <wblib/utils.h>
 #include <sys/ioctl.h>
 
+#include <string.h>
 #include <sstream>
 #include <cassert>
 
@@ -15,25 +16,23 @@
 using namespace std;
 
 
-TGpioLine::TGpioLine(const PGpioChip & chip, uint32_t offset)
+TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     : Chip(chip)
-    , Offset(offset)
+    , Offset(config.Offset)
     , Fd(-1)
+    , Value(0)
+    , ValueChanged(false)
     , Debouncing(false)
 {
     assert(Offset < AccessChip()->GetLineCount());
 
-    UpdateInfo();
-}
-
-TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
-    : TGpioLine(chip, config.Offset)
-{
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 
     if (!config.Type.empty()) {
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
     }
+
+    UpdateInfo();
 }
 
 void TGpioLine::UpdateInfo()
@@ -147,19 +146,40 @@ bool TGpioLine::IsOpenSource() const
 
 bool TGpioLine::IsValueChanged() const
 {
-    return AccessChip()->IsLineValueChanged(Offset);
+    return ValueChanged;
+}
+
+void TGpioLine::ResetIsChanged()
+{
+    ValueChanged = false;
 }
 
 uint8_t TGpioLine::GetValue() const
 {
-    return InvertIfNeeded(AccessChip()->GetLineValue(Offset));
+    return Value;
 }
 
 void TGpioLine::SetValue(uint8_t value)
 {
     assert(IsOutput());
+    assert(IsHandled());
 
-    AccessChip()->SetLineValue(Offset, InvertIfNeeded(value));
+    gpiohandle_data data {};
+
+    data.values[0] = PrepareValue(value);
+
+    if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
+        LOG(Error) << "GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        wb_throw(TGpioDriverException, "unable to set value '" + to_string((int)value) + "' to line " + DescribeShort());
+    }
+
+    SetCachedValue(value);
+}
+
+void TGpioLine::SetCachedValue(uint8_t value)
+{
+    ValueChanged |= (value != Value);
+    Value = value;
 }
 
 PGpioChip TGpioLine::AccessChip() const
@@ -198,7 +218,7 @@ void TGpioLine::HandleInterrupt(EGpioEdge edge)
     /* if interval of impulses is bigger than 1000 microseconds we consider it is not a debounnce */
     Debouncing = isFirstInterruption ? false : intervalUs.count() <= 1000;
 
-    LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << (Debouncing ? " [debouncing]" : "");
+    LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " interval: " << intervalUs.count() << " us" << (Debouncing ? " [debouncing]" : "");
 
     if (Counter) {
         Counter->HandleInterrupt(edge, intervalUs);
@@ -224,7 +244,7 @@ bool TGpioLine::IsDebouncing() const
     return Debouncing;
 }
 
-uint8_t TGpioLine::InvertIfNeeded(uint8_t value) const
+uint8_t TGpioLine::PrepareValue(uint8_t value) const
 {
     return value ^ IsActiveLow();
 }

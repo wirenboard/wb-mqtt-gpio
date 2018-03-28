@@ -132,12 +132,12 @@ namespace
     }
 }
 
-std::string GpioChipNumberToPath(uint32_t number)
+string GpioChipNumberToPath(uint32_t number)
 {
     return "/dev/gpiochip" + to_string(number);
 }
 
-uint32_t GpioPathToChipNumber(const std::string & path)
+uint32_t GpioPathToChipNumber(const string & path)
 {
     return stoul(path.substr(13));
 }
@@ -161,7 +161,7 @@ uint32_t ToSysfsGpio(const PGpioLine & line)
     return gpio;
 }
 
-std::pair<uint32_t, uint32_t> FromSysfsGpio(uint32_t gpio)
+pair<uint32_t, uint32_t> FromSysfsGpio(uint32_t gpio)
 {
     EnsureChipSetReady();
 
@@ -173,9 +173,16 @@ std::pair<uint32_t, uint32_t> FromSysfsGpio(uint32_t gpio)
 
     auto pRange = dynamic_pointer_cast<TRange>(*itRange);
 
-    std::pair<uint32_t, uint32_t> res { pRange->ChipNumber, gpio - pRange->Begin };
+    pair<uint32_t, uint32_t> res { pRange->ChipNumber, gpio - pRange->Begin };
 
     LOG(Debug) << "Converted sysfs GPIO number " << gpio << " to <chip number: offset>: " << res.first << ": " << res.second;
 
     return res;
+}
+
+string SetDecimalPlaces(float value, int set_decimal_places)
+{
+    ostringstream out;
+    out << fixed << setprecision(set_decimal_places) << value;
+    return out.str();
 }

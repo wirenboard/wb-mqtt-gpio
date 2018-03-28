@@ -19,10 +19,12 @@ class TGpioLine
 
     TTimePoint    PreviousInterruptionTimePoint;
 
+    uint8_t       Value;
+    bool          ValueChanged;
+
     bool          Debouncing;
 
 public:
-    TGpioLine(const PGpioChip & chip, uint32_t offset);
     TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config);
 
     void UpdateInfo();
@@ -39,8 +41,10 @@ public:
     bool IsOpenDrain() const;
     bool IsOpenSource() const;
     bool IsValueChanged() const;
+    void ResetIsChanged();
     uint8_t GetValue() const;
     void SetValue(uint8_t);
+    void SetCachedValue(uint8_t);
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);
@@ -49,7 +53,5 @@ public:
     const PUGpioCounter & GetCounter() const;
     const PUGpioLineConfig & GetConfig() const;
     bool IsDebouncing() const;
-
-private:
-    uint8_t InvertIfNeeded(uint8_t) const;
+    uint8_t PrepareValue(uint8_t value) const;
 };

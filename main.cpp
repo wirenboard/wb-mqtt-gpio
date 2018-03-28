@@ -1,6 +1,7 @@
 #include "gpio_driver.h"
 #include "log.h"
 #include "config.h"
+#include "exceptions.h"
 
 #include <wblib/wbmqtt.h>
 #include <wblib/signal_handling.h>
@@ -10,7 +11,7 @@
 
 using namespace std;
 
-#define LOG(logger) ::logger.Log() << "[main] "
+#define LOG(logger) ::logger.Log() << "[gpio] "
 
 const auto WBMQTT_DB_FILE = "/var/lib/wb-homa-gpio/libwbmqtt.db";
 
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
     WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ WBMQTT::SignalHandling::Stop(); });
     WBMQTT::SetThreadName("main");
 
-    int c, debug;
+    int c, debug = 0;
     //~ int digit_optind = 0;
     //~ int aopt = 0, bopt = 0;
     //~ char *copt = 0, *dopt = 0;
@@ -127,16 +128,27 @@ int main(int argc, char *argv[])
     );
 
     mqttDriver->StartLoop();
-    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ mqttDriver->StopLoop(); });
+    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
+        mqttDriver->StopLoop();
+        mqttDriver->Close();
+    });
 
     mqttDriver->WaitForReady();
 
-    TGpioDriver driver(mqttDriver, GetConvertConfig(configFileName));
-    driver.Start();
+    try {
+        TGpioDriver gpioDriver(mqttDriver, GetConvertConfig(configFileName));
+        gpioDriver.Start();
 
-    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ driver.Stop(); });
-    WBMQTT::SignalHandling::Start();
-    WBMQTT::SignalHandling::Wait();
+        WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ gpioDriver.Stop(); });
+        WBMQTT::SignalHandling::Start();
+        WBMQTT::SignalHandling::Wait();
+    } catch (const TGpioDriverException & e) {
+        LOG(Error) << "FATAL: " << e.what();
+        return 1;
+    } catch (const WBMQTT::TBaseException & e) {
+        LOG(Error) << "FATAL: " << e.what();
+        return 1;
+    }
 
     return 0;
 }

@@ -12,7 +12,7 @@ class TGpioDriver
 {
     WBMQTT::PDeviceDriver           MqttDriver;
 
-    std::vector<PGpioChip>          Chips;
+    std::vector<PGpioChipDriver>    ChipDrivers;
     std::unique_ptr<std::thread>    Worker;
     std::atomic_bool                Active;
 

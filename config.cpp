@@ -11,6 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <string.h>
 
 #define LOG(logger) ::logger.Log() << "[config] "
 

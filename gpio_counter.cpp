@@ -2,6 +2,7 @@
 #include "config.h"
 #include "log.h"
 #include "exceptions.h"
+#include "utils.h"
 
 #include <wblib/utils.h>
 
@@ -23,6 +24,7 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
     , DecimalPlacesTotal(config.DecimalPlacesTotal)
     , DecimalPlacesCurrent(config.DecimalPlacesCurrent)
     , PrintedNULL(false)
+    , Changed(false)
     , Counts(0)
     , InterruptEdge(config.InterruptEdge)
 {
@@ -68,6 +70,7 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, TTimeIntervalUs interval)
         Current = -1;
     } else {
         Current = 3600.0 * 1000000 * ConvertingMultiplier / (interval.count() * Multiplier); // convert microseconds to seconds, hours to seconds
+        Changed = true;
     }
     Total = (float) Counts / Multiplier + InitialTotal;
 }
@@ -87,6 +90,16 @@ uint64_t TGpioCounter::GetCounts() const
     return Counts;
 }
 
+bool TGpioCounter::IsChanged() const
+{
+    return Changed;
+}
+
+void TGpioCounter::ResetIsChanged()
+{
+    Changed = false;
+}
+
 vector<TGpioCounter::TMetadataPair> TGpioCounter::GetIdsAndTypes(const string & baseId) const
 {
     return {
@@ -98,8 +111,8 @@ vector<TGpioCounter::TMetadataPair> TGpioCounter::GetIdsAndTypes(const string & 
 vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string & baseId) const
 {
     return {
-        { baseId + IdPostfixTotal,   Total },
-        { baseId + IdPostfixCurrent, Current }
+        { baseId + IdPostfixTotal,   SetDecimalPlaces(Total, DecimalPlacesTotal) },
+        { baseId + IdPostfixCurrent, SetDecimalPlaces(Current, DecimalPlacesCurrent) }
     };
 }
 
@@ -111,4 +124,9 @@ void TGpioCounter::SetInterruptEdge(EGpioEdge edge)
 EGpioEdge TGpioCounter::GetInterruptEdge() const
 {
     return InterruptEdge;
+}
+
+void TGpioCounter::SetInitialValues(float total)
+{
+    InitialTotal = total;
 }

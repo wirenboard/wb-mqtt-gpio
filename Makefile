@@ -16,21 +16,23 @@ ifneq ($(CC_PATH),)
 	CC=$(CROSS_COMPILE)gcc-4.7
 endif
 
-#CFLAGS=-Wall -ggdb -std=c++11 -O0 -I.
-CFLAGS=-Wall -std=c++11 -Os -I.
-LDFLAGS= -ljsoncpp -lwbmqtt1
+DEBUG_CFLAGS=-Wall -ggdb -rdynamic -std=c++11 -O0 -I.
+RELEASE_CFLAGS=-Wall -DNDEBUG -std=c++11 -Os -I.
+CFLAGS=$(if $(DEBUG), $(DEBUG_CFLAGS), $(NORMAL_CFLAGS))
+LDFLAGS= -ljsoncpp -lwbmqtt1 -lpthread
 
 GPIO_BIN=wb-homa-gpio
 
-GPIO_SOURCES= 		\
-  gpio_driver.cpp	\
-  gpio_chip.cpp 	\
-  gpio_line.cpp 	\
-  gpio_counter.cpp	\
-  config.cpp 		\
-  utils.cpp 		\
-  types.cpp 		\
-  log.cpp 			\
+GPIO_SOURCES= 			\
+  gpio_driver.cpp		\
+  gpio_chip_driver.cpp	\
+  gpio_chip.cpp 		\
+  gpio_line.cpp 		\
+  gpio_counter.cpp		\
+  config.cpp 			\
+  utils.cpp 			\
+  types.cpp 			\
+  log.cpp 				\
   exceptions.cpp
 
 GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)

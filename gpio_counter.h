@@ -8,7 +8,7 @@
 class TGpioCounter
 {
     using TMetadataPair = std::pair<std::string, std::string>;
-    using TValuePair    = std::pair<std::string, float>;
+    using TValuePair    = std::pair<std::string, std::string>;
 
     float           Multiplier,
                     ConvertingMultiplier;// multiplier that converts value to appropriate measuring unit according to meter type
@@ -22,6 +22,7 @@ class TGpioCounter
     int             DecimalPlacesTotal,
                     DecimalPlacesCurrent;
     bool            PrintedNULL;
+    bool            Changed;
 
     uint64_t        Counts;
     EGpioEdge       InterruptEdge;
@@ -34,18 +35,18 @@ public:
     float GetCurrent() const;
     float GetTotal() const;
     uint64_t GetCounts() const;
+    bool IsChanged() const;
+    void ResetIsChanged();
     std::vector<TMetadataPair> GetIdsAndTypes(const std::string & baseId) const;
     std::vector<TValuePair>    GetIdsAndValues(const std::string & baseId) const;
 
     void SetInterruptEdge(EGpioEdge);
     EGpioEdge GetInterruptEdge() const;
 
+    void SetInitialValues(float total); // set total when starting
+
     // vector<TMetadataPair> MetaType();
     // vector<TMetadataPair> GpioPublish();
     // int InterruptUp();                  // if user didn't specify interrupt edge, method would figure it out
-    // void SetInitialValues(float total); // set total when starting
     // TMetadataPair CheckTimeInterval();
-
-private:
-    // std::string SetDecimalPlaces(float value, int decimal_points);
 };
