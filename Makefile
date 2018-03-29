@@ -39,21 +39,15 @@ GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)
 
 all : $(GPIO_BIN)
 
-
 # GPIO
 %.o : %.cpp
 	${CXX} -c $< -o $@ ${CFLAGS}
-
-wb-homa-gpio-test : test.o $(GPIO_OBJECTS)
-	${CXX} $^ ${LDFLAGS} -o $@
 
 $(GPIO_BIN) : main.o $(GPIO_OBJECTS)
 	${CXX} $^ ${LDFLAGS} -o $@
 
 clean :
 	-rm -f *.o $(GPIO_BIN)
-
-
 
 install: all
 	install -d $(DESTDIR)
