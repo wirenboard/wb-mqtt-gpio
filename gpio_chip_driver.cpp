@@ -318,13 +318,14 @@ bool TGpioChipDriver::InitLinesPolling(uint32_t flags, const vector<PGpioLine> &
     assert(lines.size() <= GPIOHANDLES_MAX);
 
     gpiohandle_request req;
-    req.lines = lines.size();
+    req.lines = 0;
     req.flags = flags;
     strcpy(req.consumer_label, CONSUMER);
 
     for (auto & line: lines) {
         req.lineoffsets[req.lines] = line->GetOffset();
         req.default_values[req.lines] = line->IsActiveLow();
+        ++req.lines;
     }
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
@@ -337,7 +338,7 @@ bool TGpioChipDriver::InitLinesPolling(uint32_t flags, const vector<PGpioLine> &
     assert(initialized.empty());
     initialized.reserve(lines.size());
 
-    for (const auto & line: initialized) {
+    for (const auto & line: lines) {
         line->SetFd(req.fd);
         initialized.push_back(line);
     }
@@ -366,18 +367,18 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
 
         LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
 
-        EGpioEdge edge;
-        if (oldValue == 0 && newValue == 1) {
-            edge = EGpioEdge::RISING;
-        } else if (oldValue == 1 && newValue == 0) {
-            edge = EGpioEdge::FALLING;
-        } else {
-            edge = EGpioEdge::BOTH;
-        }
+        if (!line->IsOutput()) {
+            /* if value changed for input we simulate interrupt */
+            if (oldValue != newValue) {
+                line->HandleInterrupt(newValue ? EGpioEdge::RISING : EGpioEdge::FALLING);
 
-        line->HandleInterrupt(edge);
-
-        if (!line->IsDebouncing()) {
+                if (!line->IsDebouncing()) {
+                    line->SetCachedValue(newValue);
+                }
+            } else {    /* in other case let line do idle actions */
+                line->Update();
+            }
+        } else {    /* for output just set value to cache: it will publish it if changed */
             line->SetCachedValue(newValue);
         }
     }

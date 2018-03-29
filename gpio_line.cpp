@@ -21,7 +21,6 @@ TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     , Offset(config.Offset)
     , Fd(-1)
     , Value(0)
-    , ValueChanged(false)
     , Debouncing(false)
 {
     assert(Offset < AccessChip()->GetLineCount());
@@ -146,17 +145,17 @@ bool TGpioLine::IsOpenSource() const
 
 bool TGpioLine::IsValueChanged() const
 {
-    return ValueChanged;
+    return Value.IsChanged();
 }
 
 void TGpioLine::ResetIsChanged()
 {
-    ValueChanged = false;
+    Value.ResetChanged();
 }
 
 uint8_t TGpioLine::GetValue() const
 {
-    return Value;
+    return Value.Get();
 }
 
 void TGpioLine::SetValue(uint8_t value)
@@ -178,8 +177,7 @@ void TGpioLine::SetValue(uint8_t value)
 
 void TGpioLine::SetCachedValue(uint8_t value)
 {
-    ValueChanged |= (value != Value);
-    Value = value;
+    Value.Set(value);
 }
 
 PGpioChip TGpioLine::AccessChip() const
@@ -208,12 +206,24 @@ int TGpioLine::GetFd() const
     return Fd;
 }
 
+EGpioEdge TGpioLine::GetInterrruptEdge() const
+{
+    return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;
+}
+
 void TGpioLine::HandleInterrupt(EGpioEdge edge)
 {
+    assert(edge != EGpioEdge::BOTH);
+
+    auto interruptEdge = GetInterrruptEdge();
+    if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
+        return;
+    }
+
     const auto now = std::chrono::steady_clock::now();
     const auto isFirstInterruption = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero();
     auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
-                                          : chrono::duration_cast<chrono::microseconds>(now - PreviousInterruptionTimePoint);
+                                        : chrono::duration_cast<chrono::microseconds>(now - PreviousInterruptionTimePoint);
 
     /* if interval of impulses is bigger than 1000 microseconds we consider it is not a debounnce */
     Debouncing = isFirstInterruption ? false : intervalUs.count() <= 1000;
@@ -225,6 +235,15 @@ void TGpioLine::HandleInterrupt(EGpioEdge edge)
     }
 
     PreviousInterruptionTimePoint = now;
+}
+
+void TGpioLine::Update()
+{
+    if (Counter) {
+        Counter->Update(chrono::duration_cast<chrono::microseconds>(
+            std::chrono::steady_clock::now() - PreviousInterruptionTimePoint
+        ));
+    }
 }
 
 const PUGpioCounter & TGpioLine::GetCounter() const

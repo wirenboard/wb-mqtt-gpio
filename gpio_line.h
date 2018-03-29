@@ -19,8 +19,7 @@ class TGpioLine
 
     TTimePoint    PreviousInterruptionTimePoint;
 
-    uint8_t       Value;
-    bool          ValueChanged;
+    TValue<uint8_t> Value;
 
     bool          Debouncing;
 
@@ -49,7 +48,9 @@ public:
     bool IsHandled() const;
     void SetFd(int);
     int GetFd() const;
+    EGpioEdge GetInterrruptEdge() const;
     void HandleInterrupt(EGpioEdge);
+    void Update();
     const PUGpioCounter & GetCounter() const;
     const PUGpioLineConfig & GetConfig() const;
     bool IsDebouncing() const;

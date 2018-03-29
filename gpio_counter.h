@@ -11,27 +11,30 @@ class TGpioCounter
     using TValuePair    = std::pair<std::string, std::string>;
 
     float           Multiplier,
-                    ConvertingMultiplier;// multiplier that converts value to appropriate measuring unit according to meter type
-    float           Total,
-                    Current,
+                    ConvertingMultiplier,   // multiplier that converts value to appropriate measuring unit according to meter type
                     InitialTotal;
-    const char  *   IdPostfixTotal,
-                *   IdPostfixCurrent,
-                *   Type1,
-                *   Type2;
+
+    TValue<float>   Total,
+                    Current;
+
+    const char  *   TotalType,
+                *   CurrentType;
+
     int             DecimalPlacesTotal,
                     DecimalPlacesCurrent;
-    bool            PrintedNULL;
-    bool            Changed;
 
     uint64_t        Counts;
     EGpioEdge       InterruptEdge;
+    TTimeIntervalUs PreviousInterval;
 
 public:
     explicit TGpioCounter(const TGpioLineConfig & config);
     ~TGpioCounter();
 
-    void HandleInterrupt(EGpioEdge, TTimeIntervalUs interval);
+    /* if occured interrupt (hardware or simulated) */
+    void HandleInterrupt(EGpioEdge, const TTimeIntervalUs & interval);
+    void Update(const TTimeIntervalUs &);
+
     float GetCurrent() const;
     float GetTotal() const;
     uint64_t GetCounts() const;
@@ -45,8 +48,7 @@ public:
 
     void SetInitialValues(float total); // set total when starting
 
-    // vector<TMetadataPair> MetaType();
-    // vector<TMetadataPair> GpioPublish();
-    // int InterruptUp();                  // if user didn't specify interrupt edge, method would figure it out
-    // TMetadataPair CheckTimeInterval();
+private:
+    void UpdateCurrent(const TTimeIntervalUs &);
+    void UpdateTotal();
 };

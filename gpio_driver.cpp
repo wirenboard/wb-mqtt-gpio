@@ -167,14 +167,14 @@ void TGpioDriver::Start()
                 FOR_EACH_LINE(chipDriver, line) {
                     if (const auto & counter = line->GetCounter()) {
                         if (counter->IsChanged()) {
-                            counter->ResetIsChanged();
-
                             for (const auto & idValue: counter->GetIdsAndValues(line->GetConfig()->Name)) {
                                 const auto & id  = idValue.first;
                                 const auto value = idValue.second;
 
                                 device->GetControl(id)->SetRawValue(tx, value);
                             }
+
+                            counter->ResetIsChanged();
                         }
                     } else if (line->IsValueChanged()) {
                         device->GetControl(line->GetConfig()->Name)->SetValue(tx, static_cast<bool>(line->GetValue()));
