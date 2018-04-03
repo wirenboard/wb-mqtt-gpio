@@ -28,10 +28,23 @@ namespace
     {
         return str.rfind(with) == str.size() - (N - 1);
     }
+
+    template <typename F>
+    inline void SuppressExceptions(F && fn, const char * place)
+    {
+        try {
+            fn();
+        } catch (const exception & e) {
+            LOG(Warn) << "Exception at " << place << ": " << e.what();
+        } catch (...) {
+            LOG(Warn) << "Unknown exception in " << place;
+        }
+    }
 }
 
 TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDriverConfig & config)
     : MqttDriver(mqttDriver)
+    , Active(false)
 {
     try {
         auto tx = MqttDriver->BeginTx();
@@ -42,24 +55,28 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
             .SetDoLoadPrevious(false)
         ).GetValue();
 
-        for (const auto & chipPathConfig: config.Chips) {
-            const auto & chipConfig = chipPathConfig.second;
+        if (config.Chips.empty()) {
+            wb_throw(TGpioDriverException, "no chips defined in config. Nothing to do");
+        }
+
+        for (const auto & chipConfig: config.Chips) {
+            if (chipConfig.Lines.empty()) {
+                LOG(Warn) << "No lines for chip at '" << chipConfig.Path << "'. Skipping";
+                continue;
+            }
 
             ChipDrivers.push_back(make_shared<TGpioChipDriver>(chipConfig));
             const auto & chipDriver = ChipDrivers.back();
             const auto & mappedLines = chipDriver->MapLinesByOffset();
 
             size_t lineNumber = 0;
-            int order = 0;
-            for (const auto & offsetLineConfig: chipConfig.Lines) {
-                const auto & lineConfig = offsetLineConfig.second;
+            for (const auto & lineConfig: chipConfig.Lines) {
                 const auto & itOffsetLine = mappedLines.find(lineConfig.Offset);
                 if (itOffsetLine == mappedLines.end())
                     continue;   // happens if chip driver was unable to initialize line
 
                 const auto & line = itOffsetLine->second;
                 auto futureControl = TPromise<PControl>::GetValueFuture(nullptr);
-                order = max(lineConfig.Order, order);
 
                 if (const auto & counter = line->GetCounter()) {
                     for (auto & idType: counter->GetIdsAndTypes(lineConfig.Name)) {
@@ -71,16 +88,17 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                         futureControl = device->CreateControl(tx, TControlArgs{}
                             .SetId(move(id))
                             .SetType(move(type))
-                            .SetOrder(order++)
+                            .SetOrder(lineConfig.Order)
                             .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
                             .SetUserData(line)
                             .SetDoLoadPrevious(isTotal)
                         );
 
                         if (isTotal) {
-                            counter->SetInitialValues(futureControl.GetValue()->GetValue().As<double>());
+                            auto initialValue = futureControl.GetValue()->GetValue().As<double>();
+                            counter->SetInitialValues(initialValue);
 
-                            LOG(Debug) << "Set initial value for " << lineConfig.Name << " counter: " << counter->GetTotal();
+                            LOG(Info) << "Set initial value for " << lineConfig.Name << " counter: " << initialValue;
                         }
                     }
                 } else {
@@ -106,7 +124,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
         throw;
     }
 
-    mqttDriver->On<TControlOnValueEvent>([](const TControlOnValueEvent & event){
+    EventHandlerHandle = mqttDriver->On<TControlOnValueEvent>([](const TControlOnValueEvent & event){
         uint8_t value;
         if (event.RawValue == "1") {
             value = 1;
@@ -125,16 +143,24 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
     });
 }
 
+TGpioDriver::~TGpioDriver()
+{
+    if (EventHandlerHandle) {
+        Clear();
+    }
+}
+
 void TGpioDriver::Start()
 {
-    if (Worker) {
+    if (Active.load()) {
         wb_throw(TGpioDriverException, "attempt to start already started driver");
     }
+
+    Active.store(true);
 
     Worker = WBMQTT::MakeThread("GPIO worker", {[this]{
         LOG(Info) << "Started";
 
-        Active.store(true);
         int epfd = epoll_create(1);    // creating epoll for Interrupts
         struct epoll_event events[EPOLL_EVENT_COUNT] {};
 
@@ -191,7 +217,7 @@ void TGpioDriver::Start()
 
 void TGpioDriver::Stop()
 {
-    if (!Worker) {
+    if (!Active.load()) {
         wb_throw(TGpioDriverException, "attempt to stop not started driver");
     }
 
@@ -203,4 +229,26 @@ void TGpioDriver::Stop()
     }
 
     Worker.reset();
+}
+
+void TGpioDriver::Clear() noexcept
+{
+    if (Active.load()) {
+        LOG(Error) << "Unable to clear driver while it's running";
+        return;
+    }
+
+    SuppressExceptions([this]{
+        MqttDriver->RemoveEventHandler(EventHandlerHandle);
+    }, "TGpioDriver::Clear()");
+
+    SuppressExceptions([this]{
+        MqttDriver->BeginTx()->RemoveDeviceById(Name).Sync();
+    }, "TGpioDriver::Clear()");
+
+    SuppressExceptions([this]{
+        ChipDrivers.clear();
+    }, "TGpioDriver::Clear()");
+
+    EventHandlerHandle = nullptr;
 }

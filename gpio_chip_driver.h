@@ -20,6 +20,7 @@ public:
     using TGpioLineHandler = std::function<void(const PGpioLine &)>;
 
     explicit TGpioChipDriver(const TGpioChipConfig &);
+    ~TGpioChipDriver();
 
     TGpioLinesByOffsetMap MapLinesByOffset() const;
 

@@ -59,13 +59,8 @@ vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
 
     lines.reserve(linesConfigs.size());
 
-    for (size_t offset = 0; offset < LineCount; ++offset) {
-        if (linesConfigs.count(offset) == 0) {
-            continue;
-        }
-
-        const auto & config = linesConfigs.at(offset);
-        auto line = make_shared<TGpioLine>(shared_from_this(), config);
+    for (const auto & lineConfig: linesConfigs) {
+        auto line = make_shared<TGpioLine>(shared_from_this(), lineConfig);
         lines.push_back(line);
     }
 

@@ -56,18 +56,21 @@ struct TGpioLineConfig
     bool InitialState         = false;
 };
 
-using TLinesConfig = std::unordered_map<uint32_t, TGpioLineConfig>;
+using TLinesConfig = std::vector<TGpioLineConfig>;
 
 struct TGpioChipConfig
 {
     std::string  Path;
     TLinesConfig Lines;
+
+    TGpioChipConfig(std::string && path): Path(std::move(path))
+    {}
 };
 
 struct TGpioDriverConfig
 {
     std::string DeviceName;
-    std::unordered_map<std::string, TGpioChipConfig> Chips;
+    std::vector<TGpioChipConfig> Chips;
 
     TGpioDriverConfig() = default;
     explicit TGpioDriverConfig(const std::string & fileName);

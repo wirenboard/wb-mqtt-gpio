@@ -27,6 +27,7 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
     , DecimalPlacesCurrent(config.DecimalPlacesCurrent)
     , Counts(0)
     , InterruptEdge(config.InterruptEdge)
+    , PreviousInterval(TTimeIntervalUs::zero())
 {
     if (config.Type == WATT_METER) {
         TotalType   = "power_consumption";

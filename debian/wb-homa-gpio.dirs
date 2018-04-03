@@ -2,3 +2,4 @@ usr/bin
 etc
 etc/init.d
 var/lib/wirenboard
+var/lib/wb-homa-gpio

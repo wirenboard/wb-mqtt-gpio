@@ -1,0 +1,95 @@
+// Configuration options
+{
+    "device_name" : "Discrete I/O",
+
+    "chips" : [
+        {
+            "path": "/dev/gpiochip0",
+            "lines": [
+                {
+                    "offset": 26,
+                    "name": "A1_OUT",
+                    "inverted": false
+                },
+                {
+                    "offset" : 16,
+                    "name" : "A2_OUT",
+                    "inverted" : false
+                },
+                {
+                    "offset" : 24,
+                    "name" : "A3_OUT",
+                    "inverted" : false
+                },
+                {
+                    "offset" : 20,
+                    "name" : "A4_OUT",
+                    "inverted" : false
+                },
+                {
+                    "offset" : 6,
+                    "name" : "A1_IN",
+                    "inverted" : true,
+                    "direction": "input"
+                },
+                {
+                    "offset" : 7,
+                    "name" : "A2_IN",
+                    "inverted" : true,
+                    "direction": "input"
+                },
+                {
+                    "offset" : 28,
+                    "name" : "A3_IN",
+                    "inverted" : true,
+                    "direction": "input"
+                },
+                {
+                    "offset" : 27,
+                    "name" : "A4_IN",
+                    "inverted" : true,
+                    "direction": "input"
+                },
+                {
+                    "offset" :  5,
+                    "name" : "R1_IN",
+                    "inverted" : true,
+                    "direction": "input"
+                }
+            ]
+        },
+        {
+            "number": 1,
+            "lines": [
+                {
+                    "offset" : 25,
+                    "name" : "BATTERY_PRESENT",
+                    "inverted" : true,
+                    "direction": "input"
+                }
+            ]
+        },
+        {
+            "number": 3,
+            "lines": [
+                {
+                    "offset" : 30,
+                    "name" : "BATTERY_CHARGING",
+                    "inverted" : true,
+                    "direction": "input"
+                }
+            ]
+        },
+        {
+            "number": 2,
+            "lines": [
+                {
+                    "offset" : 14,
+                    "name" : "5V_OUT",
+                    "direction": "output",
+                    "initial_state" : true
+                }
+            ]
+        }
+    ]
+}

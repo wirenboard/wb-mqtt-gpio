@@ -14,6 +14,7 @@ using namespace std;
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
 const auto WBMQTT_DB_FILE = "/var/lib/wb-homa-gpio/libwbmqtt.db";
+const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(3);
 
 
 int main(int argc, char *argv[])
@@ -139,7 +140,16 @@ int main(int argc, char *argv[])
         TGpioDriver gpioDriver(mqttDriver, GetConvertConfig(configFileName));
         gpioDriver.Start();
 
-        WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ gpioDriver.Stop(); });
+        WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
+            gpioDriver.Stop();
+            gpioDriver.Clear();
+        });
+
+        WBMQTT::SignalHandling::SetOnTimeout(GPIO_DRIVER_STOP_TIMEOUT_S, [&]{
+            LOG(Error) << "Driver takes too long to stop. Exiting.";
+            exit(1);
+        });
+
         WBMQTT::SignalHandling::Start();
         WBMQTT::SignalHandling::Wait();
     } catch (const TGpioDriverException & e) {

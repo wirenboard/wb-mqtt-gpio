@@ -76,6 +76,7 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
                 } else {
                     LOG(Info) << Chip->Describe() << " does not support interrupts. Polling will be used instead.";
                     Chip->SetInterruptSupport(EInterruptSupport::NO);
+                    addToPoll(line);
                 }
                 break;
 
@@ -120,6 +121,23 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
     }
 
     AutoDetectInterruptEdges();
+}
+
+TGpioChipDriver::~TGpioChipDriver()
+{
+    for (const auto & fdLines: Lines) {
+        auto fd = fdLines.first;
+        const auto & lines = fdLines.second;
+
+        {
+            auto logDebug = move(LOG(Debug) << "Close fd for:");
+            for (const auto & line: lines) {
+                logDebug << "\n\t" << line->DescribeShort();
+            }
+        }
+
+        close(fd);
+    }
 }
 
 TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const

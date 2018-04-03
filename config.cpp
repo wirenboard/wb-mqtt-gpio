@@ -43,16 +43,37 @@ THandlerConfig::THandlerConfig(const std::string &fileName)
     }
 
     try {
+        if (!root.isMember("device_name")) {
+            wb_throw(TGpioDriverException, "'device_name' is required field");
+        }
+
+        if (!root.isMember("channels")) {
+            wb_throw(TGpioDriverException, "'channels' is required field");
+        }
+
         DeviceName = root["device_name"].asString();
 
         // Let's extract the array contained
         // in the root object
         const auto &array = root["channels"];
 
+        if (!array.isArray()) {
+            wb_throw(TGpioDriverException, "'channels' must be array");
+        }
+
         // Iterate over sequence elements and
         // print its values
         for (unsigned int index = 0; index < array.size(); ++index) {
             const auto & item = array[index];
+
+            if (!item.isMember("gpio")) {
+                wb_throw(TGpioDriverException, "'gpio' is required field");
+            }
+
+            if (!item.isMember("name")) {
+                wb_throw(TGpioDriverException, "'name' is required field");
+            }
+
             TGpioDesc gpio_desc;
             gpio_desc.Gpio = item["gpio"].asInt();
             gpio_desc.Name = item["name"].asString();
@@ -122,12 +143,12 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
 
     try {
 
-        if (!root.isMember("chips")) {
-            wb_throw(TGpioDriverException, "'chips' is required field");
-        }
-
         if (!root.isMember("device_name")) {
             wb_throw(TGpioDriverException, "'device_name' is required field");
+        }
+
+        if (!root.isMember("chips")) {
+            wb_throw(TGpioDriverException, "'chips' is required field");
         }
 
         const auto &chips = root["chips"];
@@ -137,16 +158,18 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
             wb_throw(TGpioDriverException, "'chips' must be array");
         }
 
+        int lineGlobalIndex = 0;
+
         Chips.reserve(chips.size());
 
         for (const auto &chip : chips)
         {
-            TGpioChipConfig chipConfig{};
+            string path;
 
             if (chip.isMember("path")) {
-                chipConfig.Path = chip["path"].asString();
+                path = chip["path"].asString();
             } else if (chip.isMember("number")) {
-                chipConfig.Path = "/dev/gpiochip" + to_string(chip["number"].asUInt());
+                path = "/dev/gpiochip" + to_string(chip["number"].asUInt());
             } else {
                 wb_throw(TGpioDriverException, "either 'path' or 'number' required for chip");
             }
@@ -154,6 +177,8 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
             if (!chip.isMember("lines")) {
                 wb_throw(TGpioDriverException, "'lines' is required field");
             }
+
+            TGpioChipConfig chipConfig { move(path) };
 
             const auto &lines = chip["lines"];
 
@@ -215,11 +240,12 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
 
                 lineConfig.InitialState = line.get("initial_state", false).asBool();
 
-                chipConfig.Lines[lineConfig.Offset] = (move(lineConfig));
+                lineConfig.Order = lineGlobalIndex++;
+
+                chipConfig.Lines.push_back(move(lineConfig));
             }
 
-            bool inserted = Chips.insert({ chipConfig.Path, chipConfig }).second;
-            assert(inserted);
+            Chips.push_back(chipConfig);
         }
     } catch (const exception & e) {
         wb_throw(TGpioDriverException, string("malformed JSON config: ") + e.what());
@@ -231,17 +257,39 @@ TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
     TGpioDriverConfig newConfig;
 
     newConfig.DeviceName = oldConfig.DeviceName;
+    map<uint32_t, pair<size_t, set<uint32_t>>> indexMapping;
 
     for (const auto & desc: oldConfig.Gpios) {
         uint32_t chipNumber, lineOffset;
 
+        assert(desc.Gpio >= 0);
+
         tie(chipNumber, lineOffset) = FromSysfsGpio((uint32_t)desc.Gpio);
 
-        auto path = GpioChipNumberToPath(chipNumber);
-        auto & chipConfig = newConfig.Chips[path];
-        chipConfig.Path = move(path);
+        const auto & chipInsRes = indexMapping.insert({ chipNumber, { newConfig.Chips.size(), {} } });
 
-        auto & lineConfig = chipConfig.Lines[lineOffset];
+        auto & chipMapping = chipInsRes.first->second;
+        {
+            const auto inserted = chipInsRes.second;
+
+            if (inserted) {
+                newConfig.Chips.emplace_back(GpioChipNumberToPath(chipNumber));
+            }
+        }
+
+        const auto chipIndex = chipMapping.first;
+        auto & linesMapping  = chipMapping.second;
+
+        const auto & lineInsRes = linesMapping.insert(lineOffset);
+        const auto inserted = lineInsRes.second;
+
+        assert(inserted);
+
+        auto & chipConfig = newConfig.Chips[chipIndex];
+
+        chipConfig.Lines.emplace_back();
+        auto & lineConfig = chipConfig.Lines.back();
+
         lineConfig.Offset = lineOffset;
         lineConfig.IsActiveLow = desc.Inverted;
         lineConfig.Name = desc.Name;

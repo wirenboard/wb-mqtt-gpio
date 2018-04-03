@@ -57,6 +57,7 @@ install: all
 	install -d $(DESTDIR)/usr/share/wb-homa-gpio
 	install -d $(DESTDIR)/usr/share/wb-mqtt-confed
 	install -d $(DESTDIR)/usr/share/wb-mqtt-confed/schemas
+	install -d $(DESTDIR)/var/lib/wb-homa-gpio
 	mkdir -p $(DESTDIR)/etc/wb-configs.d
 
 	install -m 0644  config.json.wb52 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb52
