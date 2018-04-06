@@ -52,13 +52,13 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
 TGpioCounter::~TGpioCounter()
 {}
 
-void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & interval)
+bool TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & interval)
 {
     if (edge != InterruptEdge)
-        return;
+        return false;
 
     if (Counts > 0 && interval < DELAY_US) {
-        return;
+        return false;
     }
 
     ++Counts;
@@ -70,6 +70,8 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & inter
         UpdateCurrent(interval);
     }
     UpdateTotal();
+
+    return true;
 }
 
 void TGpioCounter::Update(const TTimeIntervalUs & interval)

@@ -2,6 +2,7 @@
 #include "gpio_chip.h"
 #include "gpio_line.h"
 #include "gpio_counter.h"
+#include "interruption_context.h"
 #include "exceptions.h"
 #include "utils.h"
 #include "log.h"
@@ -46,6 +47,7 @@ namespace
 }
 
 TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
+    : AddedToEpoll(false)
 {
     Chip = make_shared<TGpioChip>(config.Path);
 
@@ -81,8 +83,11 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
                 break;
 
             case EInterruptSupport::YES:
-                assert(TryListenLine(line));
+            {
+                bool ok = TryListenLine(line);
+                assert(ok); _unused(ok);
                 break;
+            }
 
             case EInterruptSupport::NO:
                 addToPoll(line);
@@ -153,6 +158,8 @@ TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
 
 void TGpioChipDriver::AddToEpoll(int epfd)
 {
+    AddedToEpoll = true;
+
     if (Chip->GetInterruptSupport() != EInterruptSupport::YES)
         return;
 
@@ -172,15 +179,15 @@ void TGpioChipDriver::AddToEpoll(int epfd)
     });
 }
 
-bool TGpioChipDriver::HandleInterrupt(int count, struct epoll_event * events)
+bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
 {
     bool isHandled = false;
 
     if (Chip->GetInterruptSupport() != EInterruptSupport::YES)
         return isHandled;
 
-    for (int i = 0; i < count; i++) {
-        auto itFdLines = Lines.find(events[i].data.fd);
+    for (int i = 0; i < ctx.Count; i++) {
+        auto itFdLines = Lines.find(ctx.Events[i].data.fd);
         if (itFdLines != Lines.end()) {
             isHandled = true;
             auto fd = itFdLines->first;
@@ -189,27 +196,35 @@ bool TGpioChipDriver::HandleInterrupt(int count, struct epoll_event * events)
 
             const auto & line = lines.front();
 
-            EGpioEdge edge;
-            {
+            fd_set rfds;
+            FD_ZERO(&rfds);
+            FD_SET(fd, &rfds);
+            struct timeval tv {0}; // do not block
+
+            while (auto retVal = select(fd + 1, &rfds, nullptr, nullptr, &tv)) {
+                if (retVal < 0) {
+                    LOG(Error) << "select failed: " << strerror(errno);
+                    wb_throw(TGpioDriverException, "unable to read line event data: select failed with " + string(strerror(errno)));
+                }
+
                 gpioevent_data data {};
                 if (read(fd, &data, sizeof(data)) < 0) {
                     LOG(Error) << "Read gpioevent_data failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to read line event data");
-                }
-                edge = (data.id == GPIOEVENT_EVENT_RISING_EDGE) ? EGpioEdge::RISING
-                                                                : EGpioEdge::FALLING;
-            }
-
-            line->HandleInterrupt(edge);
-
-            if (!line->IsDebouncing()) {   // update value
-                gpiohandle_data data;
-                if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-                    LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to get line value");
+                    wb_throw(TGpioDriverException, "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
                 }
 
-                line->SetCachedValue(line->PrepareValue(data.values[0]));
+                line->HandleInterrupt(data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING,
+                                      ctx.ToSteadyClock(chrono::system_clock::time_point(chrono::nanoseconds(data.timestamp))));
+
+                if (!line->IsDebouncing()) {   // update value
+                    gpiohandle_data data;
+                    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+                        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+                        wb_throw(TGpioDriverException, "unable to get line value");
+                    }
+
+                    line->SetCachedValue(data.values[0]);
+                }
             }
         }
     }
@@ -281,6 +296,8 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine & line)
     req.lineoffset = line->GetOffset();
     req.handleflags = GetFlagsFromConfig(*config);
 
+    req.eventflags = 0;
+
     if (config->InterruptEdge == EGpioEdge::RISING)
         req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
     else if(config->InterruptEdge == EGpioEdge::FALLING)
@@ -293,14 +310,14 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine & line)
         auto error = errno;
         LOG(Warn) << "GPIO_GET_LINEEVENT_IOCTL failed: " << strerror(error) << " at " << line->DescribeShort();
         return false;
-    } else {
-        Lines[req.fd].push_back(line);
-        assert(Lines[req.fd].size() == 1);
-        line->SetFd(req.fd);
-
-        LOG(Info) << "Listening to " << line->DescribeShort();
-        return true;
     }
+
+    Lines[req.fd].push_back(line);
+    assert(Lines[req.fd].size() == 1);
+    line->SetFd(req.fd);
+
+    LOG(Info) << "Listening to " << line->DescribeShort();
+    return true;
 }
 
 bool TGpioChipDriver::InitOutput(const PGpioLine & line)
@@ -376,19 +393,21 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
         wb_throw(TGpioDriverException, "unable to get line value");
     }
 
+    auto now = chrono::steady_clock::now();
+
     for (uint32_t i = 0; i < lines.size(); ++i) {
         const auto & line = lines[i];
         assert(line->GetFd() == fd);
 
         bool oldValue = line->GetValue();
-        bool newValue = line->PrepareValue(data.values[i]);
+        bool newValue = data.values[i];
 
         LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
 
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
             if (oldValue != newValue) {
-                line->HandleInterrupt(newValue ? EGpioEdge::RISING : EGpioEdge::FALLING);
+                line->HandleInterrupt(newValue ? EGpioEdge::RISING : EGpioEdge::FALLING, now);
 
                 if (!line->IsDebouncing()) {
                     line->SetCachedValue(newValue);
@@ -417,7 +436,25 @@ void TGpioChipDriver::ReadLinesValues(const TGpioLines & lines)
     for (const auto & line: lines) {
         assert(line->GetFd() == fd);
 
-        line->SetCachedValue(line->PrepareValue(data.values[i++]));
+        line->SetCachedValue(data.values[i++]);
+    }
+}
+
+void TGpioChipDriver::ReListenLine(PGpioLine line)
+{
+    assert(!AddedToEpoll);
+
+    auto oldFd = line->GetFd();
+
+    assert(oldFd > -1);
+
+    Lines.erase(oldFd);
+    close(oldFd);
+
+    bool ok = TryListenLine(line);
+    assert(ok);
+    if (!ok) {
+        LOG(Error) << "Unable to re-listen to " << line->DescribeShort();
     }
 }
 
@@ -464,8 +501,11 @@ void TGpioChipDriver::AutoDetectInterruptEdges()
 
         auto edge = sum < testCount ? EGpioEdge::RISING : EGpioEdge::FALLING;
 
-        LOG(Debug) << "Auto detected edge for line: " << line->DescribeShort() << ": " << GpioEdgeToString(edge);
+        LOG(Info) << "Auto detected edge for line: " << line->DescribeShort() << ": " << GpioEdgeToString(edge);
 
         line->GetCounter()->SetInterruptEdge(edge);
+        line->GetConfig()->InterruptEdge = edge;
+
+        ReListenLine(line);
     }
 }

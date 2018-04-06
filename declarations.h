@@ -8,6 +8,7 @@
 struct TGpioDriverConfig;
 struct TGpioChipConfig;
 struct TGpioLineConfig;
+struct TInterruptionContext;
 
 class TGpioChipDriver;
 class TGpioChip;
@@ -23,3 +24,6 @@ using PWGpioChip        = std::weak_ptr<TGpioChip>;
 using PGpioLine         = std::shared_ptr<TGpioLine>;
 using PUGpioCounter     = std::unique_ptr<TGpioCounter>;
 using PUGpioLineConfig  = std::unique_ptr<TGpioLineConfig>;
+
+/* Suppress compiler warnings for specified unused variable */
+#define _unused(x) ((void)(x))

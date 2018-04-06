@@ -2,6 +2,7 @@
 #include "gpio_chip_driver.h"
 #include "gpio_line.h"
 #include "gpio_counter.h"
+#include "interruption_context.h"
 #include "exceptions.h"
 #include "config.h"
 #include "log.h"
@@ -173,8 +174,9 @@ void TGpioDriver::Start()
         while (Active.load()) {
             bool isHandled = false;
             if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
+                TInterruptionContext ctx {count, events};
                 for (const auto & chipDriver: ChipDrivers) {
-                    isHandled |= chipDriver->HandleInterrupt(count, events);
+                    isHandled |= chipDriver->HandleInterrupt(ctx);
                 }
             } else {
                 for (const auto & chipDriver: ChipDrivers) {

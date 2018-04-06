@@ -14,6 +14,7 @@ class TGpioChipDriver
 
     TGpioLinesMap Lines;
     PGpioChip     Chip;
+    bool          AddedToEpoll;
 
 public:
     using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
@@ -25,7 +26,7 @@ public:
     TGpioLinesByOffsetMap MapLinesByOffset() const;
 
     void AddToEpoll(int epfd);
-    bool HandleInterrupt(int count, struct epoll_event * events);
+    bool HandleInterrupt(const TInterruptionContext &);
 
     bool PollLines();
 
@@ -40,6 +41,7 @@ private:
     void PollLinesValues(const TGpioLines &);
     void ReadLinesValues(const TGpioLines &);
 
+    void ReListenLine(PGpioLine);
     void AutoDetectInterruptEdges();
 };
 

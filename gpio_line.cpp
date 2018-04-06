@@ -165,7 +165,7 @@ void TGpioLine::SetValue(uint8_t value)
 
     gpiohandle_data data {};
 
-    data.values[0] = PrepareValue(value);
+    data.values[0] = value;
 
     if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << "GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
@@ -197,6 +197,7 @@ bool TGpioLine::IsHandled() const
 void TGpioLine::SetFd(int fd)
 {
     Fd = fd;
+    UpdateInfo();
 }
 
 int TGpioLine::GetFd() const
@@ -211,7 +212,7 @@ EGpioEdge TGpioLine::GetInterrruptEdge() const
     return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;
 }
 
-void TGpioLine::HandleInterrupt(EGpioEdge edge)
+void TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
 {
     assert(edge != EGpioEdge::BOTH);
 
@@ -220,10 +221,9 @@ void TGpioLine::HandleInterrupt(EGpioEdge edge)
         return;
     }
 
-    const auto now = std::chrono::steady_clock::now();
     const auto isFirstInterruption = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero();
     auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
-                                        : chrono::duration_cast<chrono::microseconds>(now - PreviousInterruptionTimePoint);
+                                        : chrono::duration_cast<chrono::microseconds>(interruptTimePoint - PreviousInterruptionTimePoint);
 
     /* if interval of impulses is bigger than 1000 microseconds we consider it is not a debounnce */
     Debouncing = isFirstInterruption ? false : intervalUs.count() <= 1000;
@@ -231,10 +231,12 @@ void TGpioLine::HandleInterrupt(EGpioEdge edge)
     LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " interval: " << intervalUs.count() << " us" << (Debouncing ? " [debouncing]" : "");
 
     if (Counter) {
-        Counter->HandleInterrupt(edge, intervalUs);
+        if (Counter->HandleInterrupt(edge, intervalUs)) {
+            PreviousInterruptionTimePoint = interruptTimePoint;
+        }
+    } else {
+        PreviousInterruptionTimePoint = interruptTimePoint;
     }
-
-    PreviousInterruptionTimePoint = now;
 }
 
 void TGpioLine::Update()
@@ -261,9 +263,4 @@ const PUGpioLineConfig & TGpioLine::GetConfig() const
 bool TGpioLine::IsDebouncing() const
 {
     return Debouncing;
-}
-
-uint8_t TGpioLine::PrepareValue(uint8_t value) const
-{
-    return value ^ IsActiveLow();
 }

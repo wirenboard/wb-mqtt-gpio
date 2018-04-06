@@ -104,6 +104,10 @@ namespace
             }
 
             assert(false);
+
+            LOG(Error) << "bug: invariant 1 violation";
+
+            return false;
         }
     };
 

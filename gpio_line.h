@@ -49,10 +49,9 @@ public:
     void SetFd(int);
     int GetFd() const;
     EGpioEdge GetInterrruptEdge() const;
-    void HandleInterrupt(EGpioEdge);
+    void HandleInterrupt(EGpioEdge, const TTimePoint &);
     void Update();
     const PUGpioCounter & GetCounter() const;
     const PUGpioLineConfig & GetConfig() const;
     bool IsDebouncing() const;
-    uint8_t PrepareValue(uint8_t value) const;
 };

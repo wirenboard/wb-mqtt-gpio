@@ -283,7 +283,7 @@ TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
         const auto & lineInsRes = linesMapping.insert(lineOffset);
         const auto inserted = lineInsRes.second;
 
-        assert(inserted);
+        assert(inserted); _unused(inserted);
 
         auto & chipConfig = newConfig.Chips[chipIndex];
 

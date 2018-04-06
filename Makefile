@@ -18,7 +18,7 @@ endif
 
 DEBUG_CFLAGS=-Wall -ggdb -rdynamic -std=c++11 -O0 -I.
 RELEASE_CFLAGS=-Wall -DNDEBUG -std=c++11 -Os -I.
-CFLAGS=$(if $(DEBUG), $(DEBUG_CFLAGS), $(NORMAL_CFLAGS))
+CFLAGS=$(if $(DEBUG), $(DEBUG_CFLAGS), $(RELEASE_CFLAGS))
 LDFLAGS= -ljsoncpp -lwbmqtt1 -lpthread
 
 GPIO_BIN=wb-homa-gpio
