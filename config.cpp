@@ -16,6 +16,7 @@
 #define LOG(logger) ::logger.Log() << "[config] "
 
 using namespace std;
+using namespace Utils;
 
 
 THandlerConfig::THandlerConfig(const std::string &fileName)
@@ -158,20 +159,53 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
             wb_throw(TGpioDriverException, "'chips' must be array");
         }
 
-        int lineGlobalIndex = 0;
+        int lineGlobalIndex = 0, chipConfigIndex = 0;
 
         Chips.reserve(chips.size());
 
-        for (const auto &chip : chips)
+        auto getPath = [](const Json::Value & json) {
+            bool rejectedLabel = false;
+            if (json.isMember("label")) {
+                try {
+                    return GpioChipNumberToPath(GpioChipLabelToNumber(json["label"].asString()));
+                } catch (const TGpioDriverException & e) {
+                    LOG(Warn) << "Ignoring specified chip label '" << json["label"].asString() << "': " << e.what();
+                    rejectedLabel = true;
+                }
+            }
+
+            if (json.isMember("path")) {
+                if (rejectedLabel) {
+                    LOG(Warn) << "Using 'path' as fallback";
+                }
+                return json["path"].asString();
+            }
+
+            if (json.isMember("number")) {
+                if (rejectedLabel) {
+                    LOG(Warn) << "Using 'number' as fallback";
+                }
+                return GpioChipNumberToPath(json["number"].asUInt());
+            }
+
+            if (rejectedLabel) {
+                wb_throw(TGpioDriverException, "no alternatives to 'label' found for chip");
+            } else {
+                wb_throw(TGpioDriverException, "either 'label', 'path' or 'number' required for chip");
+            }
+        };
+
+        for (const auto & chip : chips)
         {
+            WB_SCOPE_EXIT( ++chipConfigIndex; )
+
             string path;
 
-            if (chip.isMember("path")) {
-                path = chip["path"].asString();
-            } else if (chip.isMember("number")) {
-                path = "/dev/gpiochip" + to_string(chip["number"].asUInt());
-            } else {
-                wb_throw(TGpioDriverException, "either 'path' or 'number' required for chip");
+            try {
+                path = getPath(chip);
+            } catch (const TGpioDriverException & e) {
+                LOG(Error) << "Skipping chip config " << chipConfigIndex << ": " << e.what();
+                continue;
             }
 
             if (!chip.isMember("lines")) {
@@ -264,7 +298,12 @@ TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
 
         assert(desc.Gpio >= 0);
 
-        tie(chipNumber, lineOffset) = FromSysfsGpio((uint32_t)desc.Gpio);
+        try {
+            tie(chipNumber, lineOffset) = FromSysfsGpio((uint32_t)desc.Gpio);
+        } catch (const TGpioDriverException & e) {
+            LOG(Error) << "Skipping GPIO " << desc.Gpio << " reason: " << e.what();
+            continue;
+        }
 
         const auto & chipInsRes = indexMapping.insert({ chipNumber, { newConfig.Chips.size(), {} } });
 

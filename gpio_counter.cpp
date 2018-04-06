@@ -6,6 +6,8 @@
 
 #include <wblib/utils.h>
 
+#include <cassert>
+
 #define LOG(logger) ::logger.Log() << "[gpio counter] "
 
 using namespace std;
@@ -14,7 +16,6 @@ const auto WATT_METER            = "watt_meter";
 const auto WATER_METER           = "water_meter";
 const auto ID_POSTFIX_TOTAL      = "_total";
 const auto ID_POSTFIX_CURRENT    = "_current";
-const auto DELAY_US              = TTimeIntervalUs(200000);
 const auto CURRENT_TIME_INTERVAL = 1;
 const auto NULL_TIME_INTERVAL    = 100;
 
@@ -52,14 +53,9 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
 TGpioCounter::~TGpioCounter()
 {}
 
-bool TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & interval)
+void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & interval)
 {
-    if (edge != InterruptEdge)
-        return false;
-
-    if (Counts > 0 && interval < DELAY_US) {
-        return false;
-    }
+    assert(edge == InterruptEdge);
 
     ++Counts;
     PreviousInterval = interval;
@@ -70,8 +66,6 @@ bool TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & inter
         UpdateCurrent(interval);
     }
     UpdateTotal();
-
-    return true;
 }
 
 void TGpioCounter::Update(const TTimeIntervalUs & interval)
@@ -122,9 +116,9 @@ vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string & ba
     vector<TGpioCounter::TValuePair> idsAndValues;
 
     if (Total.IsChanged())
-        idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, SetDecimalPlaces(Total.Get(), DecimalPlacesTotal) });
+        idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, Utils::SetDecimalPlaces(Total.Get(), DecimalPlacesTotal) });
     if (Current.IsChanged())
-        idsAndValues.push_back({ baseId + ID_POSTFIX_CURRENT, SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent) });
+        idsAndValues.push_back({ baseId + ID_POSTFIX_CURRENT, Utils::SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent) });
 
     return idsAndValues;
 }

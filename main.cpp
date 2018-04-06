@@ -2,6 +2,7 @@
 #include "log.h"
 #include "config.h"
 #include "exceptions.h"
+#include "utils.h"
 
 #include <wblib/wbmqtt.h>
 #include <wblib/signal_handling.h>
@@ -138,6 +139,9 @@ int main(int argc, char *argv[])
 
     try {
         TGpioDriver gpioDriver(mqttDriver, GetConvertConfig(configFileName));
+
+        Utils::ClearMappingCache();
+
         gpioDriver.Start();
 
         WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{

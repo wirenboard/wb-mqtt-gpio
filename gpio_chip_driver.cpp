@@ -125,6 +125,10 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
         }
     }
 
+    if (Lines.empty()) {
+        wb_throw(TGpioDriverException, "Failed to initialize any line");
+    }
+
     AutoDetectInterruptEdges();
 }
 
@@ -213,10 +217,10 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                     wb_throw(TGpioDriverException, "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
                 }
 
-                line->HandleInterrupt(data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING,
-                                      ctx.ToSteadyClock(chrono::system_clock::time_point(chrono::nanoseconds(data.timestamp))));
+                auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
+                auto time = ctx.ToSteadyClock(chrono::system_clock::time_point(chrono::nanoseconds(data.timestamp)));
 
-                if (!line->IsDebouncing()) {   // update value
+                if (line->HandleInterrupt(edge, time) != EInterruptStatus::DEBOUNCE) {   // update value
                     gpiohandle_data data;
                     if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
                         LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
@@ -270,7 +274,11 @@ bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
         ofstream unexportGpio("/sys/class/gpio/unexport");
         if (unexportGpio.is_open()) {
             LOG(Info) << "Trying to unexport...";
-            unexportGpio << ToSysfsGpio(line);
+            try {
+                unexportGpio << Utils::ToSysfsGpio(line);
+            } catch (const TGpioDriverException & e) {
+                LOG(Error) << "During unexport: " << e.what();
+            }
         }
     }
 
@@ -407,9 +415,8 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
             if (oldValue != newValue) {
-                line->HandleInterrupt(newValue ? EGpioEdge::RISING : EGpioEdge::FALLING, now);
-
-                if (!line->IsDebouncing()) {
+                auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
+                if (line->HandleInterrupt(edge, now) != EInterruptStatus::DEBOUNCE) {
                     line->SetCachedValue(newValue);
                 }
             } else {    /* in other case let line do idle actions */

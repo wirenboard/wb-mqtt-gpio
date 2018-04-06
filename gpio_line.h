@@ -21,8 +21,6 @@ class TGpioLine
 
     TValue<uint8_t> Value;
 
-    bool          Debouncing;
-
 public:
     TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config);
 
@@ -49,9 +47,8 @@ public:
     void SetFd(int);
     int GetFd() const;
     EGpioEdge GetInterrruptEdge() const;
-    void HandleInterrupt(EGpioEdge, const TTimePoint &);
+    EInterruptStatus HandleInterrupt(EGpioEdge, const TTimePoint &);
     void Update();
     const PUGpioCounter & GetCounter() const;
     const PUGpioLineConfig & GetConfig() const;
-    bool IsDebouncing() const;
 };

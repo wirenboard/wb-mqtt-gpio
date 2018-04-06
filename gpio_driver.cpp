@@ -66,7 +66,13 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                 continue;
             }
 
-            ChipDrivers.push_back(make_shared<TGpioChipDriver>(chipConfig));
+            try {
+                ChipDrivers.push_back(make_shared<TGpioChipDriver>(chipConfig));
+            } catch (const TGpioDriverException & e) {
+                LOG(Error) << "Failed to create chip driver for " << chipConfig.Path << ": " << e.what();
+                continue;
+            }
+
             const auto & chipDriver = ChipDrivers.back();
             const auto & mappedLines = chipDriver->MapLinesByOffset();
 
@@ -118,6 +124,10 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                     futureControl.Wait();   // wait for last control
                 }
             }
+        }
+
+        if (ChipDrivers.empty()) {
+            wb_throw(TGpioDriverException, "Failed to create any chip driver. Nothing to do");
         }
 
     } catch (const exception & e) {

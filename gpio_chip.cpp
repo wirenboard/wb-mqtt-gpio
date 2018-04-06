@@ -89,7 +89,7 @@ uint32_t TGpioChip::GetLineCount() const
 
 uint32_t TGpioChip::GetNumber() const
 {
-    return GpioPathToChipNumber(Path);
+    return Utils::GpioPathToChipNumber(Path);
 }
 
 void TGpioChip::SetInterruptSupport(EInterruptSupport interruptSupport)

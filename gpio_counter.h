@@ -32,7 +32,7 @@ public:
     ~TGpioCounter();
 
     /* if occured interrupt (hardware or simulated) */
-    bool HandleInterrupt(EGpioEdge, const TTimeIntervalUs & interval);
+    void HandleInterrupt(EGpioEdge, const TTimeIntervalUs & interval);
     void Update(const TTimeIntervalUs &);
 
     float GetCurrent() const;

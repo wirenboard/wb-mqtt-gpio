@@ -15,13 +15,13 @@
 
 using namespace std;
 
+const auto DebouncingIntervalUs = TTimeIntervalUs(10000);
 
 TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     : Chip(chip)
     , Offset(config.Offset)
     , Fd(-1)
     , Value(0)
-    , Debouncing(false)
 {
     assert(Offset < AccessChip()->GetLineCount());
 
@@ -212,31 +212,34 @@ EGpioEdge TGpioLine::GetInterrruptEdge() const
     return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;
 }
 
-void TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
+EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
 {
     assert(edge != EGpioEdge::BOTH);
 
     auto interruptEdge = GetInterrruptEdge();
     if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
-        return;
+        return EInterruptStatus::SKIP;
     }
 
     const auto isFirstInterruption = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero();
     auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
-                                        : chrono::duration_cast<chrono::microseconds>(interruptTimePoint - PreviousInterruptionTimePoint);
+                                          : chrono::duration_cast<chrono::microseconds>(interruptTimePoint - PreviousInterruptionTimePoint);
 
-    /* if interval of impulses is bigger than 1000 microseconds we consider it is not a debounnce */
-    Debouncing = isFirstInterruption ? false : intervalUs.count() <= 1000;
+    /* if interval of impulses is bigger than debouncing interval we consider it is not a debounnce */
+    auto debouncing = isFirstInterruption ? false : intervalUs <= DebouncingIntervalUs;
 
-    LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " interval: " << intervalUs.count() << " us" << (Debouncing ? " [debouncing]" : "");
+    LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " interval: " << intervalUs.count() << " us" << (debouncing ? " [debouncing]" : "");
+
+    if (debouncing) {
+        return EInterruptStatus::DEBOUNCE;
+    }
 
     if (Counter) {
-        if (Counter->HandleInterrupt(edge, intervalUs)) {
-            PreviousInterruptionTimePoint = interruptTimePoint;
-        }
-    } else {
-        PreviousInterruptionTimePoint = interruptTimePoint;
+        Counter->HandleInterrupt(edge, intervalUs);
     }
+
+    PreviousInterruptionTimePoint = interruptTimePoint;
+    return EInterruptStatus::Handled;
 }
 
 void TGpioLine::Update()
@@ -258,9 +261,4 @@ const PUGpioLineConfig & TGpioLine::GetConfig() const
     assert(Config);
 
     return Config;
-}
-
-bool TGpioLine::IsDebouncing() const
-{
-    return Debouncing;
 }
