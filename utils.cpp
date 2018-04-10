@@ -22,7 +22,7 @@ namespace Utils
     {
         int chip_filter(const dirent * dir)
         {
-            return string(dir->d_name).find("gpiochip") != string::npos;
+            return string(dir->d_name).find("gpiochip") == 0;
         }
 
         vector<pair<uint32_t, uint32_t>> EnumerateGpioChipsSorted()
@@ -208,7 +208,7 @@ namespace Utils
 
         uint32_t gpio = pRange->Begin + line->GetOffset();
 
-        LOG(Debug) << "Converted " << line->DescribeShort() << " to GPIO number " << gpio;
+        LOG(Info) << line->DescribeShort() << " => sysfs GPIO number " << gpio;
 
         return gpio;
     }
@@ -227,7 +227,7 @@ namespace Utils
 
         pair<uint32_t, uint32_t> res { pRange->ChipNumber, gpio - pRange->Begin };
 
-        LOG(Debug) << "Converted sysfs GPIO number " << gpio << " to <chip number: offset>: " << res.first << ": " << res.second;
+        LOG(Info) << "Sysfs GPIO number " << gpio << " => GPIO line " << res.first << ": " << res.second;
 
         return res;
     }

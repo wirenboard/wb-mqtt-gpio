@@ -347,6 +347,8 @@ TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
 
 TGpioDriverConfig GetConvertConfig(const std::string & fileName)
 {
+    WB_SCOPE_NO_THROW_EXIT( LOG(Info) << "Read config ok"; )
+
     try {
         return TGpioDriverConfig(fileName);
     } catch (const exception & e) {

@@ -15,6 +15,7 @@ using namespace std;
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
 const auto WBMQTT_DB_FILE = "/var/lib/wb-homa-gpio/libwbmqtt.db";
+const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(5);
 const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(3);
 
 
@@ -24,10 +25,29 @@ int main(int argc, char *argv[])
     mqttConfig.Id = TGpioDriver::Name;
 
     string configFileName;
+    WBMQTT::TPromise<void> initialized;
 
-    WBMQTT::SignalHandling::Handle({ SIGINT, SIGTERM });
-    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{ WBMQTT::SignalHandling::Stop(); });
     WBMQTT::SetThreadName("main");
+    WBMQTT::SignalHandling::Handle({ SIGINT, SIGTERM });
+    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
+        WBMQTT::SignalHandling::Stop();
+    });
+
+    /* if signal arrived before driver is initialized:
+        wait some time to initialize and then exit gracefully
+        else if timed out: exit with error
+    */
+    WBMQTT::SignalHandling::SetWaitFor(GPIO_DRIVER_INIT_TIMEOUT_S, initialized.GetFuture(), [&]{
+        LOG(Error) << "Driver takes too long to initialize. Exiting.";
+        exit(1);
+    });
+
+    /* if handling of signal takes too much time: exit with error */
+    WBMQTT::SignalHandling::SetOnTimeout(GPIO_DRIVER_STOP_TIMEOUT_S, [&]{
+        LOG(Error) << "Driver takes too long to stop. Exiting.";
+        exit(2);
+    });
+    WBMQTT::SignalHandling::Start();
 
     int c, debug = 0;
     //~ int digit_optind = 0;
@@ -149,12 +169,7 @@ int main(int argc, char *argv[])
             gpioDriver.Clear();
         });
 
-        WBMQTT::SignalHandling::SetOnTimeout(GPIO_DRIVER_STOP_TIMEOUT_S, [&]{
-            LOG(Error) << "Driver takes too long to stop. Exiting.";
-            exit(1);
-        });
-
-        WBMQTT::SignalHandling::Start();
+        initialized.Complete();
         WBMQTT::SignalHandling::Wait();
     } catch (const TGpioDriverException & e) {
         LOG(Error) << "FATAL: " << e.what();
@@ -166,9 +181,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-//build-dep libmosquittopp-dev libmosquitto-dev
-// dep: libjsoncpp0 libmosquittopp libmosquitto
-
-
-// 2420 2032
-// 6008 2348 1972
