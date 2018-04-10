@@ -16,7 +16,7 @@ using namespace std;
 
 const auto WBMQTT_DB_FILE = "/var/lib/wb-homa-gpio/libwbmqtt.db";
 const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(5);
-const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(3);
+const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(5); // topic cleanup can take a lot of time
 
 
 int main(int argc, char *argv[])

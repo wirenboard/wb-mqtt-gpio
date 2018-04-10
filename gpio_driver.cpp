@@ -250,6 +250,8 @@ void TGpioDriver::Clear() noexcept
         return;
     }
 
+    LOG(Info) << "Cleaning...";
+
     SuppressExceptions([this]{
         MqttDriver->RemoveEventHandler(EventHandlerHandle);
     }, "TGpioDriver::Clear()");
@@ -263,4 +265,6 @@ void TGpioDriver::Clear() noexcept
     }, "TGpioDriver::Clear()");
 
     EventHandlerHandle = nullptr;
+
+    LOG(Info) << "Cleaned";
 }
