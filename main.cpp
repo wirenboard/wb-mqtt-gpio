@@ -12,6 +12,8 @@
 
 using namespace std;
 
+using PGpioDriver = unique_ptr<TGpioDriver>;
+
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
 const auto WBMQTT_DB_FILE = "/var/lib/wb-homa-gpio/libwbmqtt.db";
@@ -28,7 +30,7 @@ int main(int argc, char *argv[])
     WBMQTT::TPromise<void> initialized;
 
     WBMQTT::SetThreadName("main");
-    WBMQTT::SignalHandling::Handle({ SIGINT, SIGTERM });
+    WBMQTT::SignalHandling::Handle({ SIGINT, SIGTERM, SIGHUP });
     WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
         WBMQTT::SignalHandling::Stop();
     });
@@ -158,16 +160,37 @@ int main(int argc, char *argv[])
     mqttDriver->WaitForReady();
 
     try {
-        TGpioDriver gpioDriver(mqttDriver, GetConvertConfig(configFileName));
+        PGpioDriver         gpioDriver;
+        condition_variable  startedCv;
+        mutex               startedCvMtx;
 
-        Utils::ClearMappingCache();
+        auto start = [&]{
+            {
+                lock_guard<mutex> lk(startedCvMtx);
+                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, GetConvertConfig(configFileName));
+                Utils::ClearMappingCache();
+                gpioDriver->Start();
+            }
+            startedCv.notify_all();
+        };
 
-        gpioDriver.Start();
+        auto stop = [&]{
+            unique_lock<mutex> lk(startedCvMtx);
+            startedCv.wait(lk, [&]{ return bool(gpioDriver); });
+            gpioDriver->Stop();
+            gpioDriver->Clear();
+            gpioDriver.reset();
+        };
 
-        WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
-            gpioDriver.Stop();
-            gpioDriver.Clear();
+        start();
+
+        WBMQTT::SignalHandling::OnSignal(SIGHUP, [&]{
+            LOG(Info) << "Reloading config...";
+            stop();
+            start();
         });
+
+        WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, stop);
 
         initialized.Complete();
         WBMQTT::SignalHandling::Wait();
