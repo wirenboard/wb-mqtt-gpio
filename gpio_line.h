@@ -2,8 +2,25 @@
 
 #include "declarations.h"
 #include "types.h"
-
+#include <sys/ioctl.h>
 #include <string>
+
+class IControlLine
+{
+public:
+    virtual int control(int fd, int request_code, char* p) = 0;
+};
+
+class TControlLine : public IControlLine
+{
+public:
+    int control(int fd, int request_code, char* p) override
+    {
+        return ioctl(fd, request_code, p);
+    }
+};
+
+extern IControlLine* lineController;
 
 class TGpioLine
 {

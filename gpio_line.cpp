@@ -5,7 +5,6 @@
 #include "log.h"
 
 #include <wblib/utils.h>
-#include <sys/ioctl.h>
 
 #include <string.h>
 #include <sstream>
@@ -14,6 +13,8 @@
 #define LOG(logger) ::logger.Log() << "[gpio line] "
 
 using namespace std;
+
+IControlLine* lineController = new TControlLine;
 
 const auto DebouncingIntervalUs = TTimeIntervalUs(10000);
 
@@ -40,7 +41,7 @@ void TGpioLine::UpdateInfo()
 
     info.line_offset = Offset;
 
-    int retVal = ioctl(AccessChip()->GetFd(), GPIO_GET_LINEINFO_IOCTL, &info);
+    int retVal = lineController->control(AccessChip()->GetFd(), GPIO_GET_LINEINFO_IOCTL, (char*)  &info);
     if (retVal < 0) {
         wb_throw(TGpioDriverException, "unable to load " + Describe());
     }
@@ -167,7 +168,7 @@ void TGpioLine::SetValue(uint8_t value)
 
     data.values[0] = value;
 
-    if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
+    if (lineController->control(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, (char*) &data) < 0) {
         LOG(Error) << "GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         wb_throw(TGpioDriverException, "unable to set value '" + to_string((int)value) + "' to line " + DescribeShort());
     }
