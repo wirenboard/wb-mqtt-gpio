@@ -9,6 +9,7 @@
 
 #include <wblib/utils.h>
 
+#include <system_error>
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -22,7 +23,7 @@
 using namespace std;
 
 const auto CONSUMER = "wb-homa-gpio";
-
+IGpioChipDriverHandler * chipLineHandler = new TGpioChipDriverHandler;
 
 namespace
 {
@@ -264,12 +265,8 @@ void TGpioChipDriver::ForEachLine(const TGpioLineHandler & handler) const
     }
 }
 
-bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
+void TGpioChipDriverHandler::UnexportSysFs(const PGpioLine & line)
 {
-    if (!line->IsUsed())
-        return true;
-
-    LOG(Warn) << line->Describe() << " is used by '" << line->GetConsumer() << "'.";
     if (line->GetConsumer() == "sysfs") {
         ofstream unexportGpio("/sys/class/gpio/unexport");
         if (unexportGpio.is_open()) {
@@ -281,6 +278,17 @@ bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
             }
         }
     }
+}
+
+bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
+{
+    if (!line->IsUsed())
+        return true;
+
+    chipLineHandler->UnexportSysFs(line);
+
+    LOG(Warn) << line->Describe() << " is used by '" << line->GetConsumer() << "'.";
+    
 
     line->UpdateInfo();
 

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GPIO_CHIP_DRIVER_H
+#define GPIO_CHIP_DRIVER_H
 
 #include "declarations.h"
 #include "types.h"
@@ -6,6 +7,20 @@
 #include <vector>
 #include <unordered_map>
 
+
+class IGpioChipDriverHandler
+{
+public:
+    virtual void UnexportSysFs(const PGpioLine & line) = 0;
+};
+
+class TGpioChipDriverHandler: public IGpioChipDriverHandler
+{
+public:
+    void UnexportSysFs(const PGpioLine & line) override;
+};
+
+extern IGpioChipDriverHandler * chipLineHandler;
 
 class TGpioChipDriver
 {
@@ -46,3 +61,5 @@ private:
 };
 
 #define FOR_EACH_LINE(driver, line) driver->ForEachLine([&](const PGpioLine & line)
+
+#endif //GPIO_CHIP_DRIVER_H
