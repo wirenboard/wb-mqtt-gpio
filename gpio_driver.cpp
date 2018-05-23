@@ -48,11 +48,13 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
     , Active(false)
 {
     try {
+        // begin TX for initiating communication with MQttDriver
         auto tx = MqttDriver->BeginTx();
+        // create MQTT device (not topic)
         auto device = tx->CreateDevice(TLocalDeviceArgs{}
             .SetId(Name)
             .SetTitle(config.DeviceName)
-            .SetIsVirtual(true)
+            .SetIsVirtual(true) // allow to store values in databse
             .SetDoLoadPrevious(false)
         ).GetValue();
 
@@ -60,6 +62,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
             wb_throw(TGpioDriverException, "no chips defined in config. Nothing to do");
         }
 
+        // filling ChipDriver vector by GPIO chips
         for (const auto & chipConfig: config.Chips) {
             if (chipConfig.Lines.empty()) {
                 LOG(Warn) << "No lines for chip at '" << chipConfig.Path << "'. Skipping";
@@ -73,6 +76,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                 continue;
             }
 
+            // get the shared pointer of the current ChipDriver
             const auto & chipDriver = ChipDrivers.back();
             const auto & mappedLines = chipDriver->MapLinesByOffset();
 
@@ -85,30 +89,36 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                 const auto & line = itOffsetLine->second;
                 auto futureControl = TPromise<PControl>::GetValueFuture(nullptr);
 
-                if (const auto & counter = line->GetCounter()) {
+                if (const auto & counter = line->GetCounter()) { // if line has counter
+
+                    // If line is a counter, the total value can stored and restored by the databse. 
+                    // We call  "GetIdsAndTypes" to get the vector of "id, type" pairs. In the vector
+                    // there are data pairs of channels "_current" and "_total"
                     for (auto & idType: counter->GetIdsAndTypes(lineConfig.Name)) {
                         auto & id   = idType.first;
                         auto & type = idType.second;
 
                         bool isTotal = EndsWith(id, "_total");
 
+                        // creating control topic for line                        
                         futureControl = device->CreateControl(tx, TControlArgs{}
                             .SetId(move(id))
                             .SetType(move(type))
                             .SetOrder(lineConfig.Order)
                             .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
                             .SetUserData(line)
-                            .SetDoLoadPrevious(isTotal)
+                            .SetDoLoadPrevious(isTotal) // restoring from database
                         );
 
                         if (isTotal) {
+                            // storing restored "total" counter value to local object
                             auto initialValue = futureControl.GetValue()->GetValue().As<double>();
                             counter->SetInitialValues(initialValue);
 
                             LOG(Info) << "Set initial value for " << lineConfig.Name << " counter: " << initialValue;
                         }
                     }
-                } else {
+                } else {    /// line has no counter
                     futureControl = device->CreateControl(tx, TControlArgs{}
                         .SetId(lineConfig.Name)
                         .SetType("switch")
@@ -120,6 +130,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
 
                 ++lineNumber;
 
+                // sync
                 if (lineNumber == chipConfig.Lines.size()) {
                     futureControl.Wait();   // wait for last control
                 }
@@ -135,6 +146,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
         throw;
     }
 
+    // Output changes are handeled by an event handler
     EventHandlerHandle = mqttDriver->On<TControlOnValueEvent>([](const TControlOnValueEvent & event){
         uint8_t value;
         if (event.RawValue == "1") {
@@ -173,16 +185,20 @@ void TGpioDriver::Start()
         LOG(Info) << "Started";
 
         int epfd = epoll_create(1);    // creating epoll for Interrupts
+        // EPOLL_EVENT_COUNT number of epoll event can be handled
         struct epoll_event events[EPOLL_EVENT_COUNT] {};
 
         WB_SCOPE_EXIT( close(epfd); )
 
         for (const auto & chipDriver: ChipDrivers) {
+            // add each line descriptor of the chip to epoll
             chipDriver->AddToEpoll(epfd);
         }
 
+        // main loop of operation
         while (Active.load()) {
             bool isHandled = false;
+            // If there is any waiting file descriptor for request -> read file descriptor's line
             if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
                 TInterruptionContext ctx {count, events};
                 for (const auto & chipDriver: ChipDrivers) {

@@ -8,7 +8,6 @@
 #include "log.h"
 
 #include <wblib/utils.h>
-
 #include <system_error>
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
@@ -150,6 +149,10 @@ TGpioChipDriver::~TGpioChipDriver()
     }
 }
 
+/*  @brief  Generating a MAP of  GpioLine object and Offsets included GpioChipDriver
+ *  @return <offset, PGpioLine> map
+ */
+
 TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
 {
     TGpioLinesByOffsetMap linesByOffset;
@@ -160,6 +163,10 @@ TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
 
     return linesByOffset;
 }
+
+/*  @brief  Adding each line's file descriptor to epoll
+ *  @note   Adds only those INPUT line which supports interrupts 
+ */
 
 void TGpioChipDriver::AddToEpoll(int epfd)
 {
@@ -175,14 +182,20 @@ void TGpioChipDriver::AddToEpoll(int epfd)
 
         struct epoll_event ep_event {};
 
+        // epoll event description (EPOLLIN =  ready for reading, EPOLLPRI = exceptional condition (??))
         ep_event.events = EPOLLIN | EPOLLPRI;
         ep_event.data.fd = line->GetFd();
 
+        // add even and line file descriptor to epoll file descriptor
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, line->GetFd(), &ep_event) < 0) {
             LOG(Error) << "epoll_ctl error: '" << strerror(errno) << "' at " << line->DescribeShort();
         }
     });
 }
+
+/*  @brief  Handling input change event 
+ *  @note   called by epoll event
+ */
 
 bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
 {
@@ -191,8 +204,10 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
     if (Chip->GetInterruptSupport() != EInterruptSupport::YES)
         return isHandled;
 
+    // iterating through all a epoll events
     for (int i = 0; i < ctx.Count; i++) {
         auto itFdLines = Lines.find(ctx.Events[i].data.fd);
+        // If file descroptor belongs to the current chip
         if (itFdLines != Lines.end()) {
             isHandled = true;
             auto fd = itFdLines->first;

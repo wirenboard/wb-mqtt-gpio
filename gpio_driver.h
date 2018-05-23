@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GPIO_DRIVER_H
+#define GPIO_DRIVER_H
 
 #include "declarations.h"
 
@@ -27,3 +28,5 @@ public:
     void Stop();
     void Clear() noexcept;
 };
+
+#endif //GPIO_DRIVER_H
