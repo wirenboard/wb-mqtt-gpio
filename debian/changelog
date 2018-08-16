@@ -1,3 +1,9 @@
+wb-homa-gpio (1.18.1) stable; urgency=medium
+
+  * tell init system to run wb-homa-gpio after wb-hwconf-manager
+
+ -- Evgeny Boger <boger@contactless.ru>  Thu, 16 Aug 2018 12:26:51 +0300
+
 wb-homa-gpio (1.18) stable; urgency=medium
 
   * adds digital inputs on WB6.2 (WB_VERSION stays at 6.1)
