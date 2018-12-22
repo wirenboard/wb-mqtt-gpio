@@ -1,4 +1,4 @@
-#!/bin/bash -xs
+#!/bin/bash
 . /etc/wb_env.sh
 
 CONFFILE=/etc/wb-homa-gpio.conf
