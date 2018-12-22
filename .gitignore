@@ -34,3 +34,8 @@ wb-homa-ninja-bridge/debian/wb-homa-ninja-bridge/
 wb-mqtt-lirc/debian/wb-mqtt-lirc/
 wb-mqtt-db/debian/wb-mqtt-db/
 .d
+debian/wb-homa-gpio
+debian/files
+debian/debhelper-build-stamp
+debian/wb-homa-gpio.substvars
+wb-homa-gpio

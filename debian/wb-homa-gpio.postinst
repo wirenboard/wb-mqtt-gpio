@@ -3,35 +3,39 @@
 
 CONFFILE=/etc/wb-homa-gpio.conf
 
-case "$WB_VERSION" in
-    "61" | "60" | "58" | "55" | "52" )
-        BOARD_CONF="wb${WB_VERSION}"
-    ;;
+if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
+    BOARD_CONF="devicetree"
+else
+    case "$WB_VERSION" in
+        "61" | "60" | "58" | "55" | "52" )
+            BOARD_CONF="wb${WB_VERSION}"
+        ;;
 
-    "50" )
-        BOARD_CONF="wbsh5"
-    ;;
+        "50" )
+            BOARD_CONF="wbsh5"
+        ;;
 
-    "41" )
-        BOARD_CONF="wbsh4"
-    ;;
+        "41" )
+            BOARD_CONF="wbsh4"
+        ;;
 
-    "32" )
-        BOARD_CONF="wbsh3"
-    ;;
+        "32" )
+            BOARD_CONF="wbsh3"
+        ;;
 
-    "KMON1" )
-        BOARD_CONF="mka3"
-    ;;
+        "KMON1" )
+            BOARD_CONF="mka3"
+        ;;
 
-    "CQC10" )
-        BOARD_CONF="cqc10"
-    ;;
+        "CQC10" )
+            BOARD_CONF="cqc10"
+        ;;
 
-    * )
-        BOARD_CONF="default"
-    ;;
-esac
+        * )
+            BOARD_CONF="default"
+        ;;
+    esac
+fi
 
 
 ucf --debconf-ok "/usr/share/wb-homa-gpio/wb-homa-gpio.conf.$BOARD_CONF" $CONFFILE
