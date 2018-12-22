@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ### BEGIN INIT INFO
 # Provides:          wb-homa-gpio
 # Default-Start:     2 3 4 5
@@ -23,7 +23,10 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="MQTT Driver for GPIO-controlled switches"
 NAME=wb-homa-gpio
 DAEMON=/usr/bin/$NAME
-DAEMON_ARGS="-c /etc/wb-homa-gpio.conf"
+USER_CONFFILE="/etc/wb-homa-gpio.conf"
+DYN_CONFFILE="/tmp/wb-homa-gpio.do-not-edit.conf"
+SYS_CONFFILE="/tmp/wb-homa-gpio.sys.conf"
+TMP_USR_CONFFILE="/tmp/wb-homa-gpio.usr.conf"
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
@@ -52,10 +55,62 @@ do_start()
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
+
+	if [[ ! -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
+		CONFFILE=${USER_CONFFILE}
+	else
+		source "/usr/lib/wb-utils/common.sh"
+		wb_source "of"
+		wb_source "wb_env_of"
+		WB_ENV_CACHE="${WB_ENV_CACHE:-/var/run/wb_env.cache}"
+
+		if [[ -e "$WB_ENV_CACHE" ]]; then
+			set -a
+			source "$WB_ENV_CACHE"
+			set +a
+		else
+			declare -A OF_GPIOCHIPS
+			of_find_gpiochips
+			declare -p OF_GPIOCHIPS
+		fi
+
+		WB_OF_ROOT="/wirenboard"
+		node="${WB_OF_ROOT}/gpios"
+
+		GPIOSYSCONF='{\n  "channels": ['
+		first=1
+		for gpioname in  $(of_node_children "$node" | sort); do
+			gpio="$(of_get_prop_gpio "$node/$gpioname" "io-gpios")"
+			ITEM="{ \
+				\"gpio\" : $(of_gpio_to_num "$gpio") , \
+				\"name\" : \"$gpioname\", \
+				\"direction\": \"$(of_has_prop "$node/$gpioname" "input" && echo -n "input" || echo -n "output")\" ,\
+				\"inverted\" : $(of_gpio_is_inverted "$gpio" && echo -n "true" || echo -n "false"), \
+				\"initial_state\": $(of_has_prop "$node/$gpioname" "output-high" && echo -n "true" || echo -n "false") ,\
+				\"_sort_key\" : $(of_has_prop "$node/$gpioname" "sort-order" && echo -n $(of_get_prop_ulong "$node/$gpioname" "sort-order") || echo -n 0)
+			}"
+
+			if (( first )); then
+				first=0
+			else
+				GPIOSYSCONF="$GPIOSYSCONF,"
+			fi
+
+			GPIOSYSCONF="$GPIOSYSCONF\n$ITEM"
+		done
+		GPIOSYSCONF="$GPIOSYSCONF\n]}"
+		echo -e $GPIOSYSCONF | jq ".channels = (.channels | sort_by(._sort_key) | map(del(._sort_key)))" > ${SYS_CONFFILE}
+
+		sed 's#//.*##' "$USER_CONFFILE"  > ${TMP_USR_CONFFILE}
+
+		jq '.[0] as $first | .[1] as $second | $first * $second | .channels |= ( $first.channels + $second.channels | [reduce .[] as $o ({}; .[$o["gpio"] | tostring] += $o ) | .[]] ) ' -s  ${SYS_CONFFILE} ${TMP_USR_CONFFILE} > ${DYN_CONFFILE}
+		CONFFILE=${DYN_CONFFILE}
+	fi
+
 	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --quiet --make-pidfile --background --pidfile $PIDFILE --exec $DAEMON -- \
-		$DAEMON_ARGS \
+		-c ${CONFFILE} \
 		|| return 2
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend

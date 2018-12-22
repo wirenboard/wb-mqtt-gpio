@@ -55,6 +55,7 @@ install: all
 	install -d $(DESTDIR)/usr/share/wb-mqtt-confed/schemas
 	mkdir -p $(DESTDIR)/etc/wb-configs.d
 
+	install -m 0644  config.json.devicetree $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.devicetree
 	install -m 0644  config.json.wb52 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb52
 	install -m 0644  config.json.wb55 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb55
 	install -m 0644  config.json.wb58 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb58
