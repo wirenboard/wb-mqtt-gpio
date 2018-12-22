@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xs
 . /etc/wb_env.sh
 
 CONFFILE=/etc/wb-homa-gpio.conf
@@ -10,19 +10,13 @@ function is_installed()
 
 function get_version()
 {
-    # is_installed $1 && {
-    #     dpkg-query --show --showformat '${Version}' $1
-    #     return 0
-    # } || {
-    #     return 1
-    # }
     dpkg-query --show --showformat '${Version}' $1
     is_installed $1
 }
 
 KERNEL_VERSION=$(get_version linux-image-wb2 || get_version linux-image-wb6)
 # older kernel version contained incomplete gpios devicetree node
-if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]] && `dpkg --compare-versions "$KERNEL_VERSION" -gt "4.9+wb20181221180922"`; then
+if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]] && `dpkg --compare-versions "$KERNEL_VERSION" gt "4.9+wb20181221180922"`; then
     BOARD_CONF="devicetree"
 else
     case "$WB_VERSION" in
