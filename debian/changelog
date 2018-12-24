@@ -1,4 +1,4 @@
-wb-homa-gpio (1.19.2~rc4) stable; urgency=medium
+wb-homa-gpio (1.19.2~rc5) stable; urgency=medium
 
   * Use devicetree info when possible instead of board-specific configs.
   
