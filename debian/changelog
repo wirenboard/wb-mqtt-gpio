@@ -1,3 +1,16 @@
+wb-homa-gpio (1.19.2) stable; urgency=medium
+
+  * Use devicetree info when possible instead of board-specific configs.
+  
+  /wirenboard/gpios/ node in recent kernels contain all the information
+  board-specific JSON config contained. 
+  The system information in gpios node is immutable in contrast
+  with board-specific JSONs. That's why the config generated from
+  devicetree data is merged with user config in initscript at every
+  service start to produce temporary daemon configuration.
+
+ -- Evgeny Boger <boger@contactless.ru>  Fri, 21 Dec 2018 00:26:02 +0300
+
 wb-homa-gpio (1.19.1) stable; urgency=medium
 
   * tell init system to run wb-homa-gpio after wb-hwconf-manager
