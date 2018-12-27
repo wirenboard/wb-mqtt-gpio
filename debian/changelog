@@ -1,3 +1,9 @@
+wb-homa-gpio (1.19.3) stable; urgency=medium
+
+  * quickfix: fallback on legacy config on kernels older than 4.9+wb20181227130340
+
+ -- Evgeny Boger <boger@contactless.ru>  Thu, 27 Dec 2018 17:48:50 +0300
+
 wb-homa-gpio (1.19.2) stable; urgency=medium
 
   * Use devicetree info when possible instead of board-specific configs.
