@@ -1,3 +1,9 @@
+wb-homa-gpio (1.19.5) stable; urgency=medium
+
+  * use jq 1.4 present on wheezy
+
+ -- Evgeny Boger <boger@contactless.ru>  Tue, 01 Jan 2019 19:38:05 +0300
+
 wb-homa-gpio (1.19.4) stable; urgency=medium
 
   * fix gpios node autodetect on create_rootfs stage
