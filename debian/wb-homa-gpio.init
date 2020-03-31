@@ -21,7 +21,10 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="MQTT Driver for GPIO-controlled switches"
 NAME=wb-homa-gpio
 DAEMON=/usr/bin/$NAME
-DAEMON_ARGS="-c /etc/wb-homa-gpio.conf"
+USER_CONFFILE="/etc/wb-homa-gpio.conf"
+DYN_CONFFILE="/tmp/wb-homa-gpio.do-not-edit.conf"
+SYS_CONFFILE="/tmp/wb-homa-gpio.sys.conf"
+TMP_USR_CONFFILE="/tmp/wb-homa-gpio.usr.conf"
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
@@ -49,9 +52,84 @@ do_start()
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
+
+	if [[ ! -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
+		CONFFILE=${USER_CONFFILE}
+	else
+		source "/usr/lib/wb-utils/common.sh"
+		wb_source "of"
+		wb_source "wb_env_of"
+		WB_ENV_CACHE="${WB_ENV_CACHE:-/var/run/wb_env.cache}"
+
+		if [[ -e "$WB_ENV_CACHE" ]]; then
+			set -a
+			source "$WB_ENV_CACHE"
+			set +a
+		else
+			declare -A OF_GPIOCHIPS
+			of_find_gpiochips
+			declare -p OF_GPIOCHIPS
+		fi
+
+		WB_OF_ROOT="/wirenboard"
+		node="${WB_OF_ROOT}/gpios"
+
+		declare -A chips
+		declare -A firstinchip
+		declare -A PHANDLE_MAP
+
+		GPIOSYSCONF='{ "chips": ['
+		first=1
+
+		for gpiochip in /sys/bus/gpio/devices/gpiochip*; do
+			if [[ -f "$gpiochip/of_node/phandle" ]]; then
+				phandle=$(bin2ulong < "$gpiochip/of_node/phandle")
+				chip_num=$(echo $(basename $gpiochip) | sed 's/gpiochip//g')
+				PHANDLE_MAP[$phandle]=$chip_num
+			fi
+		done
+
+		for gpioname in  $(of_node_children "$node" | sort); do
+			gpio="$(of_get_prop_gpio "$node/$gpioname" "io-gpios")"
+			item_phandle=$(of_get_prop_ulong "$node/$gpioname" "io-gpios" | awk '{print $1}')
+			item_chip_num=${PHANDLE_MAP[$item_phandle]}
+			base=0
+			pin=0
+			of_gpio_unpack "$gpio" base pin
+			ITEM="{ \
+				\"name\" : \"$gpioname\", \
+				\"offset\" : $pin, \
+				\"direction\" : \"$(of_has_prop "$node/$gpioname" "input" && echo -n "input" || echo -n "output")\", \
+				\"inverted\" : $(of_gpio_is_inverted "$gpio" && echo -n "true" || echo -n "false"), \
+				\"initial_state\": $(of_has_prop "$node/$gpioname" "output-high" && echo -n "true" || echo -n "false") ,\
+				\"order\" : $(of_has_prop "$node/$gpioname" "sort-order" && echo -n $(of_get_prop_ulong "$node/$gpioname" "sort-order") || echo -n 0) }"
+			if [ ${chips[$item_chip_num]+a} ]; then
+				chips[$item_chip_num]="${chips[$item_chip_num]},$ITEM"
+			else
+				chips[$item_chip_num]="$ITEM"
+			fi
+		done
+
+		for num in "${!chips[@]}"; do
+			if (( first )); then
+				first=0
+			else
+				GPIOSYSCONF="$GPIOSYSCONF,"
+			fi
+			GPIOSYSCONF="$GPIOSYSCONF { \"number\": $num, \"lines\" : [ ${chips[$num]} ]}"
+		done
+
+		GPIOSYSCONF="$GPIOSYSCONF ]}"
+		echo "$GPIOSYSCONF" > ${SYS_CONFFILE}
+		sed 's#//.*##' "$USER_CONFFILE"  > ${TMP_USR_CONFFILE}
+		jq '.[0] as $first | .[1] as $second | $first * $second | .chips |= ( $first.chips + $second.chips ) ' -s  ${SYS_CONFFILE} ${TMP_USR_CONFFILE} > ${DYN_CONFFILE}
+
+		CONFFILE=${DYN_CONFFILE}
+	fi
+
 	start-stop-daemon --start --quiet --exec $DAEMON --test > /dev/null \
 		|| return 1
-	start-stop-daemon --start --quiet --background --exec $DAEMON --startas /bin/bash -- -c "exec $DAEMON $DAEMON_ARGS 2>&1 | logger -t gpio"  \
+	start-stop-daemon --start --quiet --background --exec $DAEMON --startas /bin/bash -- -c "exec $DAEMON -c ${CONFFILE} 2>&1 | logger -t gpio"  \
 		|| return 2
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend
