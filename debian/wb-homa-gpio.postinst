@@ -1,37 +1,55 @@
 #!/bin/bash
 . /etc/wb_env.sh
+wb_source "of"
 
 CONFFILE=/etc/wb-homa-gpio.conf
 
-case "$WB_VERSION" in
-    "61" | "60" | "58" | "55" | "52" )
-        BOARD_CONF="wb${WB_VERSION}"
-    ;;
+function is_installed()
+{
+    dpkg -s $1 &> /dev/null
+}
 
-    "50" )
-        BOARD_CONF="wbsh5"
-    ;;
+function get_version()
+{
+    dpkg-query --show --showformat '${Version}' $1
+    is_installed $1
+}
 
-    "41" )
-        BOARD_CONF="wbsh4"
-    ;;
+KERNEL_VERSION=$(get_version linux-image-wb2 || get_version linux-image-wb6)
+# older kernel version contained incomplete gpios devicetree node
+if of_node_exists /wirenboard/gpios && dpkg --compare-versions "$KERNEL_VERSION" gt "4.9+wb20181227130340"; then
+    BOARD_CONF="devicetree"
+else
+    case "$WB_VERSION" in
+        "61" | "60" | "58" | "55" | "52" )
+            BOARD_CONF="wb${WB_VERSION}"
+        ;;
 
-    "32" )
-        BOARD_CONF="wbsh3"
-    ;;
+        "50" )
+            BOARD_CONF="wbsh5"
+        ;;
 
-    "KMON1" )
-        BOARD_CONF="mka3"
-    ;;
+        "41" )
+            BOARD_CONF="wbsh4"
+        ;;
 
-    "CQC10" )
-        BOARD_CONF="cqc10"
-    ;;
+        "32" )
+            BOARD_CONF="wbsh3"
+        ;;
 
-    * )
-        BOARD_CONF="default"
-    ;;
-esac
+        "KMON1" )
+            BOARD_CONF="mka3"
+        ;;
+
+        "CQC10" )
+            BOARD_CONF="cqc10"
+        ;;
+
+        * )
+            BOARD_CONF="default"
+        ;;
+    esac
+fi
 
 
 ucf --debconf-ok "/usr/share/wb-homa-gpio/wb-homa-gpio.conf.$BOARD_CONF" $CONFFILE

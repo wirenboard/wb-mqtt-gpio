@@ -5,6 +5,8 @@
 # Default-Stop:      0 1 6
 # Required-Start: $remote_fs mosquitto
 # Required-Stop: $remote_fs
+# Should-Start: wb-hwconf-manager wb-modules
+#
 # Short-Description: MQTT Driver for GPIO-controlled switches
 # Description:       MQTT Driver for GPIO-controlled switches
 ### END INIT INFO
@@ -25,6 +27,7 @@ USER_CONFFILE="/etc/wb-homa-gpio.conf"
 DYN_CONFFILE="/tmp/wb-homa-gpio.do-not-edit.conf"
 SYS_CONFFILE="/tmp/wb-homa-gpio.sys.conf"
 TMP_USR_CONFFILE="/tmp/wb-homa-gpio.usr.conf"
+PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
@@ -127,9 +130,10 @@ do_start()
 		CONFFILE=${DYN_CONFFILE}
 	fi
 
-	start-stop-daemon --start --quiet --exec $DAEMON --test > /dev/null \
+	start-stop-daemon --start --quiet --make-pidfile --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
-	start-stop-daemon --start --quiet --background --exec $DAEMON --startas /bin/bash -- -c "exec $DAEMON -c ${CONFFILE} 2>&1 | logger -t gpio"  \
+	start-stop-daemon --start --quiet --make-pidfile --background --pidfile $PIDFILE --exec $DAEMON -- \
+		-c ${CONFFILE} \
 		|| return 2
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend

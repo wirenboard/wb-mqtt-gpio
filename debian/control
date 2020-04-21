@@ -9,4 +9,5 @@ Package: wb-homa-gpio
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libjsoncpp0 | libjsoncpp1, libmosquittopp1, libmosquitto1, ucf, libwbmqtt1  (>= 0.1)
 Breaks: wb-mqtt-confed (<< 1.0.2)
-Description: Wiren Board Smart Home MQTT GPIO driver compatible with HomA conventions
+Suggests: linux-image-wb2 (>= 4.9+wb20181227130340) | linux-image-wb6 (>= 4.9+wb20181227130340)
+Description: Wiren Board Smart Home MQTT generic sysfs GPIO driver compatible with HomA conventions

@@ -40,3 +40,8 @@ wb-homa-gpio
 
 # Visual Studio Code
 .vscode
+debian/wb-homa-gpio
+debian/files
+debian/debhelper-build-stamp
+debian/wb-homa-gpio.substvars
+wb-homa-gpio

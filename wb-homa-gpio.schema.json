@@ -271,7 +271,9 @@
             "required": [
                 "device_name",
                 "chips"
-            ]
+            ],
+            "_format": "",
+            "propertyOrder": 2
         }
     ]
 }
