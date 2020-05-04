@@ -286,10 +286,8 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
     }
 }
 
-TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig)
+TGpioDriverConfig ToNewFormat(const THandlerConfig & oldConfig, TGpioDriverConfig newConfig)
 {
-    TGpioDriverConfig newConfig;
-
     newConfig.DeviceName = oldConfig.DeviceName;
     map<uint32_t, pair<size_t, set<uint32_t>>> indexMapping;
 
@@ -349,17 +347,26 @@ TGpioDriverConfig GetConvertConfig(const std::string & fileName)
 {
     WB_SCOPE_NO_THROW_EXIT( LOG(Info) << "Read config ok"; )
 
+    auto newConfigOK = true;
+    auto oldConfigOK = true;
+    TGpioDriverConfig newConfig;
     try {
-        return TGpioDriverConfig(fileName);
+        newConfig = TGpioDriverConfig(fileName);
     } catch (const exception & e) {
+        newConfigOK = false;
         LOG(Warn) << "Unable to read config in new format: '" << e.what() << "'";
     }
 
     LOG(Info) << "Trying to read config in deprecated format...";
     try {
-        return ToNewFormat(THandlerConfig(fileName));
+        newConfig = ToNewFormat(THandlerConfig(fileName), newConfig);
     } catch (const exception & e) {
+        oldConfigOK = false;
         LOG(Warn) << "Unable to read config in deprecated format: '" << e.what() << "'";
+    }
+
+    if (newConfigOK || oldConfigOK) {
+        return newConfig;
     }
 
     wb_throw(TGpioDriverException, "unable to read config");
