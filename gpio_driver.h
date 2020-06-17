@@ -5,7 +5,7 @@
 #include <wblib/declarations.h>
 
 #include <vector>
-#include <atomic>
+#include <mutex>
 
 
 class TGpioDriver
@@ -15,7 +15,8 @@ class TGpioDriver
 
     std::vector<PGpioChipDriver>    ChipDrivers;
     std::unique_ptr<std::thread>    Worker;
-    std::atomic_bool                Active;
+    bool                            Active;
+    std::mutex                      ActiveMutex;
 
 public:
     static const char * const Name;

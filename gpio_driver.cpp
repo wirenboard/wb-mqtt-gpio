@@ -163,11 +163,13 @@ TGpioDriver::~TGpioDriver()
 
 void TGpioDriver::Start()
 {
-    if (Active.load()) {
-        wb_throw(TGpioDriverException, "attempt to start already started driver");
+    {
+        std::lock_guard<std::mutex> lg(ActiveMutex);
+        if (Active) {
+            wb_throw(TGpioDriverException, "attempt to start already started driver");
+        }
+        Active = true;
     }
-
-    Active.store(true);
 
     Worker = WBMQTT::MakeThread("GPIO worker", {[this]{
         LOG(Info) << "Started";
@@ -181,7 +183,7 @@ void TGpioDriver::Start()
             chipDriver->AddToEpoll(epfd);
         }
 
-        while (Active.load()) {
+        while (Active) {
             bool isHandled = false;
             if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
                 TInterruptionContext ctx {count, events};
@@ -229,11 +231,14 @@ void TGpioDriver::Start()
 
 void TGpioDriver::Stop()
 {
-    if (!Active.load()) {
-        wb_throw(TGpioDriverException, "attempt to stop not started driver");
+    {
+        std::lock_guard<std::mutex> lg(ActiveMutex);
+        if (!Active) {
+            wb_throw(TGpioDriverException, "attempt to stop not started driver");
+        }
+        Active = false;
     }
 
-    Active.store(false);
     LOG(Info) << "Stopping...";
 
     if (Worker->joinable()) {
@@ -245,7 +250,7 @@ void TGpioDriver::Stop()
 
 void TGpioDriver::Clear() noexcept
 {
-    if (Active.load()) {
+    if (Active) {
         LOG(Error) << "Unable to clear driver while it's running";
         return;
     }
