@@ -39,7 +39,7 @@ THandlerConfig::THandlerConfig(const std::string &fileName)
         {
             // Report failures and their locations
             // in the document.
-            wb_throw(TGpioDriverException, "failed to parse JSON \n" + reader.getFormatedErrorMessages());
+            wb_throw(TGpioDriverException, "failed to parse JSON \n" + reader.getFormattedErrorMessages());
         }
     }
 
@@ -138,7 +138,7 @@ TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
         {
             // Report failures and their locations
             // in the document.
-            wb_throw(TGpioDriverException, "failed to parse JSON \n" + reader.getFormatedErrorMessages());
+            wb_throw(TGpioDriverException, "failed to parse JSON \n" + reader.getFormattedErrorMessages());
         }
     }
 
