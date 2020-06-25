@@ -263,7 +263,6 @@
                     "items":{
                         "$ref": "#/definitions/gpio_chip"
                     },
-                    "minItems": 1,
                     "_format": "",
                     "propertyOrder": 2
                 }
