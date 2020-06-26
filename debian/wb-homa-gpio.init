@@ -100,7 +100,7 @@ do_start()
 			of_gpio_unpack "$gpio" base pin
 			ITEM="{ \
 				\"name\" : \"$gpioname\", \
-				\"chip\" : \"$item_chip_num\", \
+				\"chip\" : $item_chip_num, \
 				\"offset\" : $pin, \
 				\"direction\" : \"$(of_has_prop "$node/$gpioname" "input" && echo -n "input" || echo -n "output")\", \
 				\"inverted\" : $(of_gpio_is_inverted "$gpio" && echo -n "true" || echo -n "false"), \
@@ -113,7 +113,7 @@ do_start()
 				GPIOSYSCONF="$GPIOSYSCONF,"
 			fi
 
-			GPIOSYSCONF="$GPIOSYSCONF\n$ITEM"
+			GPIOSYSCONF="$GPIOSYSCONF $ITEM"
 		done
 
 		GPIOSYSCONF="$GPIOSYSCONF ]}"
