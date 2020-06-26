@@ -155,10 +155,6 @@ TGpioLineConfig ReadLine(const Json::Value& line)
 
     lineConfig.InitialState = line.get("initial_state", false).asBool();
 
-    lineConfig.Order = -1;
-    if (line.isMember("order"))
-        lineConfig.Order = line["order"].asInt();
-    
     return lineConfig;
 }
 
