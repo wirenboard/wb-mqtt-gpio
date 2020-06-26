@@ -63,7 +63,7 @@ struct TGpioChipConfig
     std::string  Path;
     TLinesConfig Lines;
 
-    TGpioChipConfig(std::string && path): Path(std::move(path))
+    TGpioChipConfig(const std::string & path): Path(path)
     {}
 };
 
