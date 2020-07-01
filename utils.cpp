@@ -71,7 +71,7 @@ namespace Utils
                 chipPaths.push_back({ number, base });
             }
 
-            return move(chipPaths);
+            return chipPaths;
         }
 
         struct TAbstractRange
