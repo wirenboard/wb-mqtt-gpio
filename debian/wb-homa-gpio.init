@@ -80,7 +80,7 @@ do_start()
 		declare -A firstinchip
 		declare -A PHANDLE_MAP
 
-		GPIOSYSCONF='{ "lines": ['
+		GPIOSYSCONF='{ "channels": ['
 		first=1
 
 		for gpiochip in /sys/bus/gpio/devices/gpiochip*; do
@@ -100,8 +100,7 @@ do_start()
 			of_gpio_unpack "$gpio" base pin
 			ITEM="{ \
 				\"name\" : \"$gpioname\", \
-				\"chip\" : $item_chip_num, \
-				\"offset\" : $pin, \
+				\"gpio\" : {\"chip\" : \"/dev/gpiochip$item_chip_num\", \"offset\" : $pin}, \
 				\"direction\" : \"$(of_has_prop "$node/$gpioname" "input" && echo -n "input" || echo -n "output")\", \
 				\"inverted\" : $(of_gpio_is_inverted "$gpio" && echo -n "true" || echo -n "false"), \
 				\"initial_state\": $(of_has_prop "$node/$gpioname" "output-high" && echo -n "true" || echo -n "false") ,\
@@ -117,9 +116,9 @@ do_start()
 		done
 
 		GPIOSYSCONF="$GPIOSYSCONF ]}"
-		echo "$GPIOSYSCONF" > ${SYS_CONFFILE}
+		echo "$GPIOSYSCONF" | jq '.channels|=sort_by(.order)|.channels|=map(del(.order))' > ${SYS_CONFFILE}
 		sed 's#//.*##' "$USER_CONFFILE"  > ${TMP_USR_CONFFILE}
-		jq '.[0] as $first | .[1] as $second | $first * $second | .lines |= ( $first.lines + $second.lines ) ' -s  ${SYS_CONFFILE} ${TMP_USR_CONFFILE} > ${DYN_CONFFILE}
+		jq '.[0] as $first | .[1] as $second | $first * $second | .channels |= ( $first.channels + $second.channels ) ' -s  ${SYS_CONFFILE} ${TMP_USR_CONFFILE} > ${DYN_CONFFILE}
 
 		CONFFILE=${DYN_CONFFILE}
 	fi

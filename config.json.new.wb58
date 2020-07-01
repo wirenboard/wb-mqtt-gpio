@@ -2,83 +2,107 @@
 {
     "device_name" : "Discrete I/O",
 
-    "lines" : [
+    "channels" : [
         {
-            "chip": "/dev/gpiochip0",
-            "offset": 26,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset": 26
+            },
             "name": "A1_OUT",
             "inverted": false
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 16,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 16
+            },
             "name" : "A2_OUT",
             "inverted" : false
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 24,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 24
+            },
             "name" : "A3_OUT",
             "inverted" : false
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 20,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 20
+            },
             "name" : "A4_OUT",
             "inverted" : false
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 6,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 6
+            },
             "name" : "A1_IN",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 7,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 7
+            },
             "name" : "A2_IN",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 28,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 28
+            },
             "name" : "A3_IN",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" : 27,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" : 27
+            },
             "name" : "A4_IN",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": "/dev/gpiochip0",
-            "offset" :  5,
+            "gpio" : { 
+                "chip": "/dev/gpiochip0",
+                "offset" :  5
+            },
             "name" : "R1_IN",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": 1,
-            "offset" : 25,
+            "gpio" : { 
+                "chip": "/dev/gpiochip1",
+                "offset" : 25
+            },
             "name" : "BATTERY_PRESENT",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": 3,
-            "offset" : 30,
+            "gpio" : { 
+                "chip": "/dev/gpiochip3",
+                "offset" : 30
+            },
             "name" : "BATTERY_CHARGING",
             "inverted" : true,
             "direction": "input"
         },
         {
-            "chip": 2,
-            "offset" : 14,
+            "gpio" : { 
+                "chip": "/dev/gpiochip2",
+                "offset" : 14
+            },
             "name" : "5V_OUT",
             "direction": "output",
             "initial_state" : true
