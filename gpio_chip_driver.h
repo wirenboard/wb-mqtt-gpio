@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <unordered_map>
-
+#include <functional>
 
 class TGpioChipDriver
 {

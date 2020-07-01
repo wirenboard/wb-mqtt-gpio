@@ -7,16 +7,53 @@
         "service": "wb-homa-gpio"
     },
     "definitions": {
-        "common_line_properties": {
+        "gpio_channel": {
             "type": "object",
+            "title": "GPIO channel",
+            "headerTemplate": "GPIO channel {{(|self.name|)}}",
+            "remove_empty_properties": true,
             "properties": {
                 "name": {
                     "type": "string",
                     "title": "MQTT id",
-                    "minLength" : 1,
+                    "minLength": 1,
                     "propertyOrder": 1
                 },
-                // order 2: reserved for gpio or offset
+                "gpio": {
+                    "title": "GPIO",
+                    "propertyOrder": 2,
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "title": "GPIO chip character device and line offset",
+                            "properties": {
+                                "chip": {
+                                    "type": "string",
+                                    "title": "Path to chip character device",
+                                    "minLength": 1,
+                                    "propertyOrder": 2,
+                                    "description": "example: \"/dev/gpiochip0\""
+                                },
+                                "offset": {
+                                    "type": "integer",
+                                    "title": "GPIO line offset",
+                                    "minimum": 0,
+                                    "propertyOrder": 3
+                                }
+                            },
+                            "required": [
+                                "chip",
+                                "offset"
+                            ]
+                        },
+                        {
+                            "type": "integer",
+                            "title": "(deprecated) GPIO number",
+                            "minimum": 0,
+                            "propertyOrder": 2
+                        }
+                    ]
+                },
                 "direction": {
                     "type": "string",
                     "title": "Direction",
@@ -24,16 +61,19 @@
                         "input",
                         "output"
                     ],
-                    "enum_titles" : ["Input", "Output"],
+                    "enum_titles": [
+                        "Input",
+                        "Output"
+                    ],
                     "default": "input",
-                    "propertyOrder": 3
+                    "propertyOrder": 4
                 },
                 "inverted": {
                     "type": "boolean",
                     "title": "Invert polarity",
                     "default": false,
                     "_format": "checkbox",
-                    "propertyOrder": 4
+                    "propertyOrder": 5
                 },
                 "type": {
                     "type": "string",
@@ -44,9 +84,22 @@
                         "water_meter"
                     ],
                     "default": "",
-                    "propertyOrder": 5
+                    "propertyOrder": 6
                 },
-                // orders 6, 7: reserved for open_drain and open_source
+                "open_drain": {
+                    "type": "boolean",
+                    "title": "Open drain (only for GPIO defined by character device)",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 7
+                },
+                "open_source": {
+                    "type": "boolean",
+                    "title": "Open source (only for GPIO defined by character device)",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 8
+                },
                 "edge": {
                     "type": "string",
                     "title": "Pulse counter interrupt edge",
@@ -56,223 +109,66 @@
                         "both"
                     ],
                     "default": "both",
-                    "propertOrder": 8
+                    "propertOrder": 9
                 },
                 "multiplier": {
                     "type": "number",
                     "title": "Number of pulses per unit (kWh or m^3)",
-                    "propertyOrder": 9
-                },
-                "decimal_points_current" : {
-                    "type" : "number",
-                    "title" : "Number of decimal places in _current topic (pulse counters only)",
-                    "default" : 2,
-                    "min" : 0,
                     "propertyOrder": 10
                 },
-                "decimal_points_total" : {
-                    "type" : "number",
-                    "title" : "Number of decimal places in _total topic (pulse counters only)",
-                    "default" : 2,
-                    "min" : 0,
+                "decimal_points_current": {
+                    "type": "number",
+                    "title": "Number of decimal places in _current topic (pulse counters only)",
+                    "default": 2,
+                    "min": 0,
                     "propertyOrder": 11
+                },
+                "decimal_points_total": {
+                    "type": "number",
+                    "title": "Number of decimal places in _total topic (pulse counters only)",
+                    "default": 2,
+                    "min": 0,
+                    "propertyOrder": 12
                 },
                 "initial_state": {
                     "type": "boolean",
                     "title": "Initial state for output GPIO",
                     "default": false,
                     "_format": "checkbox",
-                    "propertyOrder": 12
+                    "propertyOrder": 13
                 }
             },
             "required": [
-                "name"
-            ]
-        },
-        "gpio_channel": {
-            "type": "object",
-            "title": "GPIO channel",
-            "headerTemplate": "GPIO {{ |self.gpio|}} {{(|self.name|)}}",
-            "allOf": [{ "$ref": "#/definitions/common_line_properties" }],
-
-            "properties": {
-                "gpio": {
-                    "type": "integer",
-                    "title": "GPIO number",
-                    "propertyOrder": 2
-                }
-            },
-            "required": [
-                "gpio"
+                "name",
+                "gpio",
+                "direction"
             ],
             "defaultProperties": [
                 "name",
                 "gpio",
                 "direction"
             ]
-        },
-        "gpio_line": {
-            "type": "object",
-            "title": "GPIO line",
-            "headerTemplate": "GPIO line {{ |self.offset|}} {{(|self.name|)}}",
-            "allOf": [{ "$ref": "#/definitions/common_line_properties" }],
-
-            "properties": {
-                "offset": {
-                    "type": "integer",
-                    "title": "GPIO line offset",
-                    "propertyOrder": 2
-                },
-                "open_drain": {
-                    "type": "boolean",
-                    "title": "Open drain",
-                    "default": false,
-                    "_format": "checkbox",
-                    "propertyOrder": 6
-                },
-                "open_source": {
-                    "type": "boolean",
-                    "title": "Open source",
-                    "default": false,
-                    "_format": "checkbox",
-                    "propertyOrder": 7
-                }
-            },
-            "required": [
-                "offset"
-            ],
-            "defaultProperties": [
-                "name",
-                "offset",
-                "direction"
-            ]
-        },
-        "chip_by_path": {
-            "title": "By device path",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "title": "Path to GPIO chip",
-                    "minLength": 1,
-                    "propertyOrder": 1
-                }
-            },
-            "required": [
-                "path"
-            ]
-        },
-        "chip_by_number": {
-            "title": "By number",
-            "properties": {
-                "number": {
-                    "type": "integer",
-                    "title": "Number of GPIO chip",
-                    "minimum": 0,
-                    "propertyOrder": 1
-                }
-            },
-            "required": [
-                "number"
-            ]
-        },
-        "gpio_chip": {
-            "type": "object",
-            "title": "GPIO chip",
-            "headerTemplate": "GPIO chip {{at |self.path|}} {{number |self.number|}}",
-            "allOf": [
-                {
-                    "type": "object",
-                    "properties": {
-                        "lines": {
-                            "type": "array",
-                            "title": "Lines of GPIO chip",
-                            "items": {
-                                "$ref": "#/definitions/gpio_line"
-                            },
-                            "minItems": 1,
-                            "propertyOrder": 2
-                        }
-                    },
-                    "required": [
-                        "lines"
-                    ]
-                }
-            ],
-            "remove_empty_properties": true,
-            "oneOf": [
-                {   // path is specified; if path and number are specified: path will be used
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/chip_by_path"
-                        }
-                    ]
-                },
-                {   // number is specified
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/chip_by_number"
-                        }
-                    ],
-                    "not": {
-                        "required": [
-                            "path"
-                        ]
-                    }
-                }
-            ]
         }
     },
-    "oneOf": [
-        {
-            "title": "Sysfs (deprecated)",
-            "properties": {
-                "device_name": {
-                    "type": "string",
-                    "title": "MQTT device name",
-                    "default": "GPIOs",
-                    "propertyOrder": 1
-                },
-                "channels": {
-                    "type": "array",
-                    "title": "List of GPIO channels",
-                    "items": {
-                        "$ref": "#/definitions/gpio_channel"
-                    },
-                    "minItems": 1,
-                    "_format": "",
-                    "propertyOrder": 2
-                }
-            },
-            "required": [
-                "device_name",
-                "channels"
-            ]
+    "properties": {
+        "device_name": {
+            "type": "string",
+            "title": "MQTT device name",
+            "default": "GPIOs",
+            "propertyOrder": 1
         },
-        {
-            "title": "Charactrer Device",
-            "properties": {
-                "device_name": {
-                    "type": "string",
-                    "title": "MQTT device name",
-                    "default": "GPIOs",
-                    "propertyOrder": 1
-                },
-                "chips": {
-                    "type": "array",
-                    "title": "List of GPIO chips",
-                    "items":{
-                        "$ref": "#/definitions/gpio_chip"
-                    },
-                    "_format": "",
-                    "propertyOrder": 2
-                }
+        "channels": {
+            "type": "array",
+            "title": "List of GPIO channels",
+            "items": {
+                "$ref": "#/definitions/gpio_channel"
             },
-            "required": [
-                "device_name",
-                "chips"
-            ],
             "_format": "",
             "propertyOrder": 2
         }
+    },
+    "required": [
+        "device_name",
+        "channels"
     ]
 }

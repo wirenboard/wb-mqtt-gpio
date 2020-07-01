@@ -12,33 +12,6 @@ enum class EGpioDirection {
     Output
 };
 
-struct TGpioDesc {
-    int Gpio;
-    bool Inverted = false;
-    std::string Name = "";
-    EGpioDirection Direction = EGpioDirection::Output;
-    std::string InterruptEdge = "";
-    std::string Type = "";
-    float Multiplier;
-    int Order;
-    int DecimalPlacesTotal = -1;
-    int DecimalPlacesCurrent = -1;
-    bool InitialState = false;
-};
-
-class THandlerConfig
-{
-public:
-    std::set<std::string> Names;
-    std::set<int> GpioNums;
-    std::vector<TGpioDesc> Gpios;
-    std::string DeviceName;
-
-    explicit THandlerConfig(const std::string & fileName);
-
-    void AddGpio(TGpioDesc &gpio_desc);
-};
-
 struct TGpioLineConfig
 {
     uint32_t Offset;
@@ -50,7 +23,6 @@ struct TGpioLineConfig
     EGpioEdge InterruptEdge   = EGpioEdge::BOTH;
     std::string Type          = "";
     float Multiplier;
-    int Order;
     int DecimalPlacesTotal    = -1;
     int DecimalPlacesCurrent  = -1;
     bool InitialState         = false;
@@ -63,7 +35,7 @@ struct TGpioChipConfig
     std::string  Path;
     TLinesConfig Lines;
 
-    TGpioChipConfig(std::string && path): Path(std::move(path))
+    TGpioChipConfig(const std::string & path): Path(path)
     {}
 };
 

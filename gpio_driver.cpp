@@ -95,7 +95,6 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                         futureControl = device->CreateControl(tx, TControlArgs{}
                             .SetId(move(id))
                             .SetType(move(type))
-                            .SetOrder(lineConfig.Order)
                             .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
                             .SetUserData(line)
                             .SetDoLoadPrevious(isTotal)
@@ -112,7 +111,6 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                     futureControl = device->CreateControl(tx, TControlArgs{}
                         .SetId(lineConfig.Name)
                         .SetType("switch")
-                        .SetOrder(lineConfig.Order)
                         .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
                         .SetUserData(line)
                     );
