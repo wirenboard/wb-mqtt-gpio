@@ -1,6 +1,6 @@
 #!/bin/bash
 ### BEGIN INIT INFO
-# Provides:          wb-homa-gpio
+# Provides:          wb-mqtt-gpio
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Required-Start: $remote_fs mosquitto
@@ -21,12 +21,12 @@
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="MQTT Driver for GPIO-controlled switches"
-NAME=wb-homa-gpio
+NAME=wb-mqtt-gpio
 DAEMON=/usr/bin/$NAME
-USER_CONFFILE="/etc/wb-homa-gpio.conf"
-DYN_CONFFILE="/tmp/wb-homa-gpio.do-not-edit.conf"
-SYS_CONFFILE="/tmp/wb-homa-gpio.sys.conf"
-TMP_USR_CONFFILE="/tmp/wb-homa-gpio.usr.conf"
+USER_CONFFILE="/etc/wb-mqtt-gpio.conf"
+DYN_CONFFILE="/tmp/wb-mqtt-gpio.do-not-edit.conf"
+SYS_CONFFILE="/tmp/wb-mqtt-gpio.sys.conf"
+TMP_USR_CONFFILE="/tmp/wb-mqtt-gpio.usr.conf"
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 

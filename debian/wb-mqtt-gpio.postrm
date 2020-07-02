@@ -1,0 +1,15 @@
+#!/bin/bash
+
+CONFFILE=/etc/wb-mqtt-gpio.conf
+
+if [ "$1" = "purge" ]; then
+    if [ -x /usr/bin/ucf ]; then
+        ucf  --purge /etc/wb-mqtt-gpio.conf
+        rm -f /etc/wb-mqtt-gpio.conf
+        rm -f /etc/wb-homa-gpio.conf
+    fi
+fi
+
+
+#DEBHELPER#
+

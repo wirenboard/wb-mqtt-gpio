@@ -3,8 +3,8 @@
     "title": "GPIO Driver Configuration Type",
     "description": "Digital inputs and outputs configuration",
     "configFile": {
-        "path": "/etc/wb-homa-gpio.conf",
-        "service": "wb-homa-gpio"
+        "path": "/etc/wb-mqtt-gpio.conf",
+        "service": "wb-mqtt-gpio"
     },
     "definitions": {
         "gpio_channel": {

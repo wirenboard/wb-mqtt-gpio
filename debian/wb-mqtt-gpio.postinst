@@ -2,7 +2,7 @@
 . /etc/wb_env.sh
 wb_source "of"
 
-CONFFILE=/etc/wb-homa-gpio.conf
+CONFFILE=/etc/wb-mqtt-gpio.conf
 
 function is_installed()
 {
@@ -51,9 +51,18 @@ else
     esac
 fi
 
+if [ -f /var/lib/wb-homa-gpio/libwbmqtt.db ]; then
+    mkdir -p /var/lib/wb-mqtt-gpio
+    cp /var/lib/wb-homa-gpio/libwbmqtt.db /var/lib/wb-mqtt-gpio/libwbmqtt.db
+fi
 
-ucf --debconf-ok "/usr/share/wb-homa-gpio/wb-homa-gpio.conf.$BOARD_CONF" $CONFFILE
+if [ -f /etc/wb-homa-gpio.conf ]; then
+    cp -L /etc/wb-homa-gpio.conf $CONFFILE
+    rm -f /etc/wb-homa-gpio.conf
+fi
 
+ucf --debconf-ok "/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.$BOARD_CONF" $CONFFILE
+ln -s $CONFFILE /etc/wb-homa-gpio.conf
 
 #DEBHELPER#
 
