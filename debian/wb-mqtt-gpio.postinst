@@ -1,8 +1,12 @@
 #!/bin/bash
-. /etc/wb_env.sh
+./etc/wb_env.sh
 wb_source "of"
 
-CONFFILE=/etc/wb-mqtt-gpio.conf
+CONFFILE_NAME=wb-mqtt-gpio.conf
+CONFFILE=/etc/$CONFFILE_NAME
+
+OLD_CONFFILE_NAME=wb-homa-gpio.conf
+OLD_CONFFILE=/etc/$OLD_CONFFILE_NAME
 
 function is_installed()
 {
@@ -56,13 +60,18 @@ if [ -f /var/lib/wb-homa-gpio/libwbmqtt.db ]; then
     cp /var/lib/wb-homa-gpio/libwbmqtt.db /var/lib/wb-mqtt-gpio/libwbmqtt.db
 fi
 
-if [ -f /etc/wb-homa-gpio.conf ]; then
-    cp -L /etc/wb-homa-gpio.conf $CONFFILE
-    rm -f /etc/wb-homa-gpio.conf
+if [ -f $OLD_CONFFILE ]; then
+    if [ ! -f $CONFFILE ]; then
+        cp /usr/share/wb-mqtt-gpio/$CONFFILE_NAME.$BOARD_CONF $CONFFILE
+    fi
+    ucf --debconf-ok $OLD_CONFFILE $CONFFILE
+    cp -f $OLD_CONFFILE /usr/share/wb-mqtt-gpio/$OLD_CONFFILE_NAME.old
+    rm -f $OLD_CONFFILE
+else
+    ucf --debconf-ok /usr/share/wb-mqtt-gpio/$CONFFILE_NAME.$BOARD_CONF $CONFFILE
 fi
 
-ucf --debconf-ok "/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.$BOARD_CONF" $CONFFILE
-ln -s $CONFFILE /etc/wb-homa-gpio.conf
+ln -s $CONFFILE $OLD_CONFFILE
 
 #DEBHELPER#
 
