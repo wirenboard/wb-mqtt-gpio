@@ -3,11 +3,11 @@ Maintainer: Evgeny Boger <boger@contactless.ru>
 Section: misc
 Priority: optional
 Standards-Version: 3.9.2
-Build-Depends: debhelper (>= 9), pkg-config, g++, libjsoncpp-dev, libmosquittopp-dev, libmosquitto-dev, libwbmqtt1-dev (>= 0.1)
+Build-Depends: debhelper (>= 9), pkg-config, g++, libjsoncpp-dev, libmosquittopp-dev, libmosquitto-dev, libwbmqtt1-dev (>= 0.3)
 
 Package: wb-homa-gpio
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libjsoncpp0 | libjsoncpp1, libmosquittopp1, libmosquitto1, ucf, libwbmqtt1  (>= 0.1)
+Depends: ${shlibs:Depends}, ${misc:Depends}, libjsoncpp0 | libjsoncpp1, libmosquittopp1, libmosquitto1, ucf, libwbmqtt1  (>= 0.3)
 Breaks: wb-mqtt-confed (<< 1.0.2)
 Suggests: linux-image-wb2 (>= 4.9+wb20181227130340) | linux-image-wb6 (>= 4.9+wb20181227130340)
 Description: Wiren Board Smart Home MQTT generic sysfs GPIO driver compatible with HomA conventions

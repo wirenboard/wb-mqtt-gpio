@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
         auto start = [&]{
             {
                 lock_guard<mutex> lk(startedCvMtx);
-                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, GetConvertConfig(configFileName));
+                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, TGpioDriverConfig(configFileName, "/usr/share/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json"));
                 Utils::ClearMappingCache();
                 gpioDriver->Start();
             }

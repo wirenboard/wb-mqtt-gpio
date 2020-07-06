@@ -45,3 +45,4 @@ debian/files
 debian/debhelper-build-stamp
 debian/wb-homa-gpio.substvars
 wb-homa-gpio
+wb-mqtt-gpio-test

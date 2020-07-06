@@ -38,6 +38,17 @@ GPIO_SOURCES= 			\
 
 GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)
 
+TEST_DIR=test
+export TEST_DIR_ABS = $(shell pwd)/$(TEST_DIR)
+
+GPIO_TEST_SOURCES= 						\
+			$(TEST_DIR)/test_main.cpp	\
+			$(TEST_DIR)/config.test.cpp	\
+
+GPIO_TEST_OBJECTS=$(GPIO_TEST_SOURCES:.cpp=.o)
+TEST_BIN=wb-mqtt-gpio-test
+TEST_LIBS=-lgtest
+
 all : $(GPIO_BIN)
 
 # GPIO
@@ -47,8 +58,23 @@ all : $(GPIO_BIN)
 $(GPIO_BIN) : main.o $(GPIO_OBJECTS)
 	${CXX} $^ ${LDFLAGS} -o $@
 
+$(TEST_DIR)/$(TEST_BIN): $(GPIO_OBJECTS) $(GPIO_TEST_OBJECTS)
+	${CXX} $^ $(LDFLAGS) $(TEST_LIBS) -o $@
+
+test: $(TEST_DIR)/$(TEST_BIN)
+	rm -f $(TEST_DIR)/*.dat.out
+	if [ "$(shell arch)" = "armv7l" ]; then \
+        $(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || { $(TEST_DIR)/abt.sh show; exit 1; } \
+    else \
+		valgrind --error-exitcode=180 -q $(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || \
+		if [ $$? = 180 ]; then \
+			echo "*** VALGRIND DETECTED ERRORS ***" 1>& 2; \
+			exit 1; \
+		else $(TEST_DIR)/abt.sh show; exit 1; fi; \
+	fi
+
 clean :
-	-rm -f *.o $(GPIO_BIN)
+	-rm -f *.o $(GPIO_BIN) $(TEST_DIR)/$(TEST_BIN) $(TEST_DIR)/*.o
 
 install: all
 	install -d $(DESTDIR)

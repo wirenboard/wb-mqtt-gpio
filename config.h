@@ -18,11 +18,11 @@ struct TGpioLineConfig
     bool IsOpenDrain          = false;
     bool IsOpenSource         = false;
     bool IsActiveLow          = false;
-    std::string Name          = "";
+    std::string Name ;
     EGpioDirection Direction  = EGpioDirection::Output;
     EGpioEdge InterruptEdge   = EGpioEdge::BOTH;
-    std::string Type          = "";
-    float Multiplier;
+    std::string Type;
+    float Multiplier          = 1.0;
     int DecimalPlacesTotal    = -1;
     int DecimalPlacesCurrent  = -1;
     bool InitialState         = false;
@@ -45,7 +45,5 @@ struct TGpioDriverConfig
     std::vector<TGpioChipConfig> Chips;
 
     TGpioDriverConfig() = default;
-    explicit TGpioDriverConfig(const std::string & fileName);
+    explicit TGpioDriverConfig(const std::string & fileName, const std::string& schemaFile);
 };
-
-TGpioDriverConfig GetConvertConfig(const std::string & fileName);
