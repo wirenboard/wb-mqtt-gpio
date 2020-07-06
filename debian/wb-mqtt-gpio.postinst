@@ -1,11 +1,13 @@
 #!/bin/bash
-./etc/wb_env.sh
+. /etc/wb_env.sh
 wb_source "of"
 
-CONFFILE_NAME=wb-mqtt-gpio.conf
+APP_NAME=wb-mqtt-gpio
+CONFFILE_NAME=$APP_NAME.conf
 CONFFILE=/etc/$CONFFILE_NAME
 
-OLD_CONFFILE_NAME=wb-homa-gpio.conf
+OLD_APP_NAME=wb-homa-gpio
+OLD_CONFFILE_NAME=$OLD_APP_NAME.conf
 OLD_CONFFILE=/etc/$OLD_CONFFILE_NAME
 
 function is_installed()
@@ -55,20 +57,17 @@ else
     esac
 fi
 
-if [ -f /var/lib/wb-homa-gpio/libwbmqtt.db ]; then
-    mkdir -p /var/lib/wb-mqtt-gpio
-    cp /var/lib/wb-homa-gpio/libwbmqtt.db /var/lib/wb-mqtt-gpio/libwbmqtt.db
+if [ -f /var/lib/$OLD_APP_NAME/libwbmqtt.db ]; then
+    mkdir -p /var/lib/$APP_NAME
+    cp /var/lib/$OLD_APP_NAME/libwbmqtt.db /var/lib/$APP_NAME/libwbmqtt.db
 fi
 
 if [ -f $OLD_CONFFILE ]; then
-    if [ ! -f $CONFFILE ]; then
-        cp /usr/share/wb-mqtt-gpio/$CONFFILE_NAME.$BOARD_CONF $CONFFILE
-    fi
     ucf --debconf-ok $OLD_CONFFILE $CONFFILE
-    cp -f $OLD_CONFFILE /usr/share/wb-mqtt-gpio/$OLD_CONFFILE_NAME.old
+    cp -f $OLD_CONFFILE /usr/share/$APP_NAME/$OLD_CONFFILE_NAME.old
     rm -f $OLD_CONFFILE
 else
-    ucf --debconf-ok /usr/share/wb-mqtt-gpio/$CONFFILE_NAME.$BOARD_CONF $CONFFILE
+    ucf --debconf-ok /usr/share/$APP_NAME/$CONFFILE_NAME.$BOARD_CONF $CONFFILE
 fi
 
 ln -s $CONFFILE $OLD_CONFFILE
