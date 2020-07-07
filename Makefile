@@ -1,21 +1,3 @@
-ifeq ($(DEB_TARGET_ARCH),armel)
-CROSS_COMPILE=arm-linux-gnueabi-
-endif
-
-CXX=$(CROSS_COMPILE)g++
-CXX_PATH := $(shell which $(CROSS_COMPILE)g++-4.7)
-
-CC=$(CROSS_COMPILE)gcc
-CC_PATH := $(shell which $(CROSS_COMPILE)gcc-4.7)
-
-ifneq ($(CXX_PATH),)
-	CXX=$(CROSS_COMPILE)g++-4.7
-endif
-
-ifneq ($(CC_PATH),)
-	CC=$(CROSS_COMPILE)gcc-4.7
-endif
-
 DEBUG_CFLAGS=-Wall -ggdb -rdynamic -std=c++14 -O0 -I.
 RELEASE_CFLAGS=-Wall -DNDEBUG -std=c++14 -Os -I.
 TESTING_CFLAGS=-Wall -std=c++14 -Os -I.	# release with asserts
@@ -30,11 +12,12 @@ GPIO_SOURCES= 			\
   gpio_chip.cpp 		\
   gpio_line.cpp 		\
   gpio_counter.cpp		\
-  config.cpp 			\
-  utils.cpp 			\
-  types.cpp 			\
-  log.cpp 				\
-  exceptions.cpp
+  utils.cpp 		\
+  types.cpp 		\
+  log.cpp 			\
+  exceptions.cpp	\
+  config.cpp		\
+  file_utils.cpp
 
 GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)
 

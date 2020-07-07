@@ -1,14 +1,12 @@
+#include "config.h"
 #include "gpio_driver.h"
 #include "log.h"
-#include "config.h"
-#include "exceptions.h"
 #include "utils.h"
 
-#include <wblib/wbmqtt.h>
 #include <wblib/signal_handling.h>
+#include <wblib/wbmqtt.h>
 
 #include <getopt.h>
-
 
 using namespace std;
 
@@ -16,98 +14,72 @@ using PGpioDriver = unique_ptr<TGpioDriver>;
 
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
-const auto WBMQTT_DB_FILE = "/var/lib/wb-homa-gpio/libwbmqtt.db";
+const auto WBMQTT_DB_FILE             = "/var/lib/wb-homa-gpio/libwbmqtt.db";
 const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(5);
 const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(5); // topic cleanup can take a lot of time
 
-
-int main(int argc, char *argv[])
+namespace
 {
-    WBMQTT::TMosquittoMqttConfig mqttConfig {};
-    mqttConfig.Id = TGpioDriver::Name;
+    void PrintUsage()
+    {
+        cout << "Usage:" << endl
+             << " wb-homa-gpio [options]" << endl
+             << "Options:" << endl
+             << "  -d level     enable debuging output:" << endl
+             << "                 1 - gpio only;" << endl
+             << "                 2 - mqtt only;" << endl
+             << "                 3 - both;" << endl
+             << "                 negative values - silent mode (-1, -2, -3))" << endl
+             << "  -c config    config file" << endl
+             << "  -p port      MQTT broker port (default: 1883)" << endl
+             << "  -h IP        MQTT broker IP (default: localhost)" << endl
+             << "  -u user      MQTT user (optional)" << endl
+             << "  -P password  MQTT user password (optional)" << endl
+             << "  -T prefix    MQTT topic prefix (optional)" << endl;
+    }
 
-    string configFileName;
-    WBMQTT::TPromise<void> initialized;
+    void ParseCommadLine(int                           argc,
+                         char*                         argv[],
+                         WBMQTT::TMosquittoMqttConfig& mqttConfig,
+                         string&                       customConfig)
+    {
+        int debugLevel = 0;
+        int c;
 
-    WBMQTT::SetThreadName("main");
-    WBMQTT::SignalHandling::Handle({ SIGINT, SIGTERM, SIGHUP });
-    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
-        WBMQTT::SignalHandling::Stop();
-    });
-
-    /* if signal arrived before driver is initialized:
-        wait some time to initialize and then exit gracefully
-        else if timed out: exit with error
-    */
-    WBMQTT::SignalHandling::SetWaitFor(GPIO_DRIVER_INIT_TIMEOUT_S, initialized.GetFuture(), [&]{
-        LOG(Error) << "Driver takes too long to initialize. Exiting.";
-        exit(1);
-    });
-
-    /* if handling of signal takes too much time: exit with error */
-    WBMQTT::SignalHandling::SetOnTimeout(GPIO_DRIVER_STOP_TIMEOUT_S, [&]{
-        LOG(Error) << "Driver takes too long to stop. Exiting.";
-        exit(2);
-    });
-    WBMQTT::SignalHandling::Start();
-
-    int c, debug = 0;
-    //~ int digit_optind = 0;
-    //~ int aopt = 0, bopt = 0;
-    //~ char *copt = 0, *dopt = 0;
-    while ( (c = getopt(argc, argv, "c:h:p:d:T:u:P:")) != -1) {
-        //~ int this_option_optind = optind ? optind : 1;
-        switch (c) {
-            case 'c':
-                printf ("option c with value '%s'\n", optarg);
-                configFileName = optarg;
+        while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:")) != -1) {
+            switch (c) {
+            case 'd':
+                debugLevel = stoi(optarg);
                 break;
-
+            case 'c':
+                customConfig = optarg;
+                break;
             case 'p':
-                printf ("option p with value '%s'\n", optarg);
                 mqttConfig.Port = stoi(optarg);
                 break;
-
             case 'h':
-                printf ("option h with value '%s'\n", optarg);
                 mqttConfig.Host = optarg;
                 break;
-
             case 'T':
-                printf ("option T with value '%s'\n", optarg);
                 mqttConfig.Prefix = optarg;
                 break;
-
             case 'u':
-                printf ("option u with value '%s'\n", optarg);
                 mqttConfig.User = optarg;
                 break;
-
             case 'P':
-                printf ("option P with value '%s'\n", optarg);
                 mqttConfig.Password = optarg;
                 break;
 
-            case 'd':
-                printf ("option d with value '%s'\n", optarg);
-                debug = stoi(optarg);
-                break;
-
             case '?':
-                break;
-
             default:
-                printf ("?? Getopt returned character code 0%o ??\n", c);
+                PrintUsage();
+                exit(2);
+            }
         }
-    }
-    //~ if (optind < argc) {
-    //~ printf ("non-option ARGV-elements: ");
-    //~ while (optind < argc)
-    //~ printf ("%s ", argv[optind++]);
-    //~ printf ("\n");
-    //~ }
 
-    switch(debug) {
+        switch (debugLevel) {
+        case 0:
+            break;
         case -1:
             Info.SetEnabled(false);
             break;
@@ -135,24 +107,59 @@ int main(int argc, char *argv[])
             break;
 
         default:
-            break;
-    }
+            cout << "Invalid -d parameter value " << debugLevel << endl;
+            PrintUsage();
+            exit(2);
+        }
 
-    if (configFileName.empty()) {
-        LOG(Error) << "Please specify config file with -c option";
-        return 1;
+        if (optind < argc) {
+            for (int index = optind; index < argc; ++index) {
+                cout << "Skipping unknown argument " << argv[index] << endl;
+            }
+        }
     }
+} // namespace
 
-    auto mqttDriver = WBMQTT::NewDriver(WBMQTT::TDriverArgs{}
-        .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
-        .SetId(mqttConfig.Id)
-        .SetUseStorage(true)
-        .SetReownUnknownDevices(true)
-        .SetStoragePath(WBMQTT_DB_FILE)
-    );
+int main(int argc, char* argv[])
+{
+    WBMQTT::TMosquittoMqttConfig mqttConfig{};
+    mqttConfig.Id = TGpioDriver::Name;
+
+    string                 configFileName;
+    WBMQTT::TPromise<void> initialized;
+
+    WBMQTT::SetThreadName("main");
+    WBMQTT::SignalHandling::Handle({SIGINT, SIGTERM, SIGHUP});
+    WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&] { WBMQTT::SignalHandling::Stop(); });
+
+    /* if signal arrived before driver is initialized:
+        wait some time to initialize and then exit gracefully
+        else if timed out: exit with error
+    */
+    WBMQTT::SignalHandling::SetWaitFor(GPIO_DRIVER_INIT_TIMEOUT_S, initialized.GetFuture(), [&] {
+        LOG(Error) << "Driver takes too long to initialize. Exiting.";
+        exit(1);
+    });
+
+    /* if handling of signal takes too much time: exit with error */
+    WBMQTT::SignalHandling::SetOnTimeout(GPIO_DRIVER_STOP_TIMEOUT_S, [&] {
+        LOG(Error) << "Driver takes too long to stop. Exiting.";
+        exit(2);
+    });
+    WBMQTT::SignalHandling::Start();
+
+    ParseCommadLine(argc, argv, mqttConfig, configFileName);
+
+    auto mqttDriver = WBMQTT::NewDriver(
+        WBMQTT::TDriverArgs{}
+            .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
+            .SetId(mqttConfig.Id)
+            .SetUseStorage(true)
+            .SetReownUnknownDevices(true)
+            .SetStoragePath(WBMQTT_DB_FILE));
 
     mqttDriver->StartLoop();
-    WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, [&]{
+    WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&] {
         mqttDriver->StopLoop();
         mqttDriver->Close();
     });
@@ -160,23 +167,27 @@ int main(int argc, char *argv[])
     mqttDriver->WaitForReady();
 
     try {
-        PGpioDriver         gpioDriver;
-        condition_variable  startedCv;
-        mutex               startedCvMtx;
+        PGpioDriver        gpioDriver;
+        condition_variable startedCv;
+        mutex              startedCvMtx;
 
-        auto start = [&]{
+        auto start = [&] {
             {
                 lock_guard<mutex> lk(startedCvMtx);
-                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, TGpioDriverConfig(configFileName, "/usr/share/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json"));
+                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(
+                    mqttDriver,
+                    LoadConfig("/etc/wb-homa-gpio.conf",
+                               configFileName,
+                               "/usr/share/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json"));
                 Utils::ClearMappingCache();
                 gpioDriver->Start();
             }
             startedCv.notify_all();
         };
 
-        auto stop = [&]{
+        auto stop = [&] {
             unique_lock<mutex> lk(startedCvMtx);
-            startedCv.wait(lk, [&]{ return bool(gpioDriver); });
+            startedCv.wait(lk, [&] { return bool(gpioDriver); });
             gpioDriver->Stop();
             gpioDriver->Clear();
             gpioDriver.reset();
@@ -184,20 +195,17 @@ int main(int argc, char *argv[])
 
         start();
 
-        WBMQTT::SignalHandling::OnSignal(SIGHUP, [&]{
+        WBMQTT::SignalHandling::OnSignal(SIGHUP, [&] {
             LOG(Info) << "Reloading config...";
             stop();
             start();
         });
 
-        WBMQTT::SignalHandling::OnSignals({ SIGINT, SIGTERM }, stop);
+        WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, stop);
 
         initialized.Complete();
         WBMQTT::SignalHandling::Wait();
-    } catch (const TGpioDriverException & e) {
-        LOG(Error) << "FATAL: " << e.what();
-        return 1;
-    } catch (const WBMQTT::TBaseException & e) {
+    } catch (const std::exception& e) {
         LOG(Error) << "FATAL: " << e.what();
         return 1;
     }

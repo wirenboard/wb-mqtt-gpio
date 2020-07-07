@@ -11,6 +11,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <cassert>
+#include <set>
 
 #define LOG(logger) ::logger.Log() << "[utils] "
 
