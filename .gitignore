@@ -49,3 +49,4 @@ debian/wb-homa-gpio.substvars
 wb-mqtt-gpio
 wb-mqtt-gpio-test
 *.substvars
+.clang-format
