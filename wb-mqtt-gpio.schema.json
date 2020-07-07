@@ -49,7 +49,7 @@
                         {
                             "type": "integer",
                             "title": "(deprecated) GPIO number",
-                            "minimum": 1,
+                            "minimum": 0,
                             "propertyOrder": 2
                         }
                     ]
