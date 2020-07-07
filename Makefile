@@ -4,7 +4,7 @@ TESTING_CFLAGS=-Wall -std=c++14 -Os -I.	# release with asserts
 CFLAGS=$(if $(DEBUG), $(DEBUG_CFLAGS), $(if $(TESTING), $(TESTING_CFLAGS), $(RELEASE_CFLAGS)))
 LDFLAGS= -ljsoncpp -lwbmqtt1 -lpthread
 
-GPIO_BIN=wb-homa-gpio
+GPIO_BIN=wb-mqtt-gpio
 
 GPIO_SOURCES= 			\
   gpio_driver.cpp		\
@@ -61,31 +61,29 @@ clean :
 
 install: all
 	install -d $(DESTDIR)/usr/bin
-	install -d $(DESTDIR)/usr/lib
-	install -d $(DESTDIR)/usr/share/wb-homa-gpio
-	install -d $(DESTDIR)/usr/share/wb-mqtt-confed
+	install -d $(DESTDIR)/usr/share/wb-mqtt-gpio
 	install -d $(DESTDIR)/usr/share/wb-mqtt-confed/schemas
-	install -d $(DESTDIR)/var/lib/wb-homa-gpio
+	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio
 	install -d $(DESTDIR)/etc/wb-configs.d
 
-	install -m 0644  config.json.devicetree $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.devicetree
-	install -m 0644  config.json.wb52 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb52
-	install -m 0644  config.json.wb55 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb55
-	install -m 0644  config.json.wb58 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb58
-	install -m 0644  config.json.wb60 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb60
-	install -m 0644  config.json.wb61 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wb61
-	install -m 0644  config.json.wbsh5 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wbsh5
-	install -m 0644  config.json.wbsh4 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wbsh4
-	install -m 0644  config.json.wbsh3 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.wbsh3
-	install -m 0644  config.json.default $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.default
-	install -m 0644  config.json.mka3 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.mka3
-	install -m 0644  config.json.cqc10 $(DESTDIR)/usr/share/wb-homa-gpio/wb-homa-gpio.conf.cqc10
+	install -m 0644  config.json.devicetree $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.devicetree
+	install -m 0644  config.json.wb52 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb52
+	install -m 0644  config.json.wb55 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb55
+	install -m 0644  config.json.wb58 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb58
+	install -m 0644  config.json.wb60 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb60
+	install -m 0644  config.json.wb61 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb61
+	install -m 0644  config.json.wbsh5 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh5
+	install -m 0644  config.json.wbsh4 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh4
+	install -m 0644  config.json.wbsh3 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh3
+	install -m 0644  config.json.default $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.default
+	install -m 0644  config.json.mka3 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.mka3
+	install -m 0644  config.json.cqc10 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.cqc10
 
 	install -m 0755  $(GPIO_BIN) $(DESTDIR)/usr/bin/$(GPIO_BIN)
 	install -m 0755  generate-system-config.sh $(DESTDIR)/usr/lib/wb-mqtt-gpio/generate-system-config.sh
 
-	install -m 0644  wb-homa-gpio.schema.json $(DESTDIR)/usr/share/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json
-	install -m 0644  wb-homa-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-homa-gpio
+	install -m 0644  wb-mqtt-gpio.schema.json $(DESTDIR)/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
+	install -m 0644  wb-mqtt-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-mqtt-gpio
 
 
 .PHONY: all clean

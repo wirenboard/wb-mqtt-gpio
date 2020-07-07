@@ -21,7 +21,7 @@
 
 using namespace std;
 
-const auto CONSUMER = "wb-homa-gpio";
+const auto CONSUMER = "wb-mqtt-gpio";
 
 
 namespace

@@ -14,7 +14,7 @@ using PGpioDriver = unique_ptr<TGpioDriver>;
 
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
-const auto WBMQTT_DB_FILE             = "/var/lib/wb-homa-gpio/libwbmqtt.db";
+const auto WBMQTT_DB_FILE             = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
 const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(5);
 const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(5); // topic cleanup can take a lot of time
 
