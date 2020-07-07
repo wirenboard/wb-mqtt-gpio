@@ -1,10 +1,10 @@
 #include "config.h"
+#include "exceptions.h"
 #include "file_utils.h"
 #include "gpio_chip.h"
 #include "gpio_line.h"
 #include "log.h"
 #include "utils.h"
-#include "exceptions.h"
 
 #include <wblib/json_utils.h>
 #include <wblib/utils.h>
@@ -51,6 +51,8 @@ namespace
                      "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
                          chipConfig->Path + "'");
         }
+
+        chipConfig->Lines.push_back(line);
     }
 
     TGpioDriverConfig LoadFromJSON(const Json::Value& root, const Json::Value& schema)
@@ -117,7 +119,6 @@ namespace
     void Append(const TGpioDriverConfig& src, TGpioDriverConfig& dst)
     {
         dst.DeviceName = src.DeviceName;
-
         for (const auto& v : src.Chips) {
             for (const auto& line : v.Lines) {
                 AppendLine(dst, v.Path, line);
@@ -140,11 +141,11 @@ TGpioDriverConfig LoadConfig(const string& mainConfigFile,
     TGpioDriverConfig cfg;
     try {
         IterateDirByPattern(mainConfigFile + ".d", ".conf", [&](const string& f) {
-            Append(LoadFromJSON(f, noDeviceNameShema), cfg);
+            Append(LoadFromJSON(Parse(f), noDeviceNameShema), cfg);
             return false;
         });
     } catch (const TNoDirError&) {
     }
-    Append(LoadFromJSON(mainConfigFile, shema), cfg);
+    Append(LoadFromJSON(Parse(mainConfigFile), shema), cfg);
     return cfg;
 }

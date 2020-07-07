@@ -72,5 +72,7 @@ fi
 
 ln -s $CONFFILE $OLD_CONFFILE
 
+deb-systemd-helper enable wb-mqtt-gpio.service >/dev/null || true
+
 #DEBHELPER#
 

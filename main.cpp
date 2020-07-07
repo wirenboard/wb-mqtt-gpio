@@ -23,7 +23,7 @@ namespace
     void PrintUsage()
     {
         cout << "Usage:" << endl
-             << " wb-homa-gpio [options]" << endl
+             << " wb-mqtt-gpio [options]" << endl
              << "Options:" << endl
              << "  -d level     enable debuging output:" << endl
              << "                 1 - gpio only;" << endl
@@ -176,9 +176,9 @@ int main(int argc, char* argv[])
                 lock_guard<mutex> lk(startedCvMtx);
                 gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(
                     mqttDriver,
-                    LoadConfig("/etc/wb-homa-gpio.conf",
+                    LoadConfig("/etc/wb-mqtt-gpio.conf",
                                configFileName,
-                               "/usr/share/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json"));
+                               "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json"));
                 Utils::ClearMappingCache();
                 gpioDriver->Start();
             }

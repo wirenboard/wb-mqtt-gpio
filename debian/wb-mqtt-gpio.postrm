@@ -14,6 +14,7 @@ if [ "$1" = "purge" ]; then
         rm -f $CONFFILE
         rm -f $OLD_CONFFILE
         rm -r -f /var/lib/wb-mqtt-gpio
+        rm -f $CONFFILE.d/*
     fi
 fi
 
@@ -26,3 +27,8 @@ fi
 
 #DEBHELPER#
 
+if [ "$1" = "remove" ]; then
+	if [ -x "/usr/bin/deb-systemd-helper" ]; then
+		deb-systemd-helper purge wb-mqtt-gpio.service >/dev/null
+	fi
+fi
