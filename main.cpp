@@ -126,6 +126,8 @@ int main(int argc, char* argv[])
     mqttConfig.Id = TGpioDriver::Name;
 
     string                 configFileName;
+    ParseCommadLine(argc, argv, mqttConfig, configFileName);
+
     WBMQTT::TPromise<void> initialized;
 
     WBMQTT::SetThreadName("main");
@@ -147,8 +149,6 @@ int main(int argc, char* argv[])
         exit(2);
     });
     WBMQTT::SignalHandling::Start();
-
-    ParseCommadLine(argc, argv, mqttConfig, configFileName);
 
     auto mqttDriver = WBMQTT::NewDriver(
         WBMQTT::TDriverArgs{}
