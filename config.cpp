@@ -10,10 +10,9 @@
 #include <wblib/utils.h>
 
 #include <algorithm>
-#include <cassert>
 #include <fstream>
 #include <iostream>
-#include <string.h>
+#include <unordered_set>
 
 #define LOG(logger) ::logger.Log() << "[config] "
 
@@ -23,24 +22,65 @@ using namespace WBMQTT::JSON;
 
 namespace
 {
-    void AppendLine(TGpioDriverConfig& cfg, const std::string& path, const TGpioLineConfig& line)
+    ostream& operator<<(ostream& ss, const TGpioLineConfig& line)
     {
+        ss << "    Offset: " << line.Offset << endl
+           << "    IsOpenDrain: " << line.IsOpenDrain << endl
+           << "    IsOpenSource: " << line.IsOpenSource << endl
+           << "    IsActiveLow: " << line.IsActiveLow << endl
+           << "    Direction: " << (line.Direction == EGpioDirection::Input ? "input" : "output") << endl
+           << "    InterruptEdge: " << GpioEdgeToString(line.InterruptEdge) << endl 
+           << "    Type: " << line.Type << endl
+           << "    Multiplier: " << line.Multiplier << endl
+           << "    DecimalPlacesTotal: " << line.DecimalPlacesTotal << endl
+           << "    DecimalPlacesCurrent: " << line.DecimalPlacesCurrent << endl
+           << "    InitialState: " << line.InitialState << endl;
+        return ss;
+    }
+
+    void RemoveDuplicateLine(TGpioDriverConfig&     cfg,
+                             const std::string&     gpioChipPath,
+                             const TGpioLineConfig& line,
+                             unordered_set<string>& lineNames)
+    {
+        if (!lineNames.count(line.Name)) {
+            return;
+        }
+        for (auto& chip : cfg.Chips) {
+            auto itLine = find_if(chip.Lines.begin(), chip.Lines.end(), [&](const auto& l) {
+                return l.Name == line.Name;
+            });
+            if (itLine != chip.Lines.end()) {
+                stringstream ss;
+                ss << "duplicate GPIO name : '" << line.Name << "'" << endl
+                   << "  old settings:" << endl
+                   << "    Chip: " << chip.Path << endl
+                   << (*itLine)
+                   << "  new settings:" << endl
+                   << "    Chip: " << gpioChipPath << endl
+                   << line;
+
+                LOG(Warn) << ss.str();
+                chip.Lines.erase(itLine);
+                return;
+            }
+        }
+    }
+
+    void AppendLine(TGpioDriverConfig&     cfg,
+                    const std::string&     gpioChipPath,
+                    const TGpioLineConfig& line,
+                    unordered_set<string>& lineNames)
+    {
+        RemoveDuplicateLine(cfg, gpioChipPath, line, lineNames);
+
         auto chipConfig = find_if(cfg.Chips.begin(), cfg.Chips.end(), [&](const auto& c) {
-            return c.Path == path;
+            return c.Path == gpioChipPath;
         });
         if (chipConfig == cfg.Chips.end()) {
-            cfg.Chips.emplace_back(path);
+            cfg.Chips.emplace_back(gpioChipPath);
             chipConfig = cfg.Chips.end();
             --chipConfig;
-        }
-
-        auto itName = find_if(chipConfig->Lines.begin(), chipConfig->Lines.end(), [&](const auto& l) {
-            return l.Name == line.Name;
-        });
-        if (itName != chipConfig->Lines.end()) {
-            wb_throw(TGpioDriverException,
-                     "duplicate GPIO name in config: '" + line.Name + "' at chip '" +
-                         chipConfig->Path + "'");
         }
 
         auto itLine = find_if(chipConfig->Lines.begin(), chipConfig->Lines.end(), [&](const auto& l) {
@@ -53,9 +93,12 @@ namespace
         }
 
         chipConfig->Lines.push_back(line);
+        lineNames.emplace(line.Name);
     }
 
-    TGpioDriverConfig LoadFromJSON(const Json::Value& root, const Json::Value& schema)
+    TGpioDriverConfig LoadFromJSON(const Json::Value&     root,
+                                   const Json::Value&     schema,
+                                   unordered_set<string>& lineNames)
     {
         Validate(root, schema);
 
@@ -100,7 +143,7 @@ namespace
             if (channel.isMember("edge"))
                 EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
 
-            AppendLine(cfg, path, lineConfig);
+            AppendLine(cfg, path, lineConfig, lineNames);
         }
         return cfg;
     }
@@ -116,14 +159,51 @@ namespace
         shema["required"] = newArray;
     }
 
-    void Append(const TGpioDriverConfig& src, TGpioDriverConfig& dst)
+    void Append(const TGpioDriverConfig& src,
+                TGpioDriverConfig&       dst,
+                unordered_set<string>&   lineNames)
     {
         dst.DeviceName = src.DeviceName;
         for (const auto& v : src.Chips) {
             for (const auto& line : v.Lines) {
-                AppendLine(dst, v.Path, line);
+                AppendLine(dst, v.Path, line, lineNames);
             }
         }
+    }
+
+    template <class T, class Pred> void erase_if(T& c, Pred pred)
+    {
+        c.erase(std::remove_if(c.begin(), c.end(), pred), c.end());
+    }
+
+    void RemoveUnusedChips(TGpioDriverConfig& cfg)
+    {
+        erase_if(cfg.Chips, [](const auto& c) { return c.Lines.empty(); });
+    }
+
+    TGpioDriverConfig LoadConfigInternal(const string& mainConfigFile,
+                                         const string& optionalConfigFile,
+                                         const string& shemaFile)
+    {
+        Json::Value shema = Parse(shemaFile);
+
+        unordered_set<string> lineNames;
+
+        if (!optionalConfigFile.empty())
+            return LoadFromJSON(Parse(optionalConfigFile), shema, lineNames);
+
+        Json::Value noDeviceNameShema = shema;
+        RemoveDeviceNameRequirement(noDeviceNameShema);
+        TGpioDriverConfig cfg;
+        try {
+            IterateDirByPattern(mainConfigFile + ".d", ".conf", [&](const string& f) {
+                Append(LoadFromJSON(Parse(f), noDeviceNameShema, lineNames), cfg, lineNames);
+                return false;
+            });
+        } catch (const TNoDirError&) {
+        }
+        Append(LoadFromJSON(Parse(mainConfigFile), shema, lineNames), cfg, lineNames);
+        return cfg;
     }
 } // namespace
 
@@ -131,21 +211,7 @@ TGpioDriverConfig LoadConfig(const string& mainConfigFile,
                              const string& optionalConfigFile,
                              const string& shemaFile)
 {
-    Json::Value shema = Parse(shemaFile);
-
-    if (!optionalConfigFile.empty())
-        return LoadFromJSON(Parse(optionalConfigFile), shema);
-
-    Json::Value noDeviceNameShema = shema;
-    RemoveDeviceNameRequirement(noDeviceNameShema);
-    TGpioDriverConfig cfg;
-    try {
-        IterateDirByPattern(mainConfigFile + ".d", ".conf", [&](const string& f) {
-            Append(LoadFromJSON(Parse(f), noDeviceNameShema), cfg);
-            return false;
-        });
-    } catch (const TNoDirError&) {
-    }
-    Append(LoadFromJSON(Parse(mainConfigFile), shema), cfg);
+    TGpioDriverConfig cfg(LoadConfigInternal(mainConfigFile, optionalConfigFile, shemaFile));
+    RemoveUnusedChips(cfg);
     return cfg;
 }
