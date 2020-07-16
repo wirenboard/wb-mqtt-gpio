@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.0.3) unstable; urgency=medium
+
+  * use settings from wb-mqtt-gpio.conf if they override those from conf.d folder
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 16 Jul 2020 17:22:01 +0500
+
 wb-mqtt-gpio (2.0.2) unstable; urgency=medium
 
   * port to systemd
