@@ -7,7 +7,7 @@ Build-Depends: debhelper (>= 10), pkg-config, libjsoncpp-dev, libmosquittopp-dev
 
 Package: wb-mqtt-gpio
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libjsoncpp0 | libjsoncpp1, libmosquittopp1, libmosquitto1, ucf, libwbmqtt1  (>= 0.3)
+Depends: ${shlibs:Depends}, ${misc:Depends}, libjsoncpp0 | libjsoncpp1, libmosquittopp1, libmosquitto1, ucf, libwbmqtt1  (>= 0.3), wb-configs (>= 1.82.2)
 Breaks: wb-mqtt-confed (<< 1.0.2), wb-homa-gpio (<< 2.0.1)
 Replaces: wb-homa-gpio (<< 2.0.1)
 Conflicts: wb-homa-gpio (<< 2.0.1)
@@ -15,7 +15,7 @@ Suggests: linux-image-wb2 (>= 4.9+wb20181227130340) | linux-image-wb6 (>= 4.9+wb
 Description: Wiren Board Smart Home MQTT generic sysfs GPIO driver compatible with HomA conventions
 
 Package: wb-homa-gpio
-Depends: wb-mqtt-gpio, ${misc:Depends}
+Depends: wb-mqtt-gpio (= ${source:Version}), ${misc:Depends}
 Architecture: all
 Priority: extra
 Section: oldlibs
