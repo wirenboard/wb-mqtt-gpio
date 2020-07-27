@@ -1,4 +1,5 @@
 #!/bin/sh
+rm -f /etc/wb-configs.d/13wb-homa-gpio
 rm -f /etc/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
 rm -f /etc/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json
 if [ -d /etc/wb-mqtt-confed ]; then
