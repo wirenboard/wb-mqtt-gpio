@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SYS_CONFFILE="/etc/wb-mqtt-gpio.conf.d/system.conf"
+SYS_CONFFILE="/var/lib/wb-mqtt-gpio/conf.d/system.conf"
 
 if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
     source "/usr/lib/wb-utils/common.sh"

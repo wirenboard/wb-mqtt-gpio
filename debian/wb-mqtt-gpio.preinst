@@ -2,6 +2,7 @@
 rm -f /etc/wb-configs.d/13wb-homa-gpio
 rm -f /etc/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
 rm -f /etc/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json
+rm -f /etc/wb-mqtt-gpio.conf.d/*
 if [ -d /etc/wb-mqtt-confed ]; then
    if [ -d /etc/wb-mqtt-confed/schemas ]; then
       rmdir --ignore-fail-on-non-empty /etc/wb-mqtt-confed/schemas

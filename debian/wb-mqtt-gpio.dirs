@@ -1,2 +1,1 @@
-var/lib/wb-mqtt-gpio
-etc/wb-mqtt-gpio.conf.d
+var/lib/wb-mqtt-gpio/conf.d

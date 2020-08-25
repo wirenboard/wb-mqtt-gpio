@@ -71,8 +71,7 @@ clean :
 	-rm -f *.o $(GPIO_BIN) $(TEST_DIR)/$(TEST_BIN) $(TEST_DIR)/*.o
 
 install: all
-	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio
-	install -d $(DESTDIR)/etc/wb-mqtt-gpio.conf.d
+	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio/conf.d
 
 	install -D -m 0644  config.json.devicetree $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.devicetree
 	install -D -m 0644  config.json.wb52 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb52

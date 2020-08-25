@@ -14,7 +14,6 @@ if [ "$1" = "purge" ]; then
         rm -f $CONFFILE
         rm -f $OLD_CONFFILE
         rm -r -f /var/lib/wb-mqtt-gpio
-        rm -f $CONFFILE.d/*
     fi
 fi
 
