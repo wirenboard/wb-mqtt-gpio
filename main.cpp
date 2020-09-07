@@ -178,6 +178,7 @@ int main(int argc, char* argv[])
                     mqttDriver,
                     LoadConfig("/etc/wb-mqtt-gpio.conf",
                                configFileName,
+                               "/var/lib/wb-mqtt-gpio/conf.d",
                                "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json"));
                 Utils::ClearMappingCache();
                 gpioDriver->Start();

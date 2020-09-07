@@ -42,6 +42,18 @@ struct TGpioDriverConfig
     std::vector<TGpioChipConfig> Chips;
 };
 
+/**
+ * @brief Load configuration from config files. Throws TBadConfigError on validation error.
+ *
+ * @param mainConfigFile - path and name of a main config file.
+ * It will be loaded if optional config file is empty.
+ * @param optionalConfigFile - path and name of an optional config file. It will be loaded instead
+ * of all other config files
+ * @param systemConfigsDir - folder with system generated config files. 
+ * They will be loaded if optional config file is empty.
+ * @param schemaFile - path and name of a file with JSONSchema for configs
+ */
 TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& optionalConfigFile,
+                             const std::string& systemConfigsDir,
                              const std::string& schemaFile);

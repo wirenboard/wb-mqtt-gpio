@@ -28,8 +28,9 @@ namespace
            << "    IsOpenDrain: " << line.IsOpenDrain << endl
            << "    IsOpenSource: " << line.IsOpenSource << endl
            << "    IsActiveLow: " << line.IsActiveLow << endl
-           << "    Direction: " << (line.Direction == EGpioDirection::Input ? "input" : "output") << endl
-           << "    InterruptEdge: " << GpioEdgeToString(line.InterruptEdge) << endl 
+           << "    Direction: " << (line.Direction == EGpioDirection::Input ? "input" : "output")
+           << endl
+           << "    InterruptEdge: " << GpioEdgeToString(line.InterruptEdge) << endl
            << "    Type: " << line.Type << endl
            << "    Multiplier: " << line.Multiplier << endl
            << "    DecimalPlacesTotal: " << line.DecimalPlacesTotal << endl
@@ -55,8 +56,7 @@ namespace
                 ss << "duplicate GPIO name : '" << line.Name << "'" << endl
                    << "  old settings:" << endl
                    << "    Chip: " << chip.Path << endl
-                   << (*itLine)
-                   << "  new settings:" << endl
+                   << (*itLine) << "  new settings:" << endl
                    << "    Chip: " << gpioChipPath << endl
                    << line;
 
@@ -181,9 +181,10 @@ namespace
         erase_if(cfg.Chips, [](const auto& c) { return c.Lines.empty(); });
     }
 
-    TGpioDriverConfig LoadConfigInternal(const string& mainConfigFile,
-                                         const string& optionalConfigFile,
-                                         const string& schemaFile)
+    TGpioDriverConfig LoadConfigInternal(const std::string& mainConfigFile,
+                                         const std::string& optionalConfigFile,
+                                         const std::string& systemConfigsDir,
+                                         const std::string& schemaFile)
     {
         Json::Value schema = Parse(schemaFile);
 
@@ -196,7 +197,7 @@ namespace
         RemoveDeviceNameRequirement(noDeviceNameSchema);
         TGpioDriverConfig cfg;
         try {
-            IterateDirByPattern(mainConfigFile + ".d", ".conf", [&](const string& f) {
+            IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
                 Append(LoadFromJSON(Parse(f), noDeviceNameSchema, lineNames), cfg, lineNames);
                 return false;
             });
@@ -207,11 +208,13 @@ namespace
     }
 } // namespace
 
-TGpioDriverConfig LoadConfig(const string& mainConfigFile,
-                             const string& optionalConfigFile,
-                             const string& schemaFile)
+TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
+                             const std::string& optionalConfigFile,
+                             const std::string& systemConfigsDir,
+                             const std::string& schemaFile)
 {
-    TGpioDriverConfig cfg(LoadConfigInternal(mainConfigFile, optionalConfigFile, schemaFile));
+    TGpioDriverConfig cfg(
+        LoadConfigInternal(mainConfigFile, optionalConfigFile, systemConfigsDir, schemaFile));
     RemoveUnusedChips(cfg);
     return cfg;
 }
