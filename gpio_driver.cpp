@@ -108,12 +108,24 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                         }
                     }
                 } else {
-                    futureControl = device->CreateControl(tx, TControlArgs{}
-                        .SetId(lineConfig.Name)
-                        .SetType("switch")
-                        .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
-                        .SetUserData(line)
-                    );
+                    if (lineConfig.Direction == EGpioDirection::Input) {
+                        futureControl = device->CreateControl(tx, TControlArgs{}
+                            .SetId(lineConfig.Name)
+                            .SetType("switch")
+                            .SetReadonly(true)
+                            .SetUserData(line)
+                        );
+                    } else {
+                        futureControl = device->CreateControl(tx, TControlArgs{}
+                            .SetId(lineConfig.Name)
+                            .SetType("switch")
+                            .SetReadonly(false)
+                            .SetUserData(line)
+                            .SetRawValue(lineConfig.InitialState ? "1" : "0")
+                            .SetDoLoadPrevious(true)
+                        );
+                        line->SetValue(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
+                    }
                 }
 
                 ++lineNumber;

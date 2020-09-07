@@ -1,9 +1,53 @@
-wb-homa-gpio (2.0) UNRELEASED; urgency=medium
+wb-mqtt-gpio (2.0.7) unstable; urgency=medium
+
+  * move system config to /var/lib/wb-mqtt-gpio/conf.d folder
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 25 Aug 2020 16:41:01 +0500
+
+wb-mqtt-gpio (2.0.6) unstable; urgency=medium
+
+  * restore outputs state after device reset
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 18 Aug 2020 15:10:01 +0300
+
+wb-mqtt-gpio (2.0.5) unstable; urgency=medium
+
+  * remove old config backuping instructions from wb-configs
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Mon, 27 Jul 2020 09:09:01 +0500
+
+wb-mqtt-gpio (2.0.4) unstable; urgency=medium
+
+  * fix wrong configs links after device reset
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 20 Jul 2020 16:22:01 +0500
+
+wb-mqtt-gpio (2.0.3) unstable; urgency=medium
+
+  * use settings from wb-mqtt-gpio.conf if they override those from conf.d folder
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 16 Jul 2020 17:22:01 +0500
+
+wb-mqtt-gpio (2.0.2) unstable; urgency=medium
+
+  * port to systemd
+  * support for settings in /etc/wb-mqtt-gpio.conf.d folder
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 07 Jul 2020 11:57:01 +0500
+
+wb-mqtt-gpio (2.0.1) UNRELEASED; urgency=medium
+
+  * rename to wb-mqtt-gpio
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 02 Jul 2020 15:17:01 +0500
+
+wb-homa-gpio (2.0.0) UNRELEASED; urgency=medium
 
   * reimplemented driver on new character device GPIO API
   * new libwbmqtt
 
  -- Islam Boziev <i.boziev@wirenboard.ru>  Wed, 04 Apr 2018 15:01:21 +0300
+
 wb-homa-gpio (1.19.5) stable; urgency=medium
 
   * use jq 1.4 present on wheezy

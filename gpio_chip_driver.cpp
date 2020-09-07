@@ -21,20 +21,21 @@
 
 using namespace std;
 
-const auto CONSUMER = "wb-homa-gpio";
+const auto CONSUMER = "wb-mqtt-gpio";
 
 
 namespace
 {
-    uint32_t GetFlagsFromConfig(const TGpioLineConfig & config)
+    uint32_t GetFlagsFromConfig(const TGpioLineConfig & config, bool asIs = false)
     {
         uint32_t flags = 0;
 
-        if (config.Direction == EGpioDirection::Input)
-            flags |= GPIOHANDLE_REQUEST_INPUT;
-        else if (config.Direction == EGpioDirection::Output)
-            flags |= GPIOHANDLE_REQUEST_OUTPUT;
-
+        if (!asIs) {
+            if (config.Direction == EGpioDirection::Input)
+                flags |= GPIOHANDLE_REQUEST_INPUT;
+            else if (config.Direction == EGpioDirection::Output)
+                flags |= GPIOHANDLE_REQUEST_OUTPUT;
+        }
         if (config.IsOpenDrain)
             flags |= GPIOHANDLE_REQUEST_OPEN_DRAIN;
         if (config.IsOpenSource)
@@ -334,11 +335,11 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
     assert(config->Direction == EGpioDirection::Output);
 
     gpiohandle_request req;
-
+    memset(&req, 0, sizeof(gpiohandle_request));
     req.lines = 1;
     req.lineoffsets[0] = line->GetOffset();
-    req.default_values[0] = line->IsActiveLow();
-    req.flags = GetFlagsFromConfig(*config);
+    req.default_values[0] = config->InitialState;
+    req.flags = GetFlagsFromConfig(*config, line->IsOutput());
     strcpy(req.consumer_label, CONSUMER);
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
@@ -348,11 +349,17 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
 
     Lines[req.fd].push_back(line);
     assert(Lines[req.fd].size() == 1);
-    line->SetFd(req.fd);
+    line->SetFd(req.fd); 
 
-    line->SetValue(config->InitialState);
+    if (Debug.IsEnabled()) {
+        gpiohandle_data data;
+        if (ioctl(line->GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) >= 0) {
+            LOG(Debug) << "Initialized output " << line->DescribeShort() << " = " << static_cast<int>(data.values[0]);
+        }
+    } else {
+        LOG(Info) << "Initialized output " << line->DescribeShort();
+    }
 
-    LOG(Info) << "Initialized output " << line->DescribeShort();
     return true;
 }
 

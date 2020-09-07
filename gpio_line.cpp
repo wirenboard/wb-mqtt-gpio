@@ -163,6 +163,8 @@ void TGpioLine::SetValue(uint8_t value)
     assert(IsOutput());
     assert(IsHandled());
 
+    LOG(Debug) << DescribeShort() << " = " << static_cast<int>(value);
+
     gpiohandle_data data {};
 
     data.values[0] = value;

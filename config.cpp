@@ -1,158 +1,220 @@
 #include "config.h"
+#include "exceptions.h"
+#include "file_utils.h"
 #include "gpio_chip.h"
 #include "gpio_line.h"
-#include "utils.h"
 #include "log.h"
-#include "exceptions.h"
+#include "utils.h"
 
+#include <wblib/json_utils.h>
 #include <wblib/utils.h>
-#include <jsoncpp/json/json.h>
 
-#include <iostream>
-#include <fstream>
-#include <cassert>
-#include <string.h>
 #include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <unordered_set>
 
 #define LOG(logger) ::logger.Log() << "[config] "
 
 using namespace std;
 using namespace Utils;
+using namespace WBMQTT::JSON;
 
-void ReadLine(const Json::Value& line, TGpioLineConfig& lineConfig)
+namespace
 {
-    if (!line.isMember("name")) {
-        wb_throw(TGpioDriverException, "'name' is required field");
-    }
-    lineConfig.Name = line["name"].asString();
-
-    if (line.isMember("inverted"))
-        lineConfig.IsActiveLow = line["inverted"].asBool();
-    if (line.isMember("open_drain"))
-        lineConfig.IsOpenDrain = line["open_drain"].asBool();
-    if (line.isMember("open_source"))
-        lineConfig.IsOpenSource = line["open_source"].asBool();
-    if (line.isMember("direction") && line["direction"].asString() == "input")
-        lineConfig.Direction = EGpioDirection::Input;
-    if (line.isMember("type"))
-        lineConfig.Type = line["type"].asString();
-    if (line.isMember("multiplier"))
-        lineConfig.Multiplier = line["multiplier"].asFloat();
-    if (line.isMember("edge"))
-        EnumerateGpioEdge(line["edge"].asString(), lineConfig.InterruptEdge);
-    if (line.isMember("decimal_points_current"))
-        lineConfig.DecimalPlacesCurrent = line["decimal_points_current"].asInt();
-    if (line.isMember("decimal_points_total"))
-        lineConfig.DecimalPlacesTotal = line["decimal_points_total"].asInt();
-
-    lineConfig.InitialState = line.get("initial_state", false).asBool();
-}
-
-TGpioDriverConfig::TGpioDriverConfig(const string &fileName)
-{
-    Json::Value root;
-    { // read and parse file
-        Json::Reader reader;
-        ifstream file(fileName);
-
-        if (!file.is_open()) {
-            wb_throw(TGpioDriverException, "unable to open config file at '" + fileName + "': " + strerror(errno));
-        }
-
-        if (!reader.parse(file, root, false))
-        {
-            // Report failures and their locations
-            // in the document.
-            wb_throw(TGpioDriverException, "failed to parse JSON \n" + reader.getFormattedErrorMessages());
-        }
+    ostream& operator<<(ostream& ss, const TGpioLineConfig& line)
+    {
+        ss << "    Offset: " << line.Offset << endl
+           << "    IsOpenDrain: " << line.IsOpenDrain << endl
+           << "    IsOpenSource: " << line.IsOpenSource << endl
+           << "    IsActiveLow: " << line.IsActiveLow << endl
+           << "    Direction: " << (line.Direction == EGpioDirection::Input ? "input" : "output")
+           << endl
+           << "    InterruptEdge: " << GpioEdgeToString(line.InterruptEdge) << endl
+           << "    Type: " << line.Type << endl
+           << "    Multiplier: " << line.Multiplier << endl
+           << "    DecimalPlacesTotal: " << line.DecimalPlacesTotal << endl
+           << "    DecimalPlacesCurrent: " << line.DecimalPlacesCurrent << endl
+           << "    InitialState: " << line.InitialState << endl;
+        return ss;
     }
 
-    try {
-
-        if (!root.isMember("device_name")) {
-            wb_throw(TGpioDriverException, "'device_name' is required field");
+    void RemoveDuplicateLine(TGpioDriverConfig&     cfg,
+                             const std::string&     gpioChipPath,
+                             const TGpioLineConfig& line,
+                             unordered_set<string>& lineNames)
+    {
+        if (!lineNames.count(line.Name)) {
+            return;
         }
+        for (auto& chip : cfg.Chips) {
+            auto itLine = find_if(chip.Lines.begin(), chip.Lines.end(), [&](const auto& l) {
+                return l.Name == line.Name;
+            });
+            if (itLine != chip.Lines.end()) {
+                stringstream ss;
+                ss << "duplicate GPIO name : '" << line.Name << "'" << endl
+                   << "  old settings:" << endl
+                   << "    Chip: " << chip.Path << endl
+                   << (*itLine) << "  new settings:" << endl
+                   << "    Chip: " << gpioChipPath << endl
+                   << line;
 
-        if (!root.isMember("channels")) {
-            wb_throw(TGpioDriverException, "'channels' is required field");
-        }
-
-        const auto &channels = root["channels"];
-        DeviceName = root["device_name"].asString();
-
-        if (!channels.isArray()) {
-            wb_throw(TGpioDriverException, "'channels' must be array");
-        }
-
-        for (const auto & channel : channels)
-        {
-            if (!channel.isMember("gpio")) {
-                wb_throw(TGpioDriverException, "'gpio' is required field");
+                LOG(Warn) << ss.str();
+                chip.Lines.erase(itLine);
+                return;
             }
+        }
+    }
 
+    void AppendLine(TGpioDriverConfig&     cfg,
+                    const std::string&     gpioChipPath,
+                    const TGpioLineConfig& line,
+                    unordered_set<string>& lineNames)
+    {
+        RemoveDuplicateLine(cfg, gpioChipPath, line, lineNames);
+
+        auto chipConfig = find_if(cfg.Chips.begin(), cfg.Chips.end(), [&](const auto& c) {
+            return c.Path == gpioChipPath;
+        });
+        if (chipConfig == cfg.Chips.end()) {
+            cfg.Chips.emplace_back(gpioChipPath);
+            chipConfig = cfg.Chips.end();
+            --chipConfig;
+        }
+
+        auto itLine = find_if(chipConfig->Lines.begin(), chipConfig->Lines.end(), [&](const auto& l) {
+            return l.Offset == line.Offset;
+        });
+        if (itLine != chipConfig->Lines.end()) {
+            wb_throw(TGpioDriverException,
+                     "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
+                         chipConfig->Path + "'");
+        }
+
+        chipConfig->Lines.push_back(line);
+        lineNames.emplace(line.Name);
+    }
+
+    TGpioDriverConfig LoadFromJSON(const Json::Value&     root,
+                                   const Json::Value&     schema,
+                                   unordered_set<string>& lineNames)
+    {
+        Validate(root, schema);
+
+        TGpioDriverConfig cfg;
+        const auto&       channels = root["channels"];
+        if (root.isMember("device_name")) {
+            cfg.DeviceName = root["device_name"].asString();
+        }
+
+        for (const auto& channel : channels) {
             TGpioLineConfig lineConfig;
-            string path;
+            string          path;
             if (channel["gpio"].isUInt()) {
                 uint32_t gpioNumber = channel["gpio"].asUInt();
-                if (gpioNumber == 0) {
-                        wb_throw(TGpioDriverException, "'gpio' must be greater than zero");
-                }
                 uint32_t chipNumber;
                 try {
                     tie(chipNumber, lineConfig.Offset) = FromSysfsGpio(gpioNumber);
-                } catch (const TGpioDriverException & e) {
+                } catch (const TGpioDriverException& e) {
                     LOG(Error) << "Skipping GPIO " << gpioNumber << " reason: " << e.what();
                     continue;
                 }
                 path = GpioChipNumberToPath(chipNumber);
             } else {
-                if (!channel["gpio"].isObject()) {
-                    wb_throw(TGpioDriverException, "'gpio' must be number or object");
-                }
-                if (!channel["gpio"].isMember("offset")) {
-                    wb_throw(TGpioDriverException, "'offset' is required field");
-                }
-                if (!channel["gpio"].isMember("chip")) {
-                    wb_throw(TGpioDriverException, "'chip' is required field");
-                }
                 lineConfig.Offset = channel["gpio"]["offset"].asUInt();
-                path = channel["gpio"]["chip"].asString();
+                path              = channel["gpio"]["chip"].asString();
             }
 
-            auto chipConfig = find_if(Chips.begin(), Chips.end(), [&](const auto& c) { return c.Path == path; });
-            if(chipConfig == Chips.end()) {
-                Chips.emplace_back(path);
-                chipConfig = Chips.end();
-                --chipConfig;
-            }
+            lineConfig.Name = channel["name"].asString();
 
-            ReadLine(channel, lineConfig);
+            Get(channel, "inverted", lineConfig.IsActiveLow);
+            Get(channel, "open_drain", lineConfig.IsOpenDrain);
+            Get(channel, "open_source", lineConfig.IsOpenSource);
+            Get(channel, "type", lineConfig.Type);
+            Get(channel, "multiplier", lineConfig.Multiplier);
+            Get(channel, "decimal_points_current", lineConfig.DecimalPlacesCurrent);
+            Get(channel, "decimal_points_total", lineConfig.DecimalPlacesTotal);
+            Get(channel, "initial_state", lineConfig.InitialState);
 
-            auto itName = find_if(chipConfig->Lines.begin(), chipConfig->Lines.end(), [&](const auto& l) { return l.Name == lineConfig.Name; });
-            if (itName != chipConfig->Lines.end()) {
-                wb_throw(TGpioDriverException, "duplicate GPIO name in config: '" + lineConfig.Name + "' at chip '" + chipConfig->Path + "'");
-            }
+            if (channel.isMember("direction") && channel["direction"].asString() == "input")
+                lineConfig.Direction = EGpioDirection::Input;
 
-            auto itLine = find_if(chipConfig->Lines.begin(), chipConfig->Lines.end(), [&](const auto& l) { return l.Offset == lineConfig.Offset; });
-            if (itLine != chipConfig->Lines.end()) {
-                wb_throw(TGpioDriverException, "duplicate GPIO offset in config: '" + to_string(lineConfig.Offset) + "' at chip '" + chipConfig->Path + "'");
-            }
+            if (channel.isMember("edge"))
+                EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
 
-            chipConfig->Lines.push_back(move(lineConfig));
+            AppendLine(cfg, path, lineConfig, lineNames);
         }
-    } catch (const exception & e) {
-        wb_throw(TGpioDriverException, string("malformed JSON config: ") + e.what());
+        return cfg;
     }
-}
 
-TGpioDriverConfig GetConvertConfig(const std::string & fileName)
+    void RemoveDeviceNameRequirement(Json::Value& schema)
+    {
+        Json::Value newArray = Json::arrayValue;
+        for (auto& v : schema["required"]) {
+            if (v.asString() != "device_name") {
+                newArray.append(v);
+            }
+        }
+        schema["required"] = newArray;
+    }
+
+    void Append(const TGpioDriverConfig& src,
+                TGpioDriverConfig&       dst,
+                unordered_set<string>&   lineNames)
+    {
+        dst.DeviceName = src.DeviceName;
+        for (const auto& v : src.Chips) {
+            for (const auto& line : v.Lines) {
+                AppendLine(dst, v.Path, line, lineNames);
+            }
+        }
+    }
+
+    template <class T, class Pred> void erase_if(T& c, Pred pred)
+    {
+        c.erase(std::remove_if(c.begin(), c.end(), pred), c.end());
+    }
+
+    void RemoveUnusedChips(TGpioDriverConfig& cfg)
+    {
+        erase_if(cfg.Chips, [](const auto& c) { return c.Lines.empty(); });
+    }
+
+    TGpioDriverConfig LoadConfigInternal(const std::string& mainConfigFile,
+                                         const std::string& optionalConfigFile,
+                                         const std::string& systemConfigsDir,
+                                         const std::string& schemaFile)
+    {
+        Json::Value schema = Parse(schemaFile);
+
+        unordered_set<string> lineNames;
+
+        if (!optionalConfigFile.empty())
+            return LoadFromJSON(Parse(optionalConfigFile), schema, lineNames);
+
+        Json::Value noDeviceNameSchema = schema;
+        RemoveDeviceNameRequirement(noDeviceNameSchema);
+        TGpioDriverConfig cfg;
+        try {
+            IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
+                Append(LoadFromJSON(Parse(f), noDeviceNameSchema, lineNames), cfg, lineNames);
+                return false;
+            });
+        } catch (const TNoDirError&) {
+        }
+        Append(LoadFromJSON(Parse(mainConfigFile), schema, lineNames), cfg, lineNames);
+        return cfg;
+    }
+} // namespace
+
+TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
+                             const std::string& optionalConfigFile,
+                             const std::string& systemConfigsDir,
+                             const std::string& schemaFile)
 {
-    WB_SCOPE_NO_THROW_EXIT( LOG(Info) << "Read config ok"; )
-
-    try {
-        return TGpioDriverConfig(fileName);
-    } catch (const exception & e) {
-        LOG(Error) << "Unable to read config: '" << e.what() << "'";
-        wb_throw(TGpioDriverException, "unable to read config");
-    }
+    TGpioDriverConfig cfg(
+        LoadConfigInternal(mainConfigFile, optionalConfigFile, systemConfigsDir, schemaFile));
+    RemoveUnusedChips(cfg);
+    return cfg;
 }
