@@ -44,4 +44,4 @@ struct TGpioDriverConfig
 
 TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& optionalConfigFile,
-                             const std::string& shemaFile);
+                             const std::string& schemaFile);

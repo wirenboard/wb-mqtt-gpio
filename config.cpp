@@ -148,15 +148,15 @@ namespace
         return cfg;
     }
 
-    void RemoveDeviceNameRequirement(Json::Value& shema)
+    void RemoveDeviceNameRequirement(Json::Value& schema)
     {
         Json::Value newArray = Json::arrayValue;
-        for (auto& v : shema["required"]) {
+        for (auto& v : schema["required"]) {
             if (v.asString() != "device_name") {
                 newArray.append(v);
             }
         }
-        shema["required"] = newArray;
+        schema["required"] = newArray;
     }
 
     void Append(const TGpioDriverConfig& src,
@@ -183,35 +183,35 @@ namespace
 
     TGpioDriverConfig LoadConfigInternal(const string& mainConfigFile,
                                          const string& optionalConfigFile,
-                                         const string& shemaFile)
+                                         const string& schemaFile)
     {
-        Json::Value shema = Parse(shemaFile);
+        Json::Value schema = Parse(schemaFile);
 
         unordered_set<string> lineNames;
 
         if (!optionalConfigFile.empty())
-            return LoadFromJSON(Parse(optionalConfigFile), shema, lineNames);
+            return LoadFromJSON(Parse(optionalConfigFile), schema, lineNames);
 
-        Json::Value noDeviceNameShema = shema;
-        RemoveDeviceNameRequirement(noDeviceNameShema);
+        Json::Value noDeviceNameSchema = schema;
+        RemoveDeviceNameRequirement(noDeviceNameSchema);
         TGpioDriverConfig cfg;
         try {
             IterateDirByPattern(mainConfigFile + ".d", ".conf", [&](const string& f) {
-                Append(LoadFromJSON(Parse(f), noDeviceNameShema, lineNames), cfg, lineNames);
+                Append(LoadFromJSON(Parse(f), noDeviceNameSchema, lineNames), cfg, lineNames);
                 return false;
             });
         } catch (const TNoDirError&) {
         }
-        Append(LoadFromJSON(Parse(mainConfigFile), shema, lineNames), cfg, lineNames);
+        Append(LoadFromJSON(Parse(mainConfigFile), schema, lineNames), cfg, lineNames);
         return cfg;
     }
 } // namespace
 
 TGpioDriverConfig LoadConfig(const string& mainConfigFile,
                              const string& optionalConfigFile,
-                             const string& shemaFile)
+                             const string& schemaFile)
 {
-    TGpioDriverConfig cfg(LoadConfigInternal(mainConfigFile, optionalConfigFile, shemaFile));
+    TGpioDriverConfig cfg(LoadConfigInternal(mainConfigFile, optionalConfigFile, schemaFile));
     RemoveUnusedChips(cfg);
     return cfg;
 }
