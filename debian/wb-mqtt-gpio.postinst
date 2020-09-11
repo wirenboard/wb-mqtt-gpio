@@ -2,7 +2,13 @@
 . /etc/wb_env.sh
 wb_source "of"
 
-CONFFILE=/etc/wb-homa-gpio.conf
+APP_NAME=wb-mqtt-gpio
+CONFFILE_NAME=$APP_NAME.conf
+CONFFILE=/etc/$CONFFILE_NAME
+
+OLD_APP_NAME=wb-homa-gpio
+OLD_CONFFILE_NAME=$OLD_APP_NAME.conf
+OLD_CONFFILE=/etc/$OLD_CONFFILE_NAME
 
 function is_installed()
 {
@@ -51,9 +57,22 @@ else
     esac
 fi
 
+if [ -f /var/lib/$OLD_APP_NAME/libwbmqtt.db ]; then
+    mkdir -p /var/lib/$APP_NAME
+    cp /var/lib/$OLD_APP_NAME/libwbmqtt.db /var/lib/$APP_NAME/libwbmqtt.db
+fi
 
-ucf --debconf-ok "/usr/share/wb-homa-gpio/wb-homa-gpio.conf.$BOARD_CONF" $CONFFILE
+if [ -f $OLD_CONFFILE ]; then
+    ucf --debconf-ok $OLD_CONFFILE $CONFFILE
+    cp -f $OLD_CONFFILE /usr/share/$APP_NAME/$OLD_CONFFILE_NAME.old
+    rm -f $OLD_CONFFILE
+else
+    ucf --debconf-ok /usr/share/$APP_NAME/$CONFFILE_NAME.$BOARD_CONF $CONFFILE
+fi
 
+ln -s $CONFFILE $OLD_CONFFILE
+
+deb-systemd-helper enable wb-mqtt-gpio.service >/dev/null || true
 
 #DEBHELPER#
 
