@@ -38,8 +38,10 @@ public:
     bool IsOpenDrain() const;
     bool IsOpenSource() const;
     bool IsValueChanged() const;
+    bool IsValueExpired(long duration) const;
     void ResetIsChanged();
     uint8_t GetValue() const;
+    uint8_t GetValueAndStampTime();
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     PGpioChip AccessChip() const;

@@ -39,7 +39,9 @@ struct TGpioChipConfig
 struct TGpioDriverConfig
 {
     std::string                  DeviceName;
-    std::vector<TGpioChipConfig> Chips;
+    long               maxUnchangedInterval;
+    std::vector<TGpioChipConfig>      Chips;
+
 };
 
 /**

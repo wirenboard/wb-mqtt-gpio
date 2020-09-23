@@ -148,6 +148,12 @@ bool TGpioLine::IsValueChanged() const
     return Value.IsChanged();
 }
 
+bool TGpioLine::IsValueExpired(long duration) const
+{
+  return Value.IsExpired(duration);
+}
+
+
 void TGpioLine::ResetIsChanged()
 {
     Value.ResetChanged();
@@ -156,6 +162,11 @@ void TGpioLine::ResetIsChanged()
 uint8_t TGpioLine::GetValue() const
 {
     return Value.Get();
+}
+
+uint8_t TGpioLine::GetValueAndStampTime()
+{
+  return Value.GetAndStampTime();
 }
 
 void TGpioLine::SetValue(uint8_t value)

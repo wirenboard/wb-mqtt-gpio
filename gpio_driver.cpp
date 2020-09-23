@@ -226,8 +226,9 @@ void TGpioDriver::Start()
 
                             counter->ResetIsChanged();
                         }
-                    } else if (line->IsValueChanged()) {
-                        device->GetControl(line->GetConfig()->Name)->SetValue(tx, static_cast<bool>(line->GetValue()));
+                    } else if (line->IsValueChanged() || (maxUnchangedInterval > 0 && line->IsValueExpired(maxUnchangedInterval))) {
+
+                      device->GetControl(line->GetConfig()->Name)->SetValue(tx, static_cast<bool>(line->GetValueAndStampTime()));
                     }
 
                     line->ResetIsChanged();
