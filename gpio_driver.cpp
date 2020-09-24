@@ -46,7 +46,9 @@ namespace
 TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDriverConfig & config)
     : MqttDriver(mqttDriver)
     , Active(false)
+    , MaxUnchangedInterval(config.maxUnchangedInterval)
 {
+
     try {
         auto tx = MqttDriver->BeginTx();
         auto device = tx->CreateDevice(TLocalDeviceArgs{}
@@ -193,7 +195,10 @@ void TGpioDriver::Start()
             chipDriver->AddToEpoll(epfd);
         }
 
+        long timestamp = TS();
+
         while (Active) {
+
             bool isHandled = false;
             if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
                 TInterruptionContext ctx {count, events};
@@ -206,33 +211,37 @@ void TGpioDriver::Start()
                 }
             }
 
-            if (!isHandled) {
-                continue;
-            }
+            if (isHandled || (MaxUnchangedInterval > 0 && (timestamp + MaxUnchangedInterval < TS()))) {
 
-            auto tx     = MqttDriver->BeginTx();
-            auto device = tx->GetDevice(Name);
+//                LOG(Debug) << timestamp << " + " << MaxUnchangedInterval << " ? " << TS() << " [" << (timestamp + MaxUnchangedInterval < TS() ? "expired" : "ok") << "]";
 
-            for (const auto & chipDriver: ChipDrivers) {
-                FOR_EACH_LINE(chipDriver, line) {
-                    if (const auto & counter = line->GetCounter()) {
-                        if (counter->IsChanged()) {
-                            for (const auto & idValue: counter->GetIdsAndValues(line->GetConfig()->Name)) {
-                                const auto & id  = idValue.first;
-                                const auto value = idValue.second;
+                if (MaxUnchangedInterval > 0 && (timestamp + MaxUnchangedInterval < TS()))
+                    timestamp = TS();
 
-                                device->GetControl(id)->SetRawValue(tx, value);
+                auto tx     = MqttDriver->BeginTx();
+                auto device = tx->GetDevice(Name);
+
+                for (const auto & chipDriver: ChipDrivers) {
+                    FOR_EACH_LINE(chipDriver, line) {
+                        if (const auto & counter = line->GetCounter()) {
+//                            LOG(Info) << "B: updating MQTT topic " << line->GetConfig()->Name;
+                            if (counter->IsChanged()) {
+                                for (const auto & idValue: counter->GetIdsAndValues(line->GetConfig()->Name)) {
+                                    const auto & id  = idValue.first;
+                                    const auto value = idValue.second;
+
+                                    device->GetControl(id)->SetRawValue(tx, value);
+                                }
+                                counter->ResetIsChanged();
                             }
-
-                            counter->ResetIsChanged();
+                        } else if (line->IsValueChanged() || (MaxUnchangedInterval > 0 && line->IsValueExpired(MaxUnchangedInterval))) {
+//                          LOG(Info) << "A: updating MQTT topic " << line->GetConfig()->Name;
+                          device->GetControl(line->GetConfig()->Name)->SetValue(tx, static_cast<bool>(line->GetValueAndStampTime()));
                         }
-                    } else if (line->IsValueChanged() || (maxUnchangedInterval > 0 && line->IsValueExpired(maxUnchangedInterval))) {
 
-                      device->GetControl(line->GetConfig()->Name)->SetValue(tx, static_cast<bool>(line->GetValueAndStampTime()));
-                    }
-
-                    line->ResetIsChanged();
-                });
+                        line->ResetIsChanged();
+                    });
+                }
             }
         }
 

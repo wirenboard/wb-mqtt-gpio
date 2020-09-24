@@ -106,15 +106,17 @@ namespace
         const auto&       channels = root["channels"];
         if (root.isMember("device_name")) {
             cfg.DeviceName = root["device_name"].asString();
+          LOG(Info) << "set device_name: " << cfg.DeviceName;
         }
 
         if (root.isMember("max_unchanged_interval")) {
-          cfg.maxUnchangedInterval = (long)root["max_unchanged_interval"].asInt();;
+            cfg.maxUnchangedInterval = (long)root["max_unchanged_interval"].asInt();
+            LOG(Info) << "set max_unchanged_interval: " << cfg.maxUnchangedInterval;
         } else {
-          cfg.maxUnchangedInterval = 0L;
+            cfg.maxUnchangedInterval = 0L;
         }
 
-      for (const auto& channel : channels) {
+        for (const auto& channel : channels) {
             TGpioLineConfig lineConfig;
             string          path;
             if (channel["gpio"].isUInt()) {

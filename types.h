@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include <string>
 #include <chrono>
 
@@ -60,6 +61,7 @@ public:
     T GetAndStampTime()     { UpdateTimestamp = TS(); return Value; }
     bool IsChanged() const  { return Changed; }
     void ResetChanged()     { Changed = false; }
+    long Timestamp() const  { return UpdateTimestamp; }
     // duration in seconds
-    bool IsExpired(long duration) const { return UpdateTimestamp + duration > TS(); }
+    bool IsExpired(long duration) const { return UpdateTimestamp + duration < TS(); }
 };

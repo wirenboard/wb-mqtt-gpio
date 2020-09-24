@@ -150,6 +150,11 @@ bool TGpioLine::IsValueChanged() const
 
 bool TGpioLine::IsValueExpired(long duration) const
 {
+  if (Value.IsExpired(duration))
+    LOG(Debug) << "Line "        << Config->Name
+               << " value '"     << std::to_string(Value.Get())
+               << "' expired - " << (Value.IsExpired(duration) ? "yes" : "no")
+               << " [" << Value.Timestamp() << "; " << duration << "; " << TS() << "]";
   return Value.IsExpired(duration);
 }
 

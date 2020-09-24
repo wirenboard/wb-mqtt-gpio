@@ -18,7 +18,7 @@ class TGpioDriver
     bool                                          Active;
     std::mutex                               ActiveMutex;
 
-    long                            maxUnchangedInterval;
+    long                            MaxUnchangedInterval;
 
 public:
     static const char * const Name;
