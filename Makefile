@@ -13,7 +13,7 @@ DEBUG_CFLAGS=-Wall -ggdb -rdynamic -std=c++14 -O0 -I.
 RELEASE_CFLAGS=-Wall -DNDEBUG -std=c++14 -Os -I.
 TESTING_CFLAGS=-Wall -std=c++14 -Os -I.	# release with asserts
 CFLAGS=$(if $(DEBUG), $(DEBUG_CFLAGS), $(if $(TESTING), $(TESTING_CFLAGS), $(RELEASE_CFLAGS)))
-LDFLAGS= -ljsoncpp -lwbmqtt1 -lpthread
+LDFLAGS= -lwbmqtt1 -lpthread
 
 GPIO_BIN=wb-mqtt-gpio
 
