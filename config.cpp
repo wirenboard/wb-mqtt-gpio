@@ -89,7 +89,8 @@ namespace
         if (itLine != chipConfig->Lines.end()) {
             wb_throw(TGpioDriverException,
                      "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
-                         chipConfig->Path + "'");
+                     chipConfig->Path + "' defined as '" + line.Name + 
+                     "'. It is already defined as '" + itLine->Name + "'. To override set similar MQTT id (name).");
         }
 
         chipConfig->Lines.push_back(line);
