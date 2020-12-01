@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.h"
-
+#include <wblib/driver_args.h>
 #include <vector>
 
 enum class EGpioDirection
@@ -39,6 +39,7 @@ struct TGpioChipConfig
 struct TGpioDriverConfig
 {
     std::string                  DeviceName;
+    WBMQTT::TPublishParameters   PublishParameters;
     std::vector<TGpioChipConfig> Chips;
 };
 

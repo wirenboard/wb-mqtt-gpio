@@ -109,6 +109,10 @@ namespace
             cfg.DeviceName = root["device_name"].asString();
         }
 
+        int32_t maxUnchangedInterval = -1;
+        Get(root, "max_unchanged_interval", maxUnchangedInterval);
+        cfg.PublishParameters.Set(maxUnchangedInterval);
+
         for (const auto& channel : channels) {
             TGpioLineConfig lineConfig;
             string          path;
@@ -165,6 +169,7 @@ namespace
                 unordered_set<string>&   lineNames)
     {
         dst.DeviceName = src.DeviceName;
+        dst.PublishParameters = src.PublishParameters;
         for (const auto& v : src.Chips) {
             for (const auto& line : v.Lines) {
                 AppendLine(dst, v.Path, line, lineNames);

@@ -143,16 +143,6 @@ bool TGpioLine::IsOpenSource() const
     return Flags & GPIOLINE_FLAG_OPEN_SOURCE;
 }
 
-bool TGpioLine::IsValueChanged() const
-{
-    return Value.IsChanged();
-}
-
-void TGpioLine::ResetIsChanged()
-{
-    Value.ResetChanged();
-}
-
 uint8_t TGpioLine::GetValue() const
 {
     return Value.Get();

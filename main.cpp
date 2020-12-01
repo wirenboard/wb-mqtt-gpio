@@ -15,8 +15,8 @@ using PGpioDriver = unique_ptr<TGpioDriver>;
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
 const auto WBMQTT_DB_FILE             = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
-const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(5);
-const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(5); // topic cleanup can take a lot of time
+const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(30);
+const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup can take a lot of time
 
 namespace
 {
@@ -122,15 +122,15 @@ namespace
 
 int main(int argc, char* argv[])
 {
-    WBMQTT::TMosquittoMqttConfig mqttConfig{};
+    WBMQTT::TMosquittoMqttConfig mqttConfig;
     mqttConfig.Id = TGpioDriver::Name;
 
-    string                 configFileName;
+    string configFileName;
     ParseCommadLine(argc, argv, mqttConfig, configFileName);
 
     WBMQTT::TPromise<void> initialized;
 
-    WBMQTT::SetThreadName("main");
+    WBMQTT::SetThreadName("wb-mqtt-gpio");
     WBMQTT::SignalHandling::Handle({SIGINT, SIGTERM, SIGHUP});
     WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&] { WBMQTT::SignalHandling::Stop(); });
 
@@ -150,36 +150,31 @@ int main(int argc, char* argv[])
     });
     WBMQTT::SignalHandling::Start();
 
-    auto mqttDriver = WBMQTT::NewDriver(
-        WBMQTT::TDriverArgs{}
-            .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
-            .SetId(mqttConfig.Id)
-            .SetUseStorage(true)
-            .SetReownUnknownDevices(true)
-            .SetStoragePath(WBMQTT_DB_FILE));
-
-    mqttDriver->StartLoop();
-    WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&] {
-        mqttDriver->StopLoop();
-        mqttDriver->Close();
-    });
-
-    mqttDriver->WaitForReady();
-
     try {
-        PGpioDriver        gpioDriver;
-        condition_variable startedCv;
-        mutex              startedCvMtx;
+        PGpioDriver           gpioDriver;
+        condition_variable    startedCv;
+        mutex                 startedCvMtx;
+        WBMQTT::PDeviceDriver mqttDriver;
 
         auto start = [&] {
             {
                 lock_guard<mutex> lk(startedCvMtx);
-                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(
-                    mqttDriver,
-                    LoadConfig("/etc/wb-mqtt-gpio.conf",
-                               configFileName,
-                               "/var/lib/wb-mqtt-gpio/conf.d",
-                               "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json"));
+                auto config = LoadConfig("/etc/wb-mqtt-gpio.conf",
+                                         configFileName,
+                                         "/var/lib/wb-mqtt-gpio/conf.d",
+                                         "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json");
+                mqttDriver = WBMQTT::NewDriver(
+                    WBMQTT::TDriverArgs{}
+                        .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
+                        .SetId(mqttConfig.Id)
+                        .SetUseStorage(true)
+                        .SetReownUnknownDevices(true)
+                        .SetStoragePath(WBMQTT_DB_FILE),
+                        config.PublishParameters
+                    );
+                mqttDriver->StartLoop();
+                mqttDriver->WaitForReady();
+                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, config);
                 Utils::ClearMappingCache();
                 gpioDriver->Start();
             }
@@ -189,9 +184,10 @@ int main(int argc, char* argv[])
         auto stop = [&] {
             unique_lock<mutex> lk(startedCvMtx);
             startedCv.wait(lk, [&] { return bool(gpioDriver); });
-            gpioDriver->Stop();
-            gpioDriver->Clear();
             gpioDriver.reset();
+            mqttDriver->StopLoop();
+            mqttDriver->Close();
+            mqttDriver.reset();
         };
 
         start();
