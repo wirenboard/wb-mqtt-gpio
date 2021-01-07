@@ -16,7 +16,7 @@ Description: Wiren Board Smart Home MQTT generic sysfs GPIO driver compatible wi
 
 Package: wb-homa-gpio
 Depends: wb-mqtt-gpio (= ${source:Version}), ${misc:Depends}
-Architecture: all
+Architecture: any
 Priority: extra
 Section: oldlibs
 Description: transitional dummy package
