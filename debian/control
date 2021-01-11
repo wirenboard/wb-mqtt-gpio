@@ -15,7 +15,7 @@ Suggests: linux-image-wb2 (>= 4.9+wb20181227130340) | linux-image-wb6 (>= 4.9+wb
 Description: Wiren Board Smart Home MQTT generic sysfs GPIO driver compatible with HomA conventions
 
 Package: wb-homa-gpio
-Depends: wb-mqtt-gpio (= ${source:Version}), ${misc:Depends}
+Depends: wb-mqtt-gpio (= ${binary:Version}), ${misc:Depends}
 Architecture: any
 Priority: extra
 Section: oldlibs
