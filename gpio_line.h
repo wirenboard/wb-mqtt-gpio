@@ -37,8 +37,6 @@ public:
     bool IsUsed() const;
     bool IsOpenDrain() const;
     bool IsOpenSource() const;
-    bool IsValueChanged() const;
-    void ResetIsChanged();
     uint8_t GetValue() const;
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);

@@ -92,17 +92,6 @@ uint64_t TGpioCounter::GetCounts() const
     return Counts;
 }
 
-bool TGpioCounter::IsChanged() const
-{
-    return Total.IsChanged() || Current.IsChanged();
-}
-
-void TGpioCounter::ResetIsChanged()
-{
-    Total.ResetChanged();
-    Current.ResetChanged();
-}
-
 vector<TGpioCounter::TMetadataPair> TGpioCounter::GetIdsAndTypes(const string & baseId) const
 {
     return {
@@ -115,10 +104,8 @@ vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string & ba
 {
     vector<TGpioCounter::TValuePair> idsAndValues;
 
-    if (Total.IsChanged())
-        idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, Utils::SetDecimalPlaces(Total.Get(), DecimalPlacesTotal) });
-    if (Current.IsChanged())
-        idsAndValues.push_back({ baseId + ID_POSTFIX_CURRENT, Utils::SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent) });
+    idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, Utils::SetDecimalPlaces(Total.Get(), DecimalPlacesTotal) });
+    idsAndValues.push_back({ baseId + ID_POSTFIX_CURRENT, Utils::SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent) });
 
     return idsAndValues;
 }

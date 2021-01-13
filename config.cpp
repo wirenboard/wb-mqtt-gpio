@@ -89,7 +89,8 @@ namespace
         if (itLine != chipConfig->Lines.end()) {
             wb_throw(TGpioDriverException,
                      "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
-                         chipConfig->Path + "'");
+                     chipConfig->Path + "' defined as '" + line.Name + 
+                     "'. It is already defined as '" + itLine->Name + "'. To override set similar MQTT id (name).");
         }
 
         chipConfig->Lines.push_back(line);
@@ -107,6 +108,10 @@ namespace
         if (root.isMember("device_name")) {
             cfg.DeviceName = root["device_name"].asString();
         }
+
+        int32_t maxUnchangedInterval = -1;
+        Get(root, "max_unchanged_interval", maxUnchangedInterval);
+        cfg.PublishParameters.Set(maxUnchangedInterval);
 
         for (const auto& channel : channels) {
             TGpioLineConfig lineConfig;
@@ -164,6 +169,7 @@ namespace
                 unordered_set<string>&   lineNames)
     {
         dst.DeviceName = src.DeviceName;
+        dst.PublishParameters = src.PublishParameters;
         for (const auto& v : src.Chips) {
             for (const auto& line : v.Lines) {
                 AppendLine(dst, v.Path, line, lineNames);
