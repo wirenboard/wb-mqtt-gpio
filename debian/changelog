@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.1.0) unstable; urgency=medium
+
+  * new configuration parameter max_unchanged_interval is added
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Wed, 13 Jan 2021 10:59:00 +0500
+
 wb-mqtt-gpio (2.0.9) unstable; urgency=medium
 
   * transitional package wb-homa-gpio is bind to exact architecture
@@ -8,7 +14,7 @@ wb-mqtt-gpio (2.0.8) unstable; urgency=medium
 
   * verbose error message for duplicate GPIO offset in config is added
 
- -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 31 Nov 2020 18:57:00 +0500
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 3 Nov 2020 18:57:00 +0500
 
 wb-mqtt-gpio (2.0.7) unstable; urgency=medium
 

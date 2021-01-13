@@ -38,8 +38,6 @@ public:
     float GetCurrent() const;
     float GetTotal() const;
     uint64_t GetCounts() const;
-    bool IsChanged() const;
-    void ResetIsChanged();
     std::vector<TMetadataPair> GetIdsAndTypes(const std::string & baseId) const;
     std::vector<TValuePair>    GetIdsAndValues(const std::string & baseId) const;
 

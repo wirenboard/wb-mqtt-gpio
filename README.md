@@ -12,6 +12,12 @@ wb-mqtt-gpio драйвер
     // .../meta/name в MQTT
     "device_name" : "GPIO DEVICES",
 
+    // Задаёт интервал в секундах, в течение которого неизменяющиеся значения не будут публиковаться в MQTT.
+    // По истечении интервала полученное значение будет опубликовано, даже если оно не изменилось.
+    // Если установлен 0, каждое полученное от устройств значение будет опубликовано в MQTT.
+    // Если установлено отрицательное значение, то значения будут публиковаться только при изменении. Это поведение по умолчанию.
+    "max_unchanged_interval": -1,
+
     "channels" : [
     ]
 }
@@ -29,7 +35,7 @@ wb-mqtt-gpio драйвер
         "chip": "/dev/gpiochip0",
 
         // сдвиг линии относительно чипа
-        "offset" : 22,
+        "offset" : 22
     },
 ```
 
@@ -51,7 +57,7 @@ wb-mqtt-gpio драйвер
                 "chip": "/dev/gpiochip0",
 
                 // сдвиг линии относительно чипа
-                "offset" : 22,
+                "offset" : 22
             },
     // либо номер GPIO, который описывает данный канал. Это устаревший вариант настройки. Не рекомендуется к использованию
             "gpio" : 22,
@@ -65,12 +71,12 @@ wb-mqtt-gpio драйвер
             "name" : "D1_IN",
             "gpio" : {
                 "chip": "/dev/gpiochip1",
-                "offset" : 36,
+                "offset" : 36
             },
             "inverted" : false,
 
     //для этого указать direction input
-            "direction" : "input"
+            "direction" : "input",
 
     // rising прерывания по восходящему фронту, falling по нисходящему,
     //both по обоим фронтам, для GPIO с незаданным type по умолчанию устанавливается both
@@ -83,7 +89,7 @@ wb-mqtt-gpio драйвер
             "name" : "D3_IN",
             "gpio" : {
                 "chip": "/dev/gpiochip1",
-                "offset" : 38,
+                "offset" : 38
             },
             "direction" : "input",
             "inverted" : false,
@@ -100,7 +106,7 @@ wb-mqtt-gpio драйвер
             "name" : "D3_IN",
             "gpio" : {
                 "chip": "/dev/gpiochip1",
-                "offset" : 38,
+                "offset" : 38
             },
             "direction" : "input",
             "inverted" : false,
@@ -115,9 +121,7 @@ wb-mqtt-gpio драйвер
             "decimal_points_current" : 2,
 
     //число знаков после запятой в полном потреблении (воды, электричества, etc)
-            "decimal_points_total" : 3,
-
-
+            "decimal_points_total" : 3
         }
     ]
 }

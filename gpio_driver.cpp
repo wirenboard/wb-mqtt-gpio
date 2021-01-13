@@ -166,6 +166,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
 
 TGpioDriver::~TGpioDriver()
 {
+    Stop();
     if (EventHandlerHandle) {
         Clear();
     }
@@ -216,21 +217,15 @@ void TGpioDriver::Start()
             for (const auto & chipDriver: ChipDrivers) {
                 FOR_EACH_LINE(chipDriver, line) {
                     if (const auto & counter = line->GetCounter()) {
-                        if (counter->IsChanged()) {
-                            for (const auto & idValue: counter->GetIdsAndValues(line->GetConfig()->Name)) {
-                                const auto & id  = idValue.first;
-                                const auto value = idValue.second;
+                        for (const auto & idValue: counter->GetIdsAndValues(line->GetConfig()->Name)) {
+                            const auto & id  = idValue.first;
+                            const auto value = idValue.second;
 
-                                device->GetControl(id)->SetRawValue(tx, value);
-                            }
-
-                            counter->ResetIsChanged();
+                            device->GetControl(id)->SetRawValue(tx, value);
                         }
-                    } else if (line->IsValueChanged()) {
+                    } else {
                         device->GetControl(line->GetConfig()->Name)->SetValue(tx, static_cast<bool>(line->GetValue()));
                     }
-
-                    line->ResetIsChanged();
                 });
             }
         }
@@ -244,7 +239,8 @@ void TGpioDriver::Stop()
     {
         std::lock_guard<std::mutex> lg(ActiveMutex);
         if (!Active) {
-            wb_throw(TGpioDriverException, "attempt to stop not started driver");
+            LOG(Warn) << "attempt to stop not started driver";
+            return;
         }
         Active = false;
     }
