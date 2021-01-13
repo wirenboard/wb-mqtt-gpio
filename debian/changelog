@@ -1,8 +1,14 @@
-wb-mqtt-gpio (2.0.9) unstable; urgency=medium
+wb-mqtt-gpio (2.1.0) unstable; urgency=medium
 
   * new configuration parameter max_unchanged_interval is added
 
- -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 1 Dec 2020 13:53:00 +0500
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Wed, 13 Jan 2021 10:59:00 +0500
+
+wb-mqtt-gpio (2.0.9) unstable; urgency=medium
+
+  * transitional package wb-homa-gpio is bind to exact architecture
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 07 Jan 2021 18:16:00 +0500
 
 wb-mqtt-gpio (2.0.8) unstable; urgency=medium
 
