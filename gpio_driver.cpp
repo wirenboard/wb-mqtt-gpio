@@ -150,19 +150,17 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
         if (line->IsOutput()) {
             if (event.RawValue == "1") {
                 line->SetValue(1);
-                return;
-            }
-            if (event.RawValue == "0") {
+            } else if (event.RawValue == "0") {
                 line->SetValue(0);
-                return;
+            } else {
+                LOG(Warn) << "Invalid value: " << event.RawValue;
             }
-            LOG(Warn) << "Invalid value: " << event.RawValue;
-            return;
-        }
-        char* end;
-        float value = strtof(event.RawValue.c_str(), &end);
-        if (end != event.RawValue.c_str()) {
-            line->GetCounter()->SetInitialValues(value);
+        } else {
+            char* end;
+            float value = strtof(event.RawValue.c_str(), &end);
+            if (end != event.RawValue.c_str()) {
+                line->GetCounter()->SetInitialValues(value);
+            }
         }
     });
 }
