@@ -95,7 +95,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                         futureControl = device->CreateControl(tx, TControlArgs{}
                             .SetId(move(id))
                             .SetType(move(type))
-                            .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
+                            .SetReadonly(lineConfig.Direction == EGpioDirection::Input && !isTotal)
                             .SetUserData(line)
                             .SetDoLoadPrevious(isTotal)
                         );
@@ -146,20 +146,23 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
     }
 
     EventHandlerHandle = mqttDriver->On<TControlOnValueEvent>([](const TControlOnValueEvent & event){
-        uint8_t value;
-        if (event.RawValue == "1") {
-            value = 1;
-        } else if (event.RawValue == "0") {
-            value = 0;
-        } else {
+        const auto & line = event.Control->GetUserData().As<PGpioLine>();
+        if (line->IsOutput()) {
+            if (event.RawValue == "1") {
+                line->SetValue(1);
+                return;
+            }
+            if (event.RawValue == "0") {
+                line->SetValue(0);
+                return;
+            }
             LOG(Warn) << "Invalid value: " << event.RawValue;
             return;
         }
-        const auto & line = event.Control->GetUserData().As<PGpioLine>();
-        if (line->IsOutput()) {
-            line->SetValue(value);
-        } else {
-            LOG(Warn) << "Attempt to write value to input " << line->DescribeShort();
+        char* end;
+        float value = strtof(event.RawValue.c_str(), &end);
+        if (end != event.RawValue.c_str()) {
+            line->GetCounter()->SetInitialValues(value);
         }
     });
 }

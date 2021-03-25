@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.2.0) unstable; urgency=medium
+
+  * Setting of counters total values by publishing in appropriate "on" topic is implemented
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 25 Mar 2021 12:28:00 +0500
+
 wb-mqtt-gpio (2.1.0) unstable; urgency=medium
 
   * new configuration parameter max_unchanged_interval is added

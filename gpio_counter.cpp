@@ -43,7 +43,7 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 3 : DecimalPlacesCurrent;
         DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 2 : DecimalPlacesTotal;
     } else {
-        LOG(Error) << "Uknown gpio type";
+        LOG(Error) << "Unknown gpio type";
         wb_throw(TGpioDriverException, "unknown GPIO type: '" + config.Type + "'");
     }
 
@@ -57,7 +57,6 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & inter
 {
     assert(edge == InterruptEdge);
 
-    ++Counts;
     PreviousInterval = interval;
 
     if (interval == TTimeIntervalUs::zero()) {
@@ -65,6 +64,9 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & inter
     } else {
         UpdateCurrent(interval);
     }
+
+    std::unique_lock<std::mutex> lk(AccessMutex);
+    ++Counts;
     UpdateTotal();
 }
 
@@ -84,11 +86,13 @@ float TGpioCounter::GetCurrent() const
 
 float TGpioCounter::GetTotal() const
 {
+    std::unique_lock<std::mutex> lk(AccessMutex);
     return Total.Get();
 }
 
 uint64_t TGpioCounter::GetCounts() const
 {
+    std::unique_lock<std::mutex> lk(AccessMutex);
     return Counts;
 }
 
@@ -104,7 +108,7 @@ vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string & ba
 {
     vector<TGpioCounter::TValuePair> idsAndValues;
 
-    idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, Utils::SetDecimalPlaces(Total.Get(), DecimalPlacesTotal) });
+    idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, Utils::SetDecimalPlaces(GetTotal(), DecimalPlacesTotal) });
     idsAndValues.push_back({ baseId + ID_POSTFIX_CURRENT, Utils::SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent) });
 
     return idsAndValues;
@@ -122,7 +126,10 @@ EGpioEdge TGpioCounter::GetInterruptEdge() const
 
 void TGpioCounter::SetInitialValues(float total)
 {
+    std::unique_lock<std::mutex> lk(AccessMutex);
     InitialTotal = total;
+    Counts = 0;
+    Total.Set(total);
 }
 
 void TGpioCounter::UpdateCurrent(const TTimeIntervalUs & interval)
