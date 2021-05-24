@@ -1,6 +1,6 @@
 wb-mqtt-gpio (2.1.2) unstable; urgency=medium
 
-  * Wrong inpulse counting with enabled inverted option is fixed
+  * Wrong impulse counting with enabled inverted option is fixed
 
  -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Sun, 23 May 2021 11:39:00 +0500
 
