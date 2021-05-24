@@ -62,5 +62,5 @@ if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
     GPIOSYSCONF="$GPIOSYSCONF ]}"
     echo "$GPIOSYSCONF" | jq '.channels|=sort_by(.order)|.channels|=map(del(.order))' > ${SYS_CONFFILE}
 else
-	echo "/sys/firmware/devicetree/base/wirenboard/analog-inputs is missing"
+	echo "/sys/firmware/devicetree/base/wirenboard/gpios is missing"
 fi
