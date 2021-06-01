@@ -21,6 +21,8 @@ class TGpioLine
 
     TValue<uint8_t> Value;
 
+    std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const;
+
 public:
     TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config);
 

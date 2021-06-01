@@ -204,18 +204,28 @@ EGpioEdge TGpioLine::GetInterrruptEdge() const
     return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;
 }
 
+std::chrono::microseconds TGpioLine::GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const
+{
+    return chrono::duration_cast<chrono::microseconds>(interruptTimePoint - PreviousInterruptionTimePoint);
+}
+
 EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
 {
     assert(edge != EGpioEdge::BOTH);
 
     auto interruptEdge = GetInterrruptEdge();
     if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
+        if (Debug.IsEnabled()) {
+            LOG(Debug) << DescribeShort() 
+                       << " handle interrupt. Edge: " << GpioEdgeToString(edge) 
+                       << " interval: " << GetIntervalFromPreviousInterrupt(interruptTimePoint).count() << " us [skip]";
+        }
         return EInterruptStatus::SKIP;
     }
 
     const auto isFirstInterruption = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero();
     auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
-                                          : chrono::duration_cast<chrono::microseconds>(interruptTimePoint - PreviousInterruptionTimePoint);
+                                          : GetIntervalFromPreviousInterrupt(interruptTimePoint);
 
     /* if interval of impulses is bigger than debouncing interval we consider it is not a debounnce */
     auto debouncing = isFirstInterruption ? false : intervalUs <= DebouncingIntervalUs;
