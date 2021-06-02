@@ -2,11 +2,13 @@
 #include "gpio_driver.h"
 #include "log.h"
 #include "utils.h"
+#include "interruption_context.h"
 
 #include <wblib/signal_handling.h>
 #include <wblib/wbmqtt.h>
 
 #include <getopt.h>
+#include <sys/utsname.h>
 
 using namespace std;
 
@@ -118,6 +120,28 @@ namespace
             }
         }
     }
+
+    // Since linux kernel v5.7-rc1 interrupt events have monotonic clock timestamp.
+    // Prior to v5.7-rc1 they had realtime clock timestamp.
+    // https://github.com/torvalds/linux/commit/f8850206e160bfe35de9ca2e726ab6d6b8cb77dd
+    bool HasMonotonicClockForInterruptionTimestamps()
+    {
+        utsname buf{};
+        uname(&buf);
+        auto v = WBMQTT::StringSplit(buf.release, ".");
+        if (v.size() == 1) {
+            return false;
+        }
+        auto version = stoul(v[0].c_str());
+        if (version < 5) {
+            return false;
+        }
+        if (version > 5) {
+            return true;
+        }
+        auto patchlevel = stoul(v[1].c_str());
+        return (patchlevel >= 7);
+    }
 } // namespace
 
 int main(int argc, char* argv[])
@@ -151,6 +175,12 @@ int main(int argc, char* argv[])
     WBMQTT::SignalHandling::Start();
 
     try {
+
+        if (HasMonotonicClockForInterruptionTimestamps()) {
+            LOG(Info) << "Kernel uses monotonic clock for interrupt timestamps";
+            TInterruptionContext::SetMonotonicClockForInterruptTimestamp();
+        }
+
         PGpioDriver           gpioDriver;
         condition_variable    startedCv;
         mutex                 startedCvMtx;

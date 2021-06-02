@@ -17,18 +17,19 @@ LDFLAGS= -ljsoncpp -lwbmqtt1 -lpthread
 
 GPIO_BIN=wb-mqtt-gpio
 
-GPIO_SOURCES= 			\
-  gpio_driver.cpp		\
-  gpio_chip_driver.cpp	\
-  gpio_chip.cpp 		\
-  gpio_line.cpp 		\
-  gpio_counter.cpp		\
-  utils.cpp 			\
-  types.cpp 			\
-  log.cpp 				\
-  exceptions.cpp		\
-  config.cpp			\
-  file_utils.cpp		\
+GPIO_SOURCES=              \
+  gpio_driver.cpp          \
+  gpio_chip_driver.cpp     \
+  gpio_chip.cpp            \
+  gpio_line.cpp            \
+  gpio_counter.cpp         \
+  utils.cpp                \
+  types.cpp                \
+  log.cpp                  \
+  exceptions.cpp           \
+  config.cpp               \
+  file_utils.cpp           \
+  interruption_context.cpp \
 
 GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)
 
