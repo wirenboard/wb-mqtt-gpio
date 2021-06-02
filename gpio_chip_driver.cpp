@@ -219,7 +219,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                 }
 
                 auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
-                auto time = ctx.ToSteadyClock(chrono::system_clock::time_point(chrono::nanoseconds(data.timestamp)));
+                auto time = ctx.ToSteadyClock(data.timestamp);
 
                 if (line->HandleInterrupt(edge, time) != EInterruptStatus::DEBOUNCE) {   // update value
                     gpiohandle_data data;
@@ -405,7 +405,6 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
     }
 
     auto now = chrono::steady_clock::now();
-
     for (uint32_t i = 0; i < lines.size(); ++i) {
         const auto & line = lines[i];
         assert(line->GetFd() == fd);
