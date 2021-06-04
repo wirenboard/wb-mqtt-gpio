@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.2.0) unstable; urgency=medium
+
+  * It is recommended to use linux kernel v5.3-rc3 or newer because of a bug in events from GPIO with active low setting.
+    wb-mqtt-gpio warns about it if used with affected kernel. It could lead to a wrong impulse counting.
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 03 Jun 2021 12:49:00 +0500
+
 wb-mqtt-gpio (2.1.3) unstable; urgency=medium
 
   * Slow interrupt handling is fixed.

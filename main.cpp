@@ -121,26 +121,51 @@ namespace
         }
     }
 
-    // Since linux kernel v5.7-rc1 interrupt events have monotonic clock timestamp.
-    // Prior to v5.7-rc1 they had realtime clock timestamp.
-    // https://github.com/torvalds/linux/commit/f8850206e160bfe35de9ca2e726ab6d6b8cb77dd
-    bool HasMonotonicClockForInterruptionTimestamps()
+    struct TLinuxKernelVersion
+    {
+        int Version = -1;
+        int Patchlevel = -1;
+    };
+
+    TLinuxKernelVersion GetLinuxKernelVersion()
     {
         utsname buf{};
         uname(&buf);
+        TLinuxKernelVersion res;
         auto v = WBMQTT::StringSplit(buf.release, ".");
-        if (v.size() == 1) {
+        res.Version = stol(v[0].c_str());
+        if (v.size() > 1) {
+            res.Patchlevel = stoul(v[1].c_str());
+        }
+        return res;
+    }
+
+    // Since linux kernel v5.7-rc1 interrupt events have monotonic clock timestamp.
+    // Prior to v5.7-rc1 they had realtime clock timestamp.
+    // https://github.com/torvalds/linux/commit/f8850206e160bfe35de9ca2e726ab6d6b8cb77dd
+    bool HasMonotonicClockForInterruptionTimestamps(const TLinuxKernelVersion& kernel)
+    {
+        if (kernel.Version < 5) {
             return false;
         }
-        auto version = stoul(v[0].c_str());
-        if (version < 5) {
-            return false;
-        }
-        if (version > 5) {
+        if (kernel.Version > 5) {
             return true;
         }
-        auto patchlevel = stoul(v[1].c_str());
-        return (patchlevel >= 7);
+        return (kernel.Patchlevel >= 7);
+    }
+
+    // In kernels prior to v5.3-rc3 there is a bug with events polarity and GPIOHANDLE_REQUEST_ACTIVE_LOW.
+    // A kernel sends events with inverted polarity not with requested.
+    // https://github.com/torvalds/linux/commit/223ecaf140b1dd1c1d2a1a1d96281efc5c906984
+    bool HasActiveLowEventsBug(const TLinuxKernelVersion& kernel)
+    {
+        if (kernel.Version > 5) {
+            return false;
+        }
+        if (kernel.Version < 5) {
+            return true;
+        }
+        return (kernel.Patchlevel < 3);
     }
 } // namespace
 
@@ -175,8 +200,9 @@ int main(int argc, char* argv[])
     WBMQTT::SignalHandling::Start();
 
     try {
+        TLinuxKernelVersion kernel = GetLinuxKernelVersion();
 
-        if (HasMonotonicClockForInterruptionTimestamps()) {
+        if (HasMonotonicClockForInterruptionTimestamps(kernel)) {
             LOG(Info) << "Kernel uses monotonic clock for interrupt timestamps";
             TInterruptionContext::SetMonotonicClockForInterruptTimestamp();
         }
@@ -192,7 +218,8 @@ int main(int argc, char* argv[])
                 auto config = LoadConfig("/etc/wb-mqtt-gpio.conf",
                                          configFileName,
                                          "/var/lib/wb-mqtt-gpio/conf.d",
-                                         "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json");
+                                         "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json",
+                                         { HasActiveLowEventsBug(kernel) });
                 mqttDriver = WBMQTT::NewDriver(
                     WBMQTT::TDriverArgs{}
                         .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))

@@ -145,8 +145,13 @@ namespace
             if (channel.isMember("direction") && channel["direction"].asString() == "input")
                 lineConfig.Direction = EGpioDirection::Input;
 
-            if (channel.isMember("edge"))
-                EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
+            if (channel.isMember("edge")) {
+                if (lineConfig.Type.empty()) {
+                    LOG(Warn) << "Edge setting for GPIO \"" << lineConfig.Name << "\" is not used. It can be set only for GPIO with \"type\" option";
+                } else {
+                    EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
+                } 
+            }
 
             AppendLine(cfg, path, lineConfig, lineNames);
         }
@@ -217,10 +222,22 @@ namespace
 TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& optionalConfigFile,
                              const std::string& systemConfigsDir,
-                             const std::string& schemaFile)
+                             const std::string& schemaFile,
+                             const TConfigValidationHints& validationHints)
 {
     TGpioDriverConfig cfg(
         LoadConfigInternal(mainConfigFile, optionalConfigFile, systemConfigsDir, schemaFile));
     RemoveUnusedChips(cfg);
+    if (validationHints.WarnAboutCountersWithInvertedInput) {
+        for (const auto& chip: cfg.Chips) {
+            for (const auto& line: chip.Lines) {
+                if (!line.Type.empty() && line.IsActiveLow) {
+                    LOG(Warn) << line.Name << "(" << chip.Path << ":" << to_string(line.Offset)
+                              << ") is used as counter and has inverted option. "
+                              << "Impulse counting could be wrong because of a kernel bug. It is recommended to upgrade kernel to v5.3 or newer";
+                }
+            }
+        }
+    }
     return cfg;
 }

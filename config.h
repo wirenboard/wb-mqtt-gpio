@@ -43,6 +43,17 @@ struct TGpioDriverConfig
     std::vector<TGpioChipConfig> Chips;
 };
 
+struct TConfigValidationHints
+{
+    /**
+     * @brief Print warning about inverted inputs used as impulse counters.
+     *        Linux kernels prior to v5.3-rc3 send events with inverted polarity not with requested.
+     *        So they are filtered during impulse counting.
+     *        It is recommended to upgrade kernel.
+     */
+    bool WarnAboutCountersWithInvertedInput = false;
+};
+
 /**
  * @brief Load configuration from config files. Throws TBadConfigError on validation error.
  *
@@ -53,8 +64,10 @@ struct TGpioDriverConfig
  * @param systemConfigsDir - folder with system generated config files. 
  * They will be loaded if optional config file is empty.
  * @param schemaFile - path and name of a file with JSONSchema for configs
+ * @param validationHints - an object with config validation hints
  */
 TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& optionalConfigFile,
                              const std::string& systemConfigsDir,
-                             const std::string& schemaFile);
+                             const std::string& schemaFile,
+                             const TConfigValidationHints& validationHints = {false});

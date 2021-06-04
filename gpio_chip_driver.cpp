@@ -305,10 +305,14 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine & line)
     req.lineoffset  = line->GetOffset();
     req.handleflags = GetFlagsFromConfig(*config);
 
-    // GPIOEVENT_REQUEST_BOTH_EDGES is used because of bugs in kernel drivers
-    // 4.9.22 don't send all events if GPIOHANDLE_REQUEST_ACTIVE_LOW is enabled
-    // 5.10.0-wb1 sends all events even from unvanted edge and marks them as requested edge
-    req.eventflags = GPIOEVENT_REQUEST_BOTH_EDGES;
+    req.eventflags = 0;
+
+    if (config->InterruptEdge == EGpioEdge::RISING)
+        req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
+    else if(config->InterruptEdge == EGpioEdge::FALLING)
+        req.eventflags |= GPIOEVENT_REQUEST_FALLING_EDGE;
+    else if(config->InterruptEdge == EGpioEdge::BOTH)
+        req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
 
     errno = 0;
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {

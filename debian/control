@@ -11,7 +11,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libjsoncpp0 | libjsoncpp1, ucf, lib
 Breaks: wb-mqtt-confed (<< 1.0.2), wb-homa-gpio (<< 2.0.1)
 Replaces: wb-homa-gpio (<< 2.0.1)
 Conflicts: wb-homa-gpio (<< 2.0.1)
-Suggests: linux-image-wb2 (>= 4.9+wb20181227130340) | linux-image-wb6 (>= 4.9+wb20181227130340)
+Suggests: linux-image-wb6 (>= 5.10.35-wb1)
 Description: Wiren Board Smart Home MQTT generic sysfs GPIO driver compatible with HomA conventions
 
 Package: wb-homa-gpio
