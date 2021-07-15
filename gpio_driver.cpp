@@ -158,6 +158,9 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
         const auto & line = event.Control->GetUserData().As<PGpioLine>();
         if (line->IsOutput()) {
             line->SetValue(value);
+            event.Control->GetDevice()->GetDriver()->AccessAsync([=](const PDriverTx & tx){
+                event.Control->SetRawValue(tx, event.RawValue);
+            });
         } else {
             LOG(Warn) << "Attempt to write value to input " << line->DescribeShort();
         }

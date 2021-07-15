@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.3.0) unstable; urgency=medium
+
+  * libwbmqtt1-2 2.1.0 support
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 08 Jun 2021 12:29:00 +0500
+
 wb-mqtt-gpio (2.2.0) unstable; urgency=medium
 
   * It is recommended to use linux kernel v5.3-rc3 or newer because of a bug in events from GPIO with active low setting.
