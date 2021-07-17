@@ -4,6 +4,7 @@
 #include "types.h"
 
 #include <vector>
+#include <mutex>
 
 class TGpioCounter
 {
@@ -27,6 +28,7 @@ class TGpioCounter
     EGpioEdge       InterruptEdge;
     TTimeIntervalUs PreviousInterval;
 
+    mutable std::mutex AccessMutex;
 public:
     explicit TGpioCounter(const TGpioLineConfig & config);
     ~TGpioCounter();
@@ -40,12 +42,17 @@ public:
     uint64_t GetCounts() const;
     std::vector<TMetadataPair> GetIdsAndTypes(const std::string & baseId) const;
     std::vector<TValuePair>    GetIdsAndValues(const std::string & baseId) const;
+    std::string                GetRoundedTotal() const;
 
     void SetInterruptEdge(EGpioEdge);
     EGpioEdge GetInterruptEdge() const;
 
-    void SetInitialValues(float total); // set total when starting
-
+    /**
+     * @brief Sets total value. Counts value is set to zero. Thread safe.
+     * 
+     * @param total new total value
+     */
+    void SetInitialValues(float total);
 private:
     void UpdateCurrent(const TTimeIntervalUs &);
     void UpdateTotal();

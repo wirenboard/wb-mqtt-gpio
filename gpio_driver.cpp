@@ -95,7 +95,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                         futureControl = device->CreateControl(tx, TControlArgs{}
                             .SetId(move(id))
                             .SetType(move(type))
-                            .SetReadonly(lineConfig.Direction == EGpioDirection::Input)
+                            .SetReadonly(lineConfig.Direction == EGpioDirection::Input && !isTotal)
                             .SetUserData(line)
                             .SetDoLoadPrevious(isTotal)
                         );
@@ -146,24 +146,33 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
     }
 
     EventHandlerHandle = mqttDriver->On<TControlOnValueEvent>([](const TControlOnValueEvent & event){
-        uint8_t value;
-        if (event.RawValue == "1") {
-            value = 1;
-        } else if (event.RawValue == "0") {
-            value = 0;
-        } else {
-            LOG(Warn) << "Invalid value: " << event.RawValue;
-            return;
-        }
         const auto & line = event.Control->GetUserData().As<PGpioLine>();
+        std::string valueForPublishing;
         if (line->IsOutput()) {
+            uint8_t value;
+            if (event.RawValue == "1") {
+                value = 1;
+            } else if (event.RawValue == "0") {
+                value = 0;
+            } else {
+                LOG(Warn) << "Invalid value: " << event.RawValue;
+                return;
+            }
             line->SetValue(value);
-            event.Control->GetDevice()->GetDriver()->AccessAsync([=](const PDriverTx & tx){
-                event.Control->SetRawValue(tx, event.RawValue);
-            });
+            valueForPublishing = event.RawValue;
         } else {
-            LOG(Warn) << "Attempt to write value to input " << line->DescribeShort();
+            char* end;
+            float value = strtof(event.RawValue.c_str(), &end);
+            if (end == event.RawValue.c_str()) {
+                LOG(Warn) << "Invalid value: " << event.RawValue;
+                return;
+            }
+            line->GetCounter()->SetInitialValues(value);
+            valueForPublishing = line->GetCounter()->GetRoundedTotal();
         }
+        event.Control->GetDevice()->GetDriver()->AccessAsync([=](const PDriverTx & tx){
+            event.Control->SetRawValue(tx, valueForPublishing);
+        });
     });
 }
 

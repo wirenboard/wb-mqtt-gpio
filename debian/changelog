@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.4.0) unstable; urgency=medium
+
+  * Setting of counters total values by publishing in appropriate "on" topic is implemented
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 15 Jul 2021 10:28:24 +0500
+
 wb-mqtt-gpio (2.3.0) unstable; urgency=medium
 
   * libwbmqtt1-2 2.1.0 support
