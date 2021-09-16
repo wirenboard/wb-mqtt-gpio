@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.5.0) unstable; urgency=medium
+
+  * Update dependency on libwbmqtt1 to support fixed libmosquitto facade
+    (required for newer mosquitto backports)
+
+ -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Thu, 16 Sep 2021 15:22:24 +0300
+
 wb-mqtt-gpio (2.4.0) unstable; urgency=medium
 
   * Setting of counters total values by publishing in appropriate "on" topic is implemented
