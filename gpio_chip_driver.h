@@ -43,6 +43,7 @@ private:
 
     void ReListenLine(PGpioLine);
     void AutoDetectInterruptEdges();
+    void ReadInputValues();
 };
 
 #define FOR_EACH_LINE(driver, line) driver->ForEachLine([&](const PGpioLine & line)

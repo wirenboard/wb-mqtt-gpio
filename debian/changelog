@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.5.1) stable; urgency=medium
+
+  * Publish actual inputs state on start up. Previous versions publish zeros on all inputs  
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Sun, 19 Sep 2021 11:59:53 +0500
+
 wb-mqtt-gpio (2.5.0) unstable; urgency=medium
 
   * Update dependency on libwbmqtt1 to support fixed libmosquitto facade

@@ -114,6 +114,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                             .SetType("switch")
                             .SetReadonly(true)
                             .SetUserData(line)
+                            .SetRawValue(line->GetValue() == 1 ? "1" : "0")
                         );
                     } else {
                         futureControl = device->CreateControl(tx, TControlArgs{}

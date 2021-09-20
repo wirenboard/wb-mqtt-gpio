@@ -131,6 +131,7 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
     }
 
     AutoDetectInterruptEdges();
+    ReadInputValues();
 }
 
 TGpioChipDriver::~TGpioChipDriver()
@@ -436,7 +437,9 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
 
 void TGpioChipDriver::ReadLinesValues(const TGpioLines & lines)
 {
-    assert(!lines.empty());
+    if (lines.empty()) {
+        return;
+    }
     auto fd = lines.front()->GetFd();
 
     gpiohandle_data data;
@@ -520,5 +523,18 @@ void TGpioChipDriver::AutoDetectInterruptEdges()
         line->GetConfig()->InterruptEdge = edge;
 
         ReListenLine(line);
+    }
+}
+
+void TGpioChipDriver::ReadInputValues()
+{
+    for (const auto & fdLines: Lines) {
+        TGpioLines linesToRead;
+        for (auto line: fdLines.second) {
+            if (!line->IsOutput() && !line->GetCounter()) {
+                linesToRead.push_back(line);
+            }
+        }
+        ReadLinesValues(linesToRead);
     }
 }
