@@ -528,14 +528,13 @@ void TGpioChipDriver::AutoDetectInterruptEdges()
 
 void TGpioChipDriver::ReadInputValues()
 {
-    auto shouldReadValue = [](const PGpioLine & line) {
-            return (!line->IsOutput()) && (!line->GetCounter());
-        };
-
     for (const auto & fdLines: Lines) {
-        const auto & lines = fdLines.second;
         TGpioLines linesToRead;
-        std::copy_if(lines.begin(), lines.end(), std::back_inserter(linesToRead), shouldReadValue);
+        for (auto line: fdLines.second) {
+            if (!line->IsOutput() && !line->GetCounter()) {
+                linesToRead.push_back(line);
+            }
+        }
         ReadLinesValues(linesToRead);
     }
 }
