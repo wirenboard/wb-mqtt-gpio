@@ -11,6 +11,5 @@ usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.default
 usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.mka3
 usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.cqc10
 usr/bin/wb-mqtt-gpio
-usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
 etc/wb-configs.d/13wb-mqtt-gpio 
 usr/lib/wb-mqtt-gpio/generate-system-config.sh

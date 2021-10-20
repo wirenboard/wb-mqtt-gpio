@@ -71,3 +71,10 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& systemConfigsDir,
                              const std::string& schemaFile,
                              const TConfigValidationHints& validationHints = {false});
+
+void MakeJsonForConfed(const std::string& configFile,
+                       const std::string& systemConfigsDir,
+                       const std::string& schemaFile);
+
+void MakeConfigFromConfed(const std::string& systemConfigsDir,
+                          const std::string& schemaFile);

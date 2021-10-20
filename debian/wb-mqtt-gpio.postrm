@@ -8,6 +8,8 @@ OLD_CONFFILE=/etc/$OLD_CONFFILE_NAME
 BACKUP_DIR=/usr/share/wb-mqtt-gpio
 OLD_CONFFILE_BACKUP=$BACKUP_DIR/$OLD_CONFFILE_NAME.old 
 
+rm -f /usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
+
 if [ "$1" = "purge" ]; then
     if [ -x /usr/bin/ucf ]; then
         ucf  --purge $CONFFILE

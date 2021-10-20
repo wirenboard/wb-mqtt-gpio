@@ -6,7 +6,9 @@
 
 #include <wblib/signal_handling.h>
 #include <wblib/wbmqtt.h>
+#include <wblib/json_utils.h>
 
+#include <unordered_set>
 #include <getopt.h>
 #include <sys/utsname.h>
 
@@ -16,7 +18,10 @@ using PGpioDriver = unique_ptr<TGpioDriver>;
 
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
-const auto WBMQTT_DB_FILE             = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
+const auto WBMQTT_DB_FILE       = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
+const auto CONFIG_FILE          = "/etc/wb-mqtt-gpio.conf";
+const auto SYSTEM_CONFIGS_DIR   = "/var/lib/wb-mqtt-gpio/conf.d";
+const auto CONFIG_SCHEMA_FILE   = "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json";
 const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(30);
 const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup can take a lot of time
 
@@ -37,7 +42,9 @@ namespace
              << "  -h IP        MQTT broker IP (default: localhost)" << endl
              << "  -u user      MQTT user (optional)" << endl
              << "  -P password  MQTT user password (optional)" << endl
-             << "  -T prefix    MQTT topic prefix (optional)" << endl;
+             << "  -T prefix    MQTT topic prefix (optional)" << endl
+             << "  -j           Make JSON for wb-mqtt-confed from /etc/wb-mqtt-gpio.conf" << endl
+             << "  -J           Make /etc/wb-mqtt-gpio.conf from wb-mqtt-confed output" << endl;
     }
 
     void ParseCommadLine(int                           argc,
@@ -48,7 +55,7 @@ namespace
         int debugLevel = 0;
         int c;
 
-        while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:")) != -1) {
+        while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:jJ")) != -1) {
             switch (c) {
             case 'd':
                 debugLevel = stoi(optarg);
@@ -71,7 +78,22 @@ namespace
             case 'P':
                 mqttConfig.Password = optarg;
                 break;
-
+            case 'j':
+                try {
+                    MakeJsonForConfed(CONFIG_FILE, SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
+                    exit(0);
+                } catch (const std::exception& e) {
+                    LOG(Error) << "FATAL: " << e.what();
+                    exit(1);
+                }
+            case 'J':
+                try {
+                    MakeConfigFromConfed(SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
+                    exit(0);
+                } catch (const std::exception& e) {
+                    LOG(Error) << "FATAL: " << e.what();
+                    exit(1);
+                }
             case '?':
             default:
                 PrintUsage();
@@ -215,10 +237,10 @@ int main(int argc, char* argv[])
         auto start = [&] {
             {
                 lock_guard<mutex> lk(startedCvMtx);
-                auto config = LoadConfig("/etc/wb-mqtt-gpio.conf",
+                auto config = LoadConfig(CONFIG_FILE,
                                          configFileName,
-                                         "/var/lib/wb-mqtt-gpio/conf.d",
-                                         "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json",
+                                         SYSTEM_CONFIGS_DIR,
+                                         CONFIG_SCHEMA_FILE,
                                          { HasActiveLowEventsBug(kernel) });
                 mqttDriver = WBMQTT::NewDriver(
                     WBMQTT::TDriverArgs{}

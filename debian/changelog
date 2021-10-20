@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.6.0) stable; urgency=medium
+
+  * New UI for editing configuration file
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Wed, 20 Oct 2021 12:06:18 +0500
+
 wb-mqtt-gpio (2.5.1) stable; urgency=medium
 
   * Publish actual inputs state on start up. Previous versions publish zeros on all inputs  
