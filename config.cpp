@@ -145,7 +145,7 @@ namespace
         mergeParams.LogPrefix = "[config] ";
         mergeParams.InfoLogger = &Info;
         mergeParams.WarnLogger = &Warn;
-        mergeParams.ArrayKeys["/channels"] = "name";
+        mergeParams.MergeArraysOn["/channels"] = "name";
 
         Json::Value resultingConfig;
         resultingConfig["channels"] = Json::Value(Json::arrayValue);
