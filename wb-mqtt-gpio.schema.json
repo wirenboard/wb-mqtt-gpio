@@ -290,9 +290,6 @@
                 "remove_empty_properties": true,
                 "options": {
                     "disable_edit_json": true,
-                    "wb": {
-                        "disable_panel": true
-                    },
                     "collapsed": true
                 },
                 "oneOf": [
@@ -310,7 +307,7 @@
                 "disable_array_delete_all": true,
                 "wb": {
                     "disable_panel": true,
-                    "buttons_on_top": true
+                    "disable_array_item_panel": true
                 }
             }
         }
