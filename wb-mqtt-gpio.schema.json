@@ -11,13 +11,6 @@
     "definitions": {
         "output_properties": {
             "properties": {
-                "inverted": {
-                    "type": "boolean",
-                    "title": "Invert polarity",
-                    "default": false,
-                    "_format": "checkbox",
-                    "propertyOrder": 5
-                },
                 "open_drain": {
                     "type": "boolean",
                     "title": "Open drain",
@@ -44,13 +37,6 @@
         },
         "input_properties": {
             "properties": {
-                "inverted": {
-                    "type": "boolean",
-                    "title": "Invert polarity",
-                    "default": false,
-                    "_format": "checkbox",
-                    "propertyOrder": 5
-                },
                 "type": {
                     "type": "string",
                     "title": "Pulse counter type",
@@ -176,6 +162,13 @@
                     "enum_titles": [ "Input", "Output" ],
                     "default": "input",
                     "propertyOrder": 4
+                },
+                "inverted": {
+                    "type": "boolean",
+                    "title": "Invert polarity",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 5
                 }
             },
             "allOf": [
@@ -208,6 +201,12 @@
                     "options": {
                         "hidden": true
                     }
+                },
+                "inverted": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
                 }
             },
             "required": [ "name", "direction" ],
@@ -231,6 +230,13 @@
             "type": "object",
             "_format": "merge-default",
             "properties": {
+                "initial_state": {
+                    "type": "boolean",
+                    "title": "Output initial state",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 13
+                },
                 "name": {
                     "type": "string",
                     "options": {
@@ -249,16 +255,28 @@
                     "options": {
                         "hidden": true
                     }
+                },
+                "inverted": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "open_drain": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "open_source": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
                 }
             },
             "required": [ "name", "direction" ],
-            "allOf": [
-                { "$ref": "#/definitions/output_properties" }
-            ],
             "default": {
-                "inverted": false,
-                "open_drain": false,
-                "open_source": false,
                 "initial_state": false
             },
             "options": {
@@ -289,8 +307,7 @@
                 "headerTemplate": "{{self.name}}",
                 "remove_empty_properties": true,
                 "options": {
-                    "disable_edit_json": true,
-                    "collapsed": true
+                    "disable_edit_json": true
                 },
                 "oneOf": [
                     { "$ref": "#/definitions/gpio_channel" },
@@ -313,7 +330,13 @@
         }
     },
     "required": [ "device_name", "channels" ],
+    "_format": "merge-default",
+    "default" : {
+        "max_unchanged_interval": -1
+    },
     "options": {
-        "disable_collapse": true
+        "disable_collapse": true,
+        "disable_edit_json": true,
+        "disable_properties": true
     }
 }

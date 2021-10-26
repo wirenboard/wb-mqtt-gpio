@@ -138,9 +138,9 @@ TEST_F(TConfigTest, line_override)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Direction, EGpioDirection::Output);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InitialState, true);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InterruptEdge, EGpioEdge::RISING);
-    ASSERT_EQ(cfg.Chips[0].Lines[0].IsActiveLow, true);
-    ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenDrain, true);
-    ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenSource, true);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].IsActiveLow, false);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenDrain, false);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenSource, false);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Multiplier, 100.0);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 152);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "watt_meter");

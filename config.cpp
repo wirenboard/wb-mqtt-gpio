@@ -22,6 +22,8 @@ using namespace WBMQTT::JSON;
 
 namespace
 {
+    const string ProtectedProperties[] = {"gpio", "direction", "inverted", "open_drain", "open_source"};
+
     void AppendLine(TGpioDriverConfig&     cfg,
                     const std::string&     gpioChipPath,
                     const TGpioLineConfig& line)
@@ -161,8 +163,9 @@ namespace
         } catch (const TNoDirError&) {
         }
         {
-            mergeParams.ProtectedParameters.insert("/channels/gpio");
-            mergeParams.ProtectedParameters.insert("/channels/direction");
+            for (const auto& pr: ProtectedProperties) {
+                mergeParams.ProtectedParameters.insert("/channels/" + pr);
+            }
             auto cfg = Parse(mainConfigFile);
             Validate(cfg, schema);
             Merge(resultingConfig, cfg, mergeParams);
@@ -266,7 +269,9 @@ void MakeConfigFromConfed(const string& systemConfigsDir, const string& schemaFi
     for (auto& ch: config["channels"]) {
         auto it = systemChannels.find(ch["name"].asString());
         if (it != systemChannels.end()) {
-            ch.removeMember("direction");
+            for (const auto& pr: ProtectedProperties) {
+                ch.removeMember(pr);
+            }
             if (ch.size() > 1) {
                 newChannels.append(ch);
             }
