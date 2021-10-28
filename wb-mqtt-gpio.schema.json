@@ -100,9 +100,9 @@
             "title": "Custom GPIO",
             "type": "object",
             "not": {
-            "properties": {
-                "name": {
-                    "type": "string",
+                "properties": {
+                    "name": {
+                        "type": "string",
                         "enum": []
                     }
                 }
@@ -176,7 +176,12 @@
                 { "$ref": "#/definitions/output_properties" }
             ],
             "required": [ "name", "gpio", "direction" ],
-            "defaultProperties": [ "name", "gpio", "direction" ]
+            "defaultProperties": [ "name", "gpio", "direction" ],
+            "options": {
+                "wb": {
+                    "controls_on_top": true
+                }
+            }
         },
         "system_input": {
             "title": "System input",
@@ -320,8 +325,8 @@
                 "disable_array_reorder": true,
                 "disable_collapse": true,
                 "disable_array_add": true,
-                "disable_array_delete": true,
-                "disable_array_delete_all": true,
+                "disable_array_delete_all_rows": true,
+                "disable_array_delete_last_row": true,
                 "wb": {
                     "disable_panel": true,
                     "disable_array_item_panel": true
