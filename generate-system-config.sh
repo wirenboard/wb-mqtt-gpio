@@ -2,7 +2,7 @@
 
 SYS_CONFFILE="/var/lib/wb-mqtt-gpio/conf.d/system.conf"
 SCHEMA_FILE="/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.schema.json"
-CONFED_SCHEMA_FILE="/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json"
+CONFED_SCHEMA_FILE="/var/lib/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json"
 
 if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
     source "/usr/lib/wb-utils/common.sh"

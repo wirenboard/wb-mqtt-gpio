@@ -21,7 +21,7 @@ using PGpioDriver = unique_ptr<TGpioDriver>;
 const auto WBMQTT_DB_FILE       = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
 const auto CONFIG_FILE          = "/etc/wb-mqtt-gpio.conf";
 const auto SYSTEM_CONFIGS_DIR   = "/var/lib/wb-mqtt-gpio/conf.d";
-const auto CONFIG_SCHEMA_FILE   = "/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json";
+const auto CONFIG_SCHEMA_FILE   = "/var/lib/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json";
 const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(30);
 const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup can take a lot of time
 
