@@ -1,6 +1,6 @@
 {
     "type": "object",
-    "title": "Discrete IO",
+    "title": "GPIO Driver Configuration Type",
     "description": "Controller discrete inputs and outputs configuration",
     "configFile": {
         "path": "/etc/wb-mqtt-gpio.conf",
@@ -161,7 +161,7 @@
 
     "translations": {
         "ru": {
-            "Discrete IO": "Дискретные входы и выходы",
+            "GPIO Driver Configuration Type": "Дискретные входы и выходы",
             "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения"
         }
     }
