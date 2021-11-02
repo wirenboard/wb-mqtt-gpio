@@ -1,7 +1,7 @@
 {
     "type": "object",
     "title": "GPIO Driver Configuration Type",
-    "description": "Digital inputs and outputs configuration",
+    "description": "Controller discrete inputs and outputs configuration",
     "configFile": {
         "path": "/etc/wb-mqtt-gpio.conf",
         "service": "wb-mqtt-gpio"
@@ -41,10 +41,7 @@
                                     "propertyOrder": 3
                                 }
                             },
-                            "required": [
-                                "chip",
-                                "offset"
-                            ]
+                            "required": ["chip", "offset"]
                         },
                         {
                             "type": "integer",
@@ -57,14 +54,8 @@
                 "direction": {
                     "type": "string",
                     "title": "Direction",
-                    "enum": [
-                        "input",
-                        "output"
-                    ],
-                    "enum_titles": [
-                        "Input",
-                        "Output"
-                    ],
+                    "enum": ["input", "output"],
+                    "enum_titles": ["Input", "Output"],
                     "default": "input",
                     "propertyOrder": 4
                 },
@@ -103,11 +94,7 @@
                 "edge": {
                     "type": "string",
                     "title": "Pulse counter interrupt edge",
-                    "enum": [
-                        "rising",
-                        "falling",
-                        "both"
-                    ],
+                    "enum": ["rising", "falling", "both"],
                     "default": "both",
                     "propertOrder": 9
                 },
@@ -138,11 +125,7 @@
                     "propertyOrder": 13
                 }
             },
-            "required": [
-                "name",
-                "gpio",
-                "direction"
-            ],
+            "required": ["name", "gpio", "direction"],
             "defaultProperties": [
                 "name",
                 "gpio",
@@ -157,12 +140,12 @@
             "default": "GPIOs",
             "propertyOrder": 1
         },
-        "max_unchanged_interval" : {
-            "type" : "integer",
-            "title" : "Unchanged value posting interval",
-            "description" : "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior.",
-            "default" : -1,
-            "propertyOrder" : 2
+        "max_unchanged_interval": {
+            "type": "integer",
+            "title": "Unchanged value posting interval",
+            "description": "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior.",
+            "default": -1,
+            "propertyOrder": 2
         },
         "channels": {
             "type": "array",
@@ -174,8 +157,12 @@
             "propertyOrder": 3
         }
     },
-    "required": [
-        "device_name",
-        "channels"
-    ]
+    "required": ["device_name", "channels"],
+
+    "translations": {
+        "ru": {
+            "GPIO Driver Configuration Type": "Дискретные входы и выходы",
+            "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения"
+        }
+    }
 }
