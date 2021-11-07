@@ -58,6 +58,7 @@ TEST_F(TConfigTest, good_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Multiplier, 100.0);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 15);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "watt_meter");
+    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(20000));
 }
 
 TEST_F(TConfigTest, optional_config)
@@ -82,6 +83,7 @@ TEST_F(TConfigTest, optional_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Multiplier, 1002.0);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 152);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "water_meter");
+    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(10000));
 }
 
 TEST_F(TConfigTest, full_main_config)
@@ -144,4 +146,5 @@ TEST_F(TConfigTest, line_override)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Multiplier, 100.0);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 15);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "watt_meter");
+    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(30000));
 }
