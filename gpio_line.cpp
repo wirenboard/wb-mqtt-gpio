@@ -22,6 +22,7 @@ TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     , Offset(config.Offset)
     , Fd(-1)
     , Value(0)
+    , InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     assert(Offset < AccessChip()->GetLineCount());
 
@@ -263,4 +264,14 @@ const PUGpioLineConfig & TGpioLine::GetConfig() const
     assert(Config);
 
     return Config;
+}
+
+void TGpioLine::SetInterruptSupport(EInterruptSupport interruptSupport)
+{
+    InterruptSupport = interruptSupport;
+}
+
+EInterruptSupport TGpioLine::GetInterruptSupport() const
+{
+    return InterruptSupport;
 }

@@ -12,7 +12,6 @@ class TGpioChip: public std::enable_shared_from_this<TGpioChip>
                                                     Label,
                                                     Path;
     uint32_t                                        LineCount;
-    EInterruptSupport                               InterruptSupport;
 
 public:
     TGpioChip(const std::string & path);
@@ -26,7 +25,5 @@ public:
     std::string Describe() const;
     uint32_t GetLineCount() const;
     uint32_t GetNumber() const;
-    void SetInterruptSupport(EInterruptSupport);
-    EInterruptSupport GetInterruptSupport() const;
     int GetFd() const;
 };
