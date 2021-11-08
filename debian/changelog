@@ -1,8 +1,14 @@
-wb-mqtt-gpio (2.6.0) stable; urgency=medium
+wb-mqtt-gpio (2.7.0) stable; urgency=medium
 
   * Support for interrupts on separate pins is added
 
  -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Mon, 08 Nov 2021 11:48:47 +0500
+
+wb-mqtt-gpio (2.6.0) stable; urgency=medium
+
+  * Debounce timeout setting for every line is added
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Sun, 07 Nov 2021 14:17:00 +0500
 
 wb-mqtt-gpio (2.5.2) stable; urgency=medium
 
