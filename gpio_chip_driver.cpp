@@ -67,29 +67,9 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
         if (!ReleaseLineIfUsed(line)) {
             LOG(Error) << "Skipping " << line->DescribeShort();
         }
-
-        const auto & config = line->GetConfig();
-
-        switch (config->Direction) {
+        switch (line->GetConfig()->Direction) {
             case EGpioDirection::Input: {
-                switch (line->GetInterruptSupport()) {
-                    case EInterruptSupport::UNKNOWN:
-                    case EInterruptSupport::YES: {
-                        if (TryListenLine(line)) {
-                            line->SetInterruptSupport(EInterruptSupport::YES);
-                        } else {
-                            LOG(Info) << line->Describe() << " does not support interrupts. Polling will be used instead.";
-                            line->SetInterruptSupport(EInterruptSupport::NO);
-                            addToPoll(line);
-                        }
-                        break;
-                    }
-
-                    case EInterruptSupport::NO: {
-                        addToPoll(line);
-                        break;
-                    }
-                }
+                InitInput(line);
                 break;
             }
             case EGpioDirection::Output: {
@@ -138,6 +118,28 @@ TGpioChipDriver::~TGpioChipDriver()
         }
 
         close(fd);
+    }
+}
+
+void TGpioChipDriver::InitInput(const PGpioLine & line)
+{
+    switch (line->GetInterruptSupport()) {
+        case EInterruptSupport::UNKNOWN:
+        case EInterruptSupport::YES: {
+            if (TryListenLine(line)) {
+                line->SetInterruptSupport(EInterruptSupport::YES);
+            } else {
+                LOG(Info) << line->Describe() << " does not support interrupts. Polling will be used instead.";
+                line->SetInterruptSupport(EInterruptSupport::NO);
+                addToPoll(line);
+            }
+            break;
+        }
+
+        case EInterruptSupport::NO: {
+            addToPoll(line);
+            break;
+        }
     }
 }
 
