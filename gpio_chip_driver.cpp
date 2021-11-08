@@ -69,7 +69,9 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
         }
         switch (line->GetConfig()->Direction) {
             case EGpioDirection::Input: {
-                InitInput(line);
+                if (!InitInputInterrupts(line)) {
+                    addToPoll(line);
+                }
                 break;
             }
             case EGpioDirection::Output: {
@@ -118,28 +120,6 @@ TGpioChipDriver::~TGpioChipDriver()
         }
 
         close(fd);
-    }
-}
-
-void TGpioChipDriver::InitInput(const PGpioLine & line)
-{
-    switch (line->GetInterruptSupport()) {
-        case EInterruptSupport::UNKNOWN:
-        case EInterruptSupport::YES: {
-            if (TryListenLine(line)) {
-                line->SetInterruptSupport(EInterruptSupport::YES);
-            } else {
-                LOG(Info) << line->Describe() << " does not support interrupts. Polling will be used instead.";
-                line->SetInterruptSupport(EInterruptSupport::NO);
-                addToPoll(line);
-            }
-            break;
-        }
-
-        case EInterruptSupport::NO: {
-            addToPoll(line);
-            break;
-        }
     }
 }
 
@@ -348,6 +328,26 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
     }
 
     return true;
+}
+
+bool TGpioChipDriver::InitInputInterrupts(const PGpioLine & line)
+{
+    switch (line->GetInterruptSupport()) {
+        case EInterruptSupport::UNKNOWN:
+        case EInterruptSupport::YES: {
+            if (TryListenLine(line)) {
+                line->SetInterruptSupport(EInterruptSupport::YES);
+                return true;
+            }
+            LOG(Info) << line->Describe() << " does not support interrupts. Polling will be used instead.";
+            line->SetInterruptSupport(EInterruptSupport::NO);
+            return false;
+        }
+
+        case EInterruptSupport::NO: {
+            return false;
+        }
+    }
 }
 
 bool TGpioChipDriver::InitLinesPolling(uint32_t flags, const vector<PGpioLine> & lines)
