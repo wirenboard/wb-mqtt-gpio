@@ -15,8 +15,6 @@
 
 using namespace std;
 
-const auto DebouncingIntervalUs = TTimeIntervalUs(10000);
-
 TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     : Chip(chip)
     , Offset(config.Offset)
@@ -227,8 +225,8 @@ EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & i
     auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
                                           : GetIntervalFromPreviousInterrupt(interruptTimePoint);
 
-    /* if interval of impulses is bigger than debouncing interval we consider it is not a debounnce */
-    auto debouncing = isFirstInterruption ? false : intervalUs <= DebouncingIntervalUs;
+    /* if interval of impulses is bigger than debouncing interval we consider it is not a debounce */
+    auto debouncing = isFirstInterruption ? false : intervalUs <= Config->DebounceTimeout;
 
     LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " interval: " << intervalUs.count() << " us" << (debouncing ? " [debouncing]" : "");
 

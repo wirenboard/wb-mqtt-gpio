@@ -123,6 +123,13 @@
                     "default": false,
                     "_format": "checkbox",
                     "propertyOrder": 13
+                },
+                "debounce": {
+                    "type": "integer",
+                    "title": "Debounce timeout, us",
+                    "default": 10000,
+                    "min": 0,
+                    "propertyOrder": 14
                 }
             },
             "required": ["name", "gpio", "direction"],
