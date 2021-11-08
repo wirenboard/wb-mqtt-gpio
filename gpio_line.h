@@ -21,6 +21,8 @@ class TGpioLine
 
     TValue<uint8_t> Value;
 
+    EInterruptSupport InterruptSupport;
+
     std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const;
 
 public:
@@ -51,4 +53,6 @@ public:
     void Update();
     const PUGpioCounter & GetCounter() const;
     const PUGpioLineConfig & GetConfig() const;
+    void SetInterruptSupport(EInterruptSupport interruptSupport);
+    EInterruptSupport GetInterruptSupport() const;
 };
