@@ -1,7 +1,7 @@
 {
     "type": "object",
     "title": "GPIO Driver Configuration Type",
-    "description": "Digital inputs and outputs configuration",
+    "description": "Controller discrete inputs and outputs configuration",
     "configFile": {
         "path": "/etc/wb-mqtt-gpio.conf",
         "service": "wb-mqtt-gpio",
@@ -332,7 +332,7 @@
         "max_unchanged_interval": {
             "type": "integer",
             "title": "Unchanged value posting interval",
-            "description": "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior.",
+            "description": "max_unchanged_interval_description",
             "default": -1,
             "propertyOrder": 2
         },
@@ -382,5 +382,45 @@
         "disable_collapse": true,
         "disable_edit_json": true,
         "disable_properties": true
+    },
+
+    "translations": {
+        "en": {
+            "max_unchanged_interval_description": "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior"
+        },
+        "ru": {
+            "GPIO Driver Configuration Type": "Дискретные входы и выходы",
+            "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения",
+            "Open drain": "Открытый сток",
+            "Open source": "Открытый исток",
+            "Output initial state": "Начальное состояние выхода",
+            "without pulse counting": "Без счета импульсов",
+            "watt meter": "Ваттметр",
+            "water meter": "Счетчик расхода воды",
+            "Pulse counter interrupt edge": "Фронт срабатывания счетчика импульсов",
+            "rising": "передний фронт",
+            "falling": "задний фронт",
+            "both": "передний и задний фронт",
+            "Number of pulses per unit (kWh or m^3)": "Количество импульсов на единицу измерения (кВт или м^3)",
+            "Number of decimal places in _current topic": "Число десятичных знаков канала с текущим показанием",
+            "Number of decimal places in _total topic": "Число десятичных знаков канала с суммарным показанием",
+            "Custom GPIO": "Пользовательские настройи GPIO",
+            "MQTT id": "Название канала MQTT",
+            "MQTT device name": "Имя устройства MQTT",
+            "GPIO chip character device and line offset": "Символьное устройство GPIO и смещение линии",
+            "Path to chip character device": "Пусть к символьному устройству",
+            "example: \"/dev/gpiochip0\"": "например: \"/dev/gpiochip0\"",
+            "GPIO line offset": "Смещении линии GPIO",
+            "(deprecated) GPIO number": "(устаревшее) номер GPIO",
+            "Input": "Вход",
+            "Output": "Выход",
+            "Invert polarity": "Инвертиовать сигнал",
+            "System input": "Системный вход",
+            "System output": "Системный выход",
+            "Unchanged value posting interval": "Интервал публикации неизменившегося состояния (с)",
+            "max_unchanged_interval_description": "Задает интервал публикации состояния, если оно не изменилось. Ноль задает публикацию после каждого чтения данных из устрйоства. По умолчанию публикация происходит по изменению состояния. Отрицательное значение задает поведение по умолчанию",
+            "List of GPIO channels": "Список каналов GPIO",
+            "GPIO channel": "Канал GPIO"
+        }
     }
 }
