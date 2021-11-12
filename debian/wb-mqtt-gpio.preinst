@@ -4,6 +4,7 @@ rm -f /etc/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
 rm -f /etc/wb-mqtt-confed/schemas/wb-homa-gpio.schema.json
 rm -f /etc/wb-mqtt-gpio.conf.d/*
 rm -f /etc/wb-homa-gpio.conf.default
+rm -f /usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
 if [ -d /etc/wb-mqtt-confed ]; then
    if [ -d /etc/wb-mqtt-confed/schemas ]; then
       rmdir --ignore-fail-on-non-empty /etc/wb-mqtt-confed/schemas
