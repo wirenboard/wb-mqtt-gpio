@@ -299,7 +299,7 @@
         "max_unchanged_interval": {
             "type": "integer",
             "title": "Unchanged value posting interval",
-            "description": "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior.",
+            "description": "Specifies the maximum interval in seconds between posting the same values to MQTT.  Negative value (default) - update on change. Zero - update after every read from the device.",
             "default": -1,
             "propertyOrder": 2
         },
