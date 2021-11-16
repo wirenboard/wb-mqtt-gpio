@@ -33,31 +33,18 @@
                     "propertyOrder": 13
                 }
             },
-            "defaultProperties": [
-                "inverted",
-                "open_drain",
-                "open_source",
-                "initial_state"
-            ]
+            "defaultProperties": ["inverted", "open_drain", "open_source", "initial_state"]
         },
         "input_properties": {
             "properties": {
                 "type": {
                     "type": "string",
                     "title": "Pulse counter type",
-                    "enum": [
-                        "",
-                        "watt_meter",
-                        "water_meter"
-                    ],
+                    "enum": ["", "watt_meter", "water_meter"],
                     "default": "",
                     "propertyOrder": 6,
                     "options": {
-                        "enum_titles": [
-                            "without pulse counting",
-                            "watt meter",
-                            "water meter"
-                        ]
+                        "enum_titles": ["without pulse counting", "watt meter", "water meter"]
                     }
                 },
                 "edge": {
@@ -68,10 +55,7 @@
                     "propertyOrder": 9,
                     "options": {
                         "dependencies": {
-                            "type": [
-                                "watt_meter",
-                                "water_meter"
-                            ]
+                            "type": ["watt_meter", "water_meter"]
                         }
                     }
                 },
@@ -82,10 +66,7 @@
                     "propertyOrder": 10,
                     "options": {
                         "dependencies": {
-                            "type": [
-                                "watt_meter",
-                                "water_meter"
-                            ]
+                            "type": ["watt_meter", "water_meter"]
                         }
                     }
                 },
@@ -97,10 +78,7 @@
                     "propertyOrder": 11,
                     "options": {
                         "dependencies": {
-                            "type": [
-                                "watt_meter",
-                                "water_meter"
-                            ]
+                            "type": ["watt_meter", "water_meter"]
                         }
                     }
                 },
@@ -112,10 +90,7 @@
                     "propertyOrder": 12,
                     "options": {
                         "dependencies": {
-                            "type": [
-                                "watt_meter",
-                                "water_meter"
-                            ]
+                            "type": ["watt_meter", "water_meter"]
                         }
                     }
                 }
@@ -205,11 +180,7 @@
                 }
             ],
             "required": ["name", "gpio", "direction"],
-            "defaultProperties": [
-                "name",
-                "gpio",
-                "direction"
-            ],
+            "defaultProperties": ["name", "gpio", "direction"],
             "options": {
                 "wb": {
                     "controls_on_top": true
@@ -248,9 +219,7 @@
                 }
             },
             "required": ["name", "direction"],
-            "allOf": [
-                { "$ref": "#/definitions/input_properties" }
-            ],
+            "allOf": [{ "$ref": "#/definitions/input_properties" }],
             "default": {
                 "inverted": false,
                 "type": "",
