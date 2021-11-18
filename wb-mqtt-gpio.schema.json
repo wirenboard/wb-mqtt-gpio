@@ -358,7 +358,7 @@
             "max_unchanged_interval_description": "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior"
         },
         "ru": {
-            "GPIO Driver Configuration Type": "Дискретные входы и выходы",
+            "GPIO Driver Configuration Type": "Дискретные входы и выходы (GPIO)",
             "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения",
             "Open drain": "Открытый сток",
             "Open source": "Открытый исток",
