@@ -360,8 +360,8 @@
         "ru": {
             "GPIO Driver Configuration Type": "Дискретные входы и выходы (GPIO)",
             "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения",
-            "Open drain": "Открытый сток",
-            "Open source": "Открытый исток",
+            "Open drain": "Открытый коллектор",
+            "Open source": "Открытый эмиттер",
             "Output initial state": "Начальное состояние выхода",
             "without pulse counting": "Без счета импульсов",
             "watt meter": "Ваттметр",
