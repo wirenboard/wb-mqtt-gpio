@@ -90,7 +90,7 @@ install: all
 	install -D -m 0755  $(GPIO_BIN) $(DESTDIR)/usr/bin/$(GPIO_BIN)
 	install -D -m 0755  generate-system-config.sh $(DESTDIR)/usr/lib/wb-mqtt-gpio/generate-system-config.sh
 
-	install -D -m 0644  wb-mqtt-gpio.schema.json $(DESTDIR)/usr/share/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
+	install -D -m 0644  wb-mqtt-gpio.schema.json $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.schema.json
 	install -D -m 0644  wb-mqtt-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-mqtt-gpio
 
 

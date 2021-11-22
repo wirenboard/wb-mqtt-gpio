@@ -22,59 +22,12 @@ using namespace WBMQTT::JSON;
 
 namespace
 {
-    ostream& operator<<(ostream& ss, const TGpioLineConfig& line)
-    {
-        ss << "    Offset: " << line.Offset << endl
-           << "    IsOpenDrain: " << line.IsOpenDrain << endl
-           << "    IsOpenSource: " << line.IsOpenSource << endl
-           << "    IsActiveLow: " << line.IsActiveLow << endl
-           << "    Direction: " << (line.Direction == EGpioDirection::Input ? "input" : "output")
-           << endl
-           << "    InterruptEdge: " << GpioEdgeToString(line.InterruptEdge) << endl
-           << "    Type: " << line.Type << endl
-           << "    Multiplier: " << line.Multiplier << endl
-           << "    DecimalPlacesTotal: " << line.DecimalPlacesTotal << endl
-           << "    DecimalPlacesCurrent: " << line.DecimalPlacesCurrent << endl
-           << "    InitialState: " << line.InitialState << endl
-           << "    Debounce timeout: " << line.DebounceTimeout.count() << endl;
-        return ss;
-    }
-
-    void RemoveDuplicateLine(TGpioDriverConfig&     cfg,
-                             const std::string&     gpioChipPath,
-                             const TGpioLineConfig& line,
-                             unordered_set<string>& lineNames)
-    {
-        if (!lineNames.count(line.Name)) {
-            return;
-        }
-        for (auto& chip : cfg.Chips) {
-            auto itLine = find_if(chip.Lines.begin(), chip.Lines.end(), [&](const auto& l) {
-                return l.Name == line.Name;
-            });
-            if (itLine != chip.Lines.end()) {
-                stringstream ss;
-                ss << "duplicate GPIO name : '" << line.Name << "'" << endl
-                   << "  old settings:" << endl
-                   << "    Chip: " << chip.Path << endl
-                   << (*itLine) << "  new settings:" << endl
-                   << "    Chip: " << gpioChipPath << endl
-                   << line;
-
-                LOG(Warn) << ss.str();
-                chip.Lines.erase(itLine);
-                return;
-            }
-        }
-    }
+    const string ProtectedProperties[] = {"gpio", "direction", "inverted", "open_drain", "open_source"};
 
     void AppendLine(TGpioDriverConfig&     cfg,
                     const std::string&     gpioChipPath,
-                    const TGpioLineConfig& line,
-                    unordered_set<string>& lineNames)
+                    const TGpioLineConfig& line)
     {
-        RemoveDuplicateLine(cfg, gpioChipPath, line, lineNames);
-
         auto chipConfig = find_if(cfg.Chips.begin(), cfg.Chips.end(), [&](const auto& c) {
             return c.Path == gpioChipPath;
         });
@@ -95,15 +48,10 @@ namespace
         }
 
         chipConfig->Lines.push_back(line);
-        lineNames.emplace(line.Name);
     }
 
-    TGpioDriverConfig LoadFromJSON(const Json::Value&     root,
-                                   const Json::Value&     schema,
-                                   unordered_set<string>& lineNames)
+    TGpioDriverConfig LoadFromJSON(const Json::Value& root)
     {
-        Validate(root, schema);
-
         TGpioDriverConfig cfg;
         const auto&       channels = root["channels"];
         if (root.isMember("device_name")) {
@@ -155,33 +103,22 @@ namespace
                 } 
             }
 
-            AppendLine(cfg, path, lineConfig, lineNames);
+            AppendLine(cfg, path, lineConfig);
         }
         return cfg;
     }
 
-    void RemoveDeviceNameRequirement(Json::Value& schema)
+    Json::Value RemoveDeviceNameRequirement(const Json::Value& schema)
     {
+        auto res = schema;
         Json::Value newArray = Json::arrayValue;
         for (auto& v : schema["required"]) {
             if (v.asString() != "device_name") {
                 newArray.append(v);
             }
         }
-        schema["required"] = newArray;
-    }
-
-    void Append(const TGpioDriverConfig& src,
-                TGpioDriverConfig&       dst,
-                unordered_set<string>&   lineNames)
-    {
-        dst.DeviceName = src.DeviceName;
-        dst.PublishParameters = src.PublishParameters;
-        for (const auto& v : src.Chips) {
-            for (const auto& line : v.Lines) {
-                AppendLine(dst, v.Path, line, lineNames);
-            }
-        }
+        res["required"] = newArray;
+        return res;
     }
 
     template <class T, class Pred> void erase_if(T& c, Pred pred)
@@ -201,23 +138,40 @@ namespace
     {
         Json::Value schema = Parse(schemaFile);
 
-        unordered_set<string> lineNames;
+        if (!optionalConfigFile.empty()) {
+            auto cfg = Parse(optionalConfigFile);
+            Validate(cfg, schema);
+            return LoadFromJSON(cfg);
+        }
 
-        if (!optionalConfigFile.empty())
-            return LoadFromJSON(Parse(optionalConfigFile), schema, lineNames);
+        TMergeParams mergeParams;
+        mergeParams.LogPrefix = "[config] ";
+        mergeParams.InfoLogger = &Info;
+        mergeParams.WarnLogger = &Warn;
+        mergeParams.MergeArraysOn["/channels"] = "name";
 
-        Json::Value noDeviceNameSchema = schema;
-        RemoveDeviceNameRequirement(noDeviceNameSchema);
-        TGpioDriverConfig cfg;
+        Json::Value resultingConfig;
+        resultingConfig["channels"] = Json::Value(Json::arrayValue);
+
+        Json::Value noDeviceNameSchema = RemoveDeviceNameRequirement(schema);
         try {
             IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
-                Append(LoadFromJSON(Parse(f), noDeviceNameSchema, lineNames), cfg, lineNames);
+                auto cfg = Parse(f);
+                Validate(cfg, noDeviceNameSchema);
+                Merge(resultingConfig, cfg, mergeParams);
                 return false;
             });
         } catch (const TNoDirError&) {
         }
-        Append(LoadFromJSON(Parse(mainConfigFile), schema, lineNames), cfg, lineNames);
-        return cfg;
+        {
+            for (const auto& pr: ProtectedProperties) {
+                mergeParams.ProtectedParameters.insert("/channels/" + pr);
+            }
+            auto cfg = Parse(mainConfigFile);
+            Validate(cfg, schema);
+            Merge(resultingConfig, cfg, mergeParams);
+        }
+        return LoadFromJSON(resultingConfig);
     }
 } // namespace
 
@@ -242,4 +196,90 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
         }
     }
     return cfg;
+}
+
+void MakeJsonForConfed(const string& configFile,
+                       const string& systemConfigsDir,
+                       const string& schemaFile)
+{
+    Json::Value schema = Parse(schemaFile);
+    Json::Value noDeviceNameSchema = RemoveDeviceNameRequirement(schema);
+    auto config = Parse(configFile);
+    Validate(config, schema);
+    unordered_map<string, Json::Value> configuredChannels;
+    for (const auto& ch: config["channels"]) {
+        configuredChannels.emplace(ch["name"].asString(), ch);
+    }
+    Json::Value newChannels(Json::arrayValue);
+    try {
+        IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
+            auto cfg = Parse(f);
+            Validate(cfg, noDeviceNameSchema);
+            for (const auto& ch: cfg["channels"]) {
+                auto name = ch["name"].asString();
+                auto it = configuredChannels.find(name);
+                if (it != configuredChannels.end()) {
+                    newChannels.append(it->second);
+                    configuredChannels.erase(name);
+                } else {
+                    Json::Value v;
+                    v["name"] = ch["name"];
+                    v["direction"] = ch["direction"];
+                    newChannels.append(v);
+                }
+            }
+            return false;
+        });
+    } catch (const TNoDirError&) {
+    }
+    for (const auto& ch: config["channels"]) {
+        auto it = configuredChannels.find(ch["name"].asString());
+        if (it != configuredChannels.end()) {
+            newChannels.append(ch);
+        }
+    }
+    config["channels"].swap(newChannels);
+    MakeWriter("", "None")->write(config, &cout);
+}
+
+void MakeConfigFromConfed(const string& systemConfigsDir, const string& schemaFile)
+{
+    Json::Value noDeviceNameSchema = RemoveDeviceNameRequirement(Parse(schemaFile));
+    unordered_set<string> systemChannels;
+    try {
+        IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
+            auto cfg = Parse(f);
+            Validate(cfg, noDeviceNameSchema);
+            for (const auto& ch: cfg["channels"]) {
+                systemChannels.insert(ch["name"].asString());
+            }
+            return false;
+        });
+    } catch (const TNoDirError&) {
+    }
+
+    Json::Value config;
+    Json::CharReaderBuilder readerBuilder;
+    Json::String errs;
+
+    if (!Json::parseFromStream(readerBuilder, cin, &config, &errs)) {
+        throw runtime_error("Failed to parse JSON:" + errs);
+    }
+
+    Json::Value newChannels(Json::arrayValue);
+    for (auto& ch: config["channels"]) {
+        auto it = systemChannels.find(ch["name"].asString());
+        if (it != systemChannels.end()) {
+            for (const auto& pr: ProtectedProperties) {
+                ch.removeMember(pr);
+            }
+            if (ch.size() > 1) {
+                newChannels.append(ch);
+            }
+        } else {
+            newChannels.append(ch);
+        }
+    }
+    config["channels"].swap(newChannels);
+    MakeWriter("  ", "None")->write(config, &cout);
 }

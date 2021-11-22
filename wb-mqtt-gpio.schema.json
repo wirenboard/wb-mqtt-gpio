@@ -4,14 +4,109 @@
     "description": "Controller discrete inputs and outputs configuration",
     "configFile": {
         "path": "/etc/wb-mqtt-gpio.conf",
-        "service": "wb-mqtt-gpio"
+        "service": "wb-mqtt-gpio",
+        "toJSON": [ "wb-mqtt-gpio", "-j" ],
+        "fromJSON": [ "wb-mqtt-gpio", "-J" ]
     },
     "definitions": {
+        "output_properties": {
+            "properties": {
+                "open_drain": {
+                    "type": "boolean",
+                    "title": "Open drain",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 7
+                },
+                "open_source": {
+                    "type": "boolean",
+                    "title": "Open source",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 8
+                },
+                "initial_state": {
+                    "type": "boolean",
+                    "title": "Output initial state",
+                    "default": false,
+                    "_format": "checkbox",
+                    "propertyOrder": 13
+                }
+            },
+            "defaultProperties": [ "inverted", "open_drain", "open_source", "initial_state" ]
+        },
+        "input_properties": {
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "title": "Pulse counter type",
+                    "enum": [ "", "watt_meter", "water_meter" ],
+                    "default": "",
+                    "propertyOrder": 6,
+                    "options": {
+                        "enum_titles": [ "without pulse counting", "watt meter", "water meter" ]
+                    }
+                },
+                "edge": {
+                    "type": "string",
+                    "title": "Pulse counter interrupt edge",
+                    "enum": [ "rising", "falling", "both" ],
+                    "default": "both",
+                    "propertyOrder": 9,
+                    "options": {
+                        "dependencies": {
+                            "type": ["watt_meter", "water_meter"]
+                        }
+                    }
+                },
+                "multiplier": {
+                    "type": "number",
+                    "title": "Number of pulses per unit (kWh or m^3)",
+                    "default": 1,
+                    "propertyOrder": 10,
+                    "options": {
+                        "dependencies": {
+                            "type": ["watt_meter", "water_meter"]
+                        }
+                    }
+                },
+                "decimal_points_current": {
+                    "type": "number",
+                    "title": "Number of decimal places in _current topic",
+                    "default": 2,
+                    "min": 0,
+                    "propertyOrder": 11,
+                    "options": {
+                        "dependencies": {
+                            "type": ["watt_meter", "water_meter"]
+                        }
+                    }
+                },
+                "decimal_points_total": {
+                    "type": "number",
+                    "title": "Number of decimal places in _total topic",
+                    "default": 2,
+                    "min": 0,
+                    "propertyOrder": 12,
+                    "options": {
+                        "dependencies": {
+                            "type": ["watt_meter", "water_meter"]
+                        }
+                    }
+                }
+            }
+        },
         "gpio_channel": {
+            "title": "Custom GPIO",
             "type": "object",
-            "title": "GPIO channel",
-            "headerTemplate": "GPIO channel {{(|self.name|)}}",
-            "remove_empty_properties": true,
+            "not": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "enum": []
+                    }
+                }
+            },
             "properties": {
                 "name": {
                     "type": "string",
@@ -41,21 +136,30 @@
                                     "propertyOrder": 3
                                 }
                             },
-                            "required": ["chip", "offset"]
-                        },
-                        {
-                            "type": "integer",
-                            "title": "(deprecated) GPIO number",
-                            "minimum": 0,
-                            "propertyOrder": 2
+                            "required": [ "chip", "offset" ],
+                            "_format": "grid",
+                            "options": {
+                            "disable_collapse": true
                         }
-                    ]
+                    },
+                    {
+                        "type": "integer",
+                        "title": "(deprecated) GPIO number",
+                        "minimum": 0,
+                        "propertyOrder": 2
+                    }
+                    ],
+                    "options": {
+                        "keep_oneof_values": false,
+                        "disable_edit_json": true,
+                        "disable_properties": true
+                    }
                 },
                 "direction": {
                     "type": "string",
                     "title": "Direction",
-                    "enum": ["input", "output"],
-                    "enum_titles": ["Input", "Output"],
+                    "enum": [ "input", "output" ],
+                    "enum_titles": [ "Input", "Output" ],
                     "default": "input",
                     "propertyOrder": 4
                 },
@@ -65,79 +169,124 @@
                     "default": false,
                     "_format": "checkbox",
                     "propertyOrder": 5
-                },
-                "type": {
+                }
+            },
+            "allOf": [
+                { "$ref": "#/definitions/input_properties" },
+                { "$ref": "#/definitions/output_properties" }
+            ],
+            "required": [ "name", "gpio", "direction" ],
+            "defaultProperties": [ "name", "gpio", "direction" ],
+            "options": {
+                "wb": {
+                    "controls_on_top": true
+                }
+            }
+        },
+        "system_input": {
+            "title": "System input",
+            "type": "object",
+            "_format": "merge-default",
+            "properties": {
+                "name": {
                     "type": "string",
-                    "title": "Pulse counter type (if any)",
-                    "enum": [
-                        "",
-                        "watt_meter",
-                        "water_meter"
-                    ],
-                    "default": "",
-                    "propertyOrder": 6
+                    "options": {
+                        "hidden": true
+                    },
+                    "enum": []
                 },
-                "open_drain": {
-                    "type": "boolean",
-                    "title": "Open drain (only for GPIO defined by character device)",
-                    "default": false,
-                    "_format": "checkbox",
-                    "propertyOrder": 7
+                "gpio": {
+                    "options": {
+                        "hidden": true
+                    }
                 },
-                "open_source": {
-                    "type": "boolean",
-                    "title": "Open source (only for GPIO defined by character device)",
-                    "default": false,
-                    "_format": "checkbox",
-                    "propertyOrder": 8
-                },
-                "edge": {
+                "direction": {
                     "type": "string",
-                    "title": "Pulse counter interrupt edge",
-                    "enum": ["rising", "falling", "both"],
-                    "default": "both",
-                    "propertOrder": 9
+                    "enum": [ "input" ],
+                    "options": {
+                        "hidden": true
+                    }
                 },
-                "multiplier": {
-                    "type": "number",
-                    "title": "Number of pulses per unit (kWh or m^3)",
-                    "propertyOrder": 10
-                },
-                "decimal_points_current": {
-                    "type": "number",
-                    "title": "Number of decimal places in _current topic (pulse counters only)",
-                    "default": 2,
-                    "min": 0,
-                    "propertyOrder": 11
-                },
-                "decimal_points_total": {
-                    "type": "number",
-                    "title": "Number of decimal places in _total topic (pulse counters only)",
-                    "default": 2,
-                    "min": 0,
-                    "propertyOrder": 12
-                },
+                "inverted": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
+                }
+            },
+            "required": [ "name", "direction" ],
+            "allOf": [
+                { "$ref": "#/definitions/input_properties" }
+            ],
+            "default": {
+                "inverted": false,
+                "type": "",
+                "edge": "both",
+                "multiplier": 1,
+                "decimal_points_current": 2,
+                "decimal_points_total":2
+            },
+            "options": {
+                "disable_properties": true
+            }
+        },
+        "system_output": {
+            "title": "System output",
+            "type": "object",
+            "_format": "merge-default",
+            "properties": {
                 "initial_state": {
                     "type": "boolean",
-                    "title": "Initial state for output GPIO",
+                    "title": "Output initial state",
                     "default": false,
                     "_format": "checkbox",
                     "propertyOrder": 13
                 },
-                "debounce": {
-                    "type": "integer",
-                    "title": "Debounce timeout, us",
-                    "default": 10000,
-                    "min": 0,
-                    "propertyOrder": 14
+                "name": {
+                    "type": "string",
+                    "options": {
+                        "hidden": true
+                    },
+                    "enum": []
+                },
+                "gpio": {
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "direction": {
+                    "type": "string",
+                    "enum": [ "output" ],
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "inverted": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "open_drain": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "open_source": {
+                    "type": "boolean",
+                    "options": {
+                        "hidden": true
+                    }
                 }
             },
-            "required": ["name", "gpio", "direction"],
-            "defaultProperties": [
-                "name",
-                "gpio",
-                "direction"
-            ]
+            "required": [ "name", "direction" ],
+            "default": {
+                "initial_state": false
+            },
+            "options": {
+                "disable_properties": true
+            }
         }
     },
     "properties": {
@@ -150,7 +299,7 @@
         "max_unchanged_interval": {
             "type": "integer",
             "title": "Unchanged value posting interval",
-            "description": "Specifies the maximum interval in seconds between posting the same values to message queue. Zero means the values are posted to the queue every time they read from the device. By default, the values are only reported on change. Negative value means default behavior.",
+            "description": "Specifies the maximum interval in seconds between posting the same values to MQTT.  Negative value (default) - update on change. Zero - update after every read from the device.",
             "default": -1,
             "propertyOrder": 2
         },
@@ -158,13 +307,43 @@
             "type": "array",
             "title": "List of GPIO channels",
             "items": {
-                "$ref": "#/definitions/gpio_channel"
+                "_format": "roMultiple",
+                "title": "GPIO channel",
+                "headerTemplate": "{{self.name}}",
+                "remove_empty_properties": true,
+                "options": {
+                    "disable_edit_json": true
+                },
+                "oneOf": [
+                    { "$ref": "#/definitions/gpio_channel" },
+                    { "$ref": "#/definitions/system_input" },
+                    { "$ref": "#/definitions/system_output" }
+                ]
             },
-            "_format": "",
-            "propertyOrder": 3
+            "propertyOrder": 3,
+            "options": {
+                "disable_array_reorder": true,
+                "disable_collapse": true,
+                "disable_array_add": true,
+                "disable_array_delete_all_rows": true,
+                "disable_array_delete_last_row": true,
+                "wb": {
+                    "disable_panel": true,
+                    "disable_array_item_panel": true
+                }
+            }
         }
     },
-    "required": ["device_name", "channels"],
+    "required": [ "device_name", "channels" ],
+    "_format": "merge-default",
+    "default" : {
+        "max_unchanged_interval": -1
+    },
+    "options": {
+        "disable_collapse": true,
+        "disable_edit_json": true,
+        "disable_properties": true
+    },
 
     "translations": {
         "ru": {
