@@ -90,6 +90,7 @@ namespace
             Get(channel, "decimal_points_current", lineConfig.DecimalPlacesCurrent);
             Get(channel, "decimal_points_total", lineConfig.DecimalPlacesTotal);
             Get(channel, "initial_state", lineConfig.InitialState);
+            Get(channel, "debounce", lineConfig.DebounceTimeout);
 
             if (channel.isMember("direction") && channel["direction"].asString() == "input")
                 lineConfig.Direction = EGpioDirection::Input;

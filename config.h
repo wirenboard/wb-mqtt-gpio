@@ -3,6 +3,7 @@
 #include "types.h"
 #include <wblib/driver_args.h>
 #include <vector>
+#include <chrono>
 
 enum class EGpioDirection
 {
@@ -12,18 +13,19 @@ enum class EGpioDirection
 
 struct TGpioLineConfig
 {
-    uint32_t       Offset;
-    bool           IsOpenDrain  = false;
-    bool           IsOpenSource = false;
-    bool           IsActiveLow  = false;
-    std::string    Name;
-    EGpioDirection Direction     = EGpioDirection::Output;
-    EGpioEdge      InterruptEdge = EGpioEdge::BOTH;
-    std::string    Type;
-    float          Multiplier           = 1.0;
-    int            DecimalPlacesTotal   = -1;
-    int            DecimalPlacesCurrent = -1;
-    bool           InitialState         = false;
+    uint32_t                  Offset;
+    bool                      IsOpenDrain  = false;
+    bool                      IsOpenSource = false;
+    bool                      IsActiveLow  = false;
+    std::string               Name;
+    EGpioDirection            Direction     = EGpioDirection::Output;
+    EGpioEdge                 InterruptEdge = EGpioEdge::BOTH;
+    std::string               Type;
+    float                     Multiplier           = 1.0;
+    int                       DecimalPlacesTotal   = -1;
+    int                       DecimalPlacesCurrent = -1;
+    bool                      InitialState         = false;
+    std::chrono::microseconds DebounceTimeout      = std::chrono::microseconds(10000);
 };
 
 using TLinesConfig = std::vector<TGpioLineConfig>;

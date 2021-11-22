@@ -20,7 +20,6 @@ using namespace std;
 TGpioChip::TGpioChip(const string & path)
     : Fd(-1)
     , Path(path)
-    , InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     Fd = open(Path.c_str(), O_RDWR | O_CLOEXEC);
     if (Fd < 0) {
@@ -90,16 +89,6 @@ uint32_t TGpioChip::GetLineCount() const
 uint32_t TGpioChip::GetNumber() const
 {
     return Utils::GpioPathToChipNumber(Path);
-}
-
-void TGpioChip::SetInterruptSupport(EInterruptSupport interruptSupport)
-{
-    InterruptSupport = interruptSupport;
-}
-
-EInterruptSupport TGpioChip::GetInterruptSupport() const
-{
-    return InterruptSupport;
 }
 
 string TGpioChip::Describe() const

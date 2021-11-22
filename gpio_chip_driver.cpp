@@ -67,60 +67,32 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig & config)
         if (!ReleaseLineIfUsed(line)) {
             LOG(Error) << "Skipping " << line->DescribeShort();
         }
-
-        const auto & config = line->GetConfig();
-
-        if (config->Direction == EGpioDirection::Input) {
-            auto interruptSupport = Chip->GetInterruptSupport();
-            switch (interruptSupport) {
-            case EInterruptSupport::UNKNOWN:
-                if (TryListenLine(line)) {
-                    Chip->SetInterruptSupport(EInterruptSupport::YES);
-                } else {
-                    LOG(Info) << Chip->Describe() << " does not support interrupts. Polling will be used instead.";
-                    Chip->SetInterruptSupport(EInterruptSupport::NO);
+        switch (line->GetConfig()->Direction) {
+            case EGpioDirection::Input: {
+                if (!InitInputInterrupts(line)) {
                     addToPoll(line);
                 }
                 break;
-
-            case EInterruptSupport::YES:
-            {
-                bool ok = TryListenLine(line);
-                assert(ok); _unused(ok);
+            }
+            case EGpioDirection::Output: {
+                if (!InitOutput(line)) {
+                    LOG(Error) << "Skipping output" << line->DescribeShort();
+                }
                 break;
             }
-
-            case EInterruptSupport::NO:
-                addToPoll(line);
-                break;
-            }
-        } else if (config->Direction == EGpioDirection::Output) {
-            if (!InitOutput(line)) {
-                LOG(Error) << "Skipping output" << line->DescribeShort();
-            }
-        } else {
-            assert(false);
         }
     }
 
-    if (Chip->GetInterruptSupport() == EInterruptSupport::UNKNOWN) {
-        Chip->SetInterruptSupport(EInterruptSupport::NO);
-    }
+    /* Initialize polling if line doesn't support interrupts */
+    for (const auto & flagsLines: pollLines) {
+        const auto flags = flagsLines.first;
+        const auto & lineBulks = flagsLines.second;
 
-    /* Initialize polling if chip doesn't support interrupts */
-    {
-        assert(pollLines.empty() || Chip->GetInterruptSupport() == EInterruptSupport::NO);
-
-        for (const auto & flagsLines: pollLines) {
-            const auto flags = flagsLines.first;
-            const auto & lineBulks = flagsLines.second;
-
-            for (const auto & lines: lineBulks) {
-                if (!InitLinesPolling(flags, lines)) {
-                    auto logError = move(LOG(Error) << "Failed to initialize polling of lines:");
-                    for (const auto & line: lines) {
-                        logError << "\n\t" << line->DescribeShort();
-                    }
+        for (const auto & lines: lineBulks) {
+            if (!InitLinesPolling(flags, lines)) {
+                auto logError = move(LOG(Error) << "Failed to initialize polling of lines:");
+                for (const auto & line: lines) {
+                    logError << "\n\t" << line->DescribeShort();
                 }
             }
         }
@@ -166,11 +138,8 @@ void TGpioChipDriver::AddToEpoll(int epfd)
 {
     AddedToEpoll = true;
 
-    if (Chip->GetInterruptSupport() != EInterruptSupport::YES)
-        return;
-
     FOR_EACH_LINE(this, line) {
-        if (line->IsOutput()) {
+        if (line->IsOutput() || line->GetInterruptSupport() != EInterruptSupport::YES) {
             return;
         }
 
@@ -188,9 +157,6 @@ void TGpioChipDriver::AddToEpoll(int epfd)
 bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
 {
     bool isHandled = false;
-
-    if (Chip->GetInterruptSupport() != EInterruptSupport::YES)
-        return isHandled;
 
     for (int i = 0; i < ctx.Count; i++) {
         auto itFdLines = Lines.find(ctx.Events[i].data.fd);
@@ -362,6 +328,26 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
     }
 
     return true;
+}
+
+bool TGpioChipDriver::InitInputInterrupts(const PGpioLine & line)
+{
+    switch (line->GetInterruptSupport()) {
+        case EInterruptSupport::UNKNOWN:
+        case EInterruptSupport::YES: {
+            if (TryListenLine(line)) {
+                line->SetInterruptSupport(EInterruptSupport::YES);
+                return true;
+            }
+            LOG(Info) << line->Describe() << " does not support interrupts. Polling will be used instead.";
+            line->SetInterruptSupport(EInterruptSupport::NO);
+            return false;
+        }
+
+        case EInterruptSupport::NO: {
+            return false;
+        }
+    }
 }
 
 bool TGpioChipDriver::InitLinesPolling(uint32_t flags, const vector<PGpioLine> & lines)
