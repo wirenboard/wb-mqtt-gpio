@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.8.1) stable; urgency=medium
+
+  * MQTT GPIO schema translation to Russian
+
+ -- Dmitry Vorobjev <d.vorobjev@wirenboard.ru>  Tue, 23 Nov 2021 17:16:00 +0300
+
 wb-mqtt-gpio (2.8.0) stable; urgency=medium
 
   * New UI for editing configuration file
