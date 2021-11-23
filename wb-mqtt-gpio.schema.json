@@ -5,8 +5,8 @@
     "configFile": {
         "path": "/etc/wb-mqtt-gpio.conf",
         "service": "wb-mqtt-gpio",
-        "toJSON": [ "wb-mqtt-gpio", "-j" ],
-        "fromJSON": [ "wb-mqtt-gpio", "-J" ]
+        "toJSON": ["wb-mqtt-gpio", "-j"],
+        "fromJSON": ["wb-mqtt-gpio", "-J"]
     },
     "definitions": {
         "output_properties": {
@@ -33,24 +33,24 @@
                     "propertyOrder": 13
                 }
             },
-            "defaultProperties": [ "inverted", "open_drain", "open_source", "initial_state" ]
+            "defaultProperties": ["inverted", "open_drain", "open_source", "initial_state"]
         },
         "input_properties": {
             "properties": {
                 "type": {
                     "type": "string",
                     "title": "Pulse counter type",
-                    "enum": [ "", "watt_meter", "water_meter" ],
+                    "enum": ["", "watt_meter", "water_meter"],
                     "default": "",
                     "propertyOrder": 6,
                     "options": {
-                        "enum_titles": [ "without pulse counting", "watt meter", "water meter" ]
+                        "enum_titles": ["without pulse counting", "watt meter", "water meter"]
                     }
                 },
                 "edge": {
                     "type": "string",
                     "title": "Pulse counter interrupt edge",
-                    "enum": [ "rising", "falling", "both" ],
+                    "enum": ["rising", "falling", "both"],
                     "default": "both",
                     "propertyOrder": 9,
                     "options": {
@@ -136,18 +136,18 @@
                                     "propertyOrder": 3
                                 }
                             },
-                            "required": [ "chip", "offset" ],
+                            "required": ["chip", "offset"],
                             "_format": "grid",
                             "options": {
-                            "disable_collapse": true
+                                "disable_collapse": true
+                            }
+                        },
+                        {
+                            "type": "integer",
+                            "title": "(deprecated) GPIO number",
+                            "minimum": 0,
+                            "propertyOrder": 2
                         }
-                    },
-                    {
-                        "type": "integer",
-                        "title": "(deprecated) GPIO number",
-                        "minimum": 0,
-                        "propertyOrder": 2
-                    }
                     ],
                     "options": {
                         "keep_oneof_values": false,
@@ -158,8 +158,8 @@
                 "direction": {
                     "type": "string",
                     "title": "Direction",
-                    "enum": [ "input", "output" ],
-                    "enum_titles": [ "Input", "Output" ],
+                    "enum": ["input", "output"],
+                    "enum_titles": ["Input", "Output"],
                     "default": "input",
                     "propertyOrder": 4
                 },
@@ -175,8 +175,8 @@
                 { "$ref": "#/definitions/input_properties" },
                 { "$ref": "#/definitions/output_properties" }
             ],
-            "required": [ "name", "gpio", "direction" ],
-            "defaultProperties": [ "name", "gpio", "direction" ],
+            "required": ["name", "gpio", "direction"],
+            "defaultProperties": ["name", "gpio", "direction"],
             "options": {
                 "wb": {
                     "controls_on_top": true
@@ -202,7 +202,7 @@
                 },
                 "direction": {
                     "type": "string",
-                    "enum": [ "input" ],
+                    "enum": ["input"],
                     "options": {
                         "hidden": true
                     }
@@ -214,17 +214,15 @@
                     }
                 }
             },
-            "required": [ "name", "direction" ],
-            "allOf": [
-                { "$ref": "#/definitions/input_properties" }
-            ],
+            "required": ["name", "direction"],
+            "allOf": [{ "$ref": "#/definitions/input_properties" }],
             "default": {
                 "inverted": false,
                 "type": "",
                 "edge": "both",
                 "multiplier": 1,
                 "decimal_points_current": 2,
-                "decimal_points_total":2
+                "decimal_points_total": 2
             },
             "options": {
                 "disable_properties": true
@@ -256,7 +254,7 @@
                 },
                 "direction": {
                     "type": "string",
-                    "enum": [ "output" ],
+                    "enum": ["output"],
                     "options": {
                         "hidden": true
                     }
@@ -280,7 +278,7 @@
                     }
                 }
             },
-            "required": [ "name", "direction" ],
+            "required": ["name", "direction"],
             "default": {
                 "initial_state": false
             },
@@ -334,9 +332,9 @@
             }
         }
     },
-    "required": [ "device_name", "channels" ],
+    "required": ["device_name", "channels"],
     "_format": "merge-default",
-    "default" : {
+    "default": {
         "max_unchanged_interval": -1
     },
     "options": {
