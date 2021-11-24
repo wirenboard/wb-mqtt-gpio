@@ -56,7 +56,8 @@
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
-                        }
+                        },
+                        "enum_titles": ["rising", "falling", "both"]
                     }
                 },
                 "multiplier": {
@@ -159,9 +160,11 @@
                     "type": "string",
                     "title": "Direction",
                     "enum": [ "input", "output" ],
-                    "enum_titles": [ "Input", "Output" ],
                     "default": "input",
-                    "propertyOrder": 4
+                    "propertyOrder": 4,
+                    "options": {
+                        "enum_titles": ["Input", "Output"]
+                    },
                 },
                 "inverted": {
                     "type": "boolean",
@@ -299,7 +302,7 @@
         "max_unchanged_interval": {
             "type": "integer",
             "title": "Unchanged value posting interval",
-            "description": "Specifies the maximum interval in seconds between posting the same values to MQTT.  Negative value (default) - update on change. Zero - update after every read from the device.",
+            "description": "max_unchanged_interval_description",
             "default": -1,
             "propertyOrder": 2
         },
@@ -346,9 +349,44 @@
     },
 
     "translations": {
+        "en": {
+            "max_unchanged_interval_description": "Specifies the maximum interval in seconds between posting the same values to MQTT.  Negative value (default) - update on change. Zero - update after every read from the device."
+        },
         "ru": {
-            "GPIO Driver Configuration Type": "Дискретные входы и выходы",
-            "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения"
+            "GPIO Driver Configuration Type": "Дискретные входы и выходы (GPIO)",
+            "Controller discrete inputs and outputs configuration": "Конфигурация дискретных входов и выходов контроллера и модулей расширения",
+            "Open drain": "Открытый коллектор",
+            "Open source": "Открытый эмиттер",
+            "Output initial state": "Начальное состояние выхода",
+            "without pulse counting": "Без счета импульсов",
+            "watt meter": "Ваттметр",
+            "water meter": "Счетчик расхода воды",
+            "Pulse counter interrupt edge": "Фронт срабатывания счетчика импульсов",
+            "rising": "Передний фронт",
+            "falling": "Задний фронт",
+            "both": "Передний и задний фронт",
+            "Number of pulses per unit (kWh or m^3)": "Количество импульсов на единицу измерения (кВт или м^3)",
+            "Number of decimal places in _current topic": "Число десятичных знаков канала с текущим показанием",
+            "Number of decimal places in _total topic": "Число десятичных знаков канала с суммарным показанием",
+            "Custom GPIO": "Пользовательские настройки GPIO",
+            "MQTT id": "Название канала MQTT",
+            "MQTT device name": "Имя устройства MQTT",
+            "GPIO chip character device and line offset": "Символьное устройство GPIO и смещение линии",
+            "Path to chip character device": "Пусть к устройству",
+            "example: \"/dev/gpiochip0\"": "например: \"/dev/gpiochip0\"",
+            "GPIO line offset": "Смещении линии GPIO",
+            "(deprecated) GPIO number": "Номер GPIO (устаревшее)",
+            "Input": "Вход",
+            "Output": "Выход",
+            "Invert polarity": "Инвертиовать сигнал",
+            "System input": "Системный вход",
+            "System output": "Системный выход",
+            "Unchanged value posting interval": "Интервал публикации неизменившегося состояния (с)",
+            "max_unchanged_interval_description": "Задает интервал публикации состояния, если оно не изменилось. Ноль задает публикацию после каждого чтения данных из устрйоства. По умолчанию публикация происходит по изменению состояния. Отрицательное число задает поведение по умолчанию",
+            "List of GPIO channels": "Список каналов GPIO",
+            "GPIO channel": "Канал GPIO",
+            "Direction": "Режим канала",
+            "Pulse counter type": "Тип счетчика импульсов"
         }
     }
 }
