@@ -372,7 +372,7 @@
             "MQTT id": "Название канала MQTT",
             "MQTT device name": "Имя устройства MQTT",
             "GPIO chip character device and line offset": "Символьное устройство GPIO и смещение линии",
-            "Path to chip character device": "Пусть к устройству",
+            "Path to chip character device": "Путь к устройству",
             "example: \"/dev/gpiochip0\"": "например: \"/dev/gpiochip0\"",
             "GPIO line offset": "Смещении линии GPIO",
             "(deprecated) GPIO number": "Номер GPIO (устаревшее)",
