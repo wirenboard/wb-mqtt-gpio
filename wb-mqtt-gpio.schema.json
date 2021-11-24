@@ -164,7 +164,7 @@
                     "propertyOrder": 4,
                     "options": {
                         "enum_titles": ["Input", "Output"]
-                    },
+                    }
                 },
                 "inverted": {
                     "type": "boolean",
