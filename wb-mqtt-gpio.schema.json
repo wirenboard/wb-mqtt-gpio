@@ -205,7 +205,6 @@
                 },
                 "direction": {
                     "type": "string",
-                    "enum": [ "input" ],
                     "options": {
                         "hidden": true
                     }
@@ -217,7 +216,7 @@
                     }
                 }
             },
-            "required": [ "name", "direction" ],
+            "required": [ "name" ],
             "allOf": [
                 { "$ref": "#/definitions/input_properties" }
             ],
@@ -259,7 +258,6 @@
                 },
                 "direction": {
                     "type": "string",
-                    "enum": [ "output" ],
                     "options": {
                         "hidden": true
                     }
@@ -283,7 +281,7 @@
                     }
                 }
             },
-            "required": [ "name", "direction" ],
+            "required": [ "name" ],
             "default": {
                 "initial_state": false
             },
