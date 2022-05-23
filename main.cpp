@@ -12,6 +12,10 @@
 #include <getopt.h>
 #include <sys/utsname.h>
 
+// From LSB
+#define EXIT_INVALIDARGUMENT 2 // Invalid or excess arguments
+#define EXIT_NOTCONFIGURED 6   // The program is not configured
+
 using namespace std;
 
 using PGpioDriver = unique_ptr<TGpioDriver>;
@@ -47,10 +51,10 @@ namespace
              << "  -J           Make /etc/wb-mqtt-gpio.conf from wb-mqtt-confed output" << endl;
     }
 
-    void ParseCommadLine(int                           argc,
-                         char*                         argv[],
-                         WBMQTT::TMosquittoMqttConfig& mqttConfig,
-                         string&                       customConfig)
+    void ParseCommandLine(int                           argc,
+                          char*                         argv[],
+                          WBMQTT::TMosquittoMqttConfig& mqttConfig,
+                          string&                       customConfig)
     {
         int debugLevel = 0;
         int c;
@@ -81,23 +85,23 @@ namespace
             case 'j':
                 try {
                     MakeJsonForConfed(CONFIG_FILE, SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 } catch (const std::exception& e) {
                     LOG(Error) << "FATAL: " << e.what();
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
             case 'J':
                 try {
                     MakeConfigFromConfed(SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 } catch (const std::exception& e) {
                     LOG(Error) << "FATAL: " << e.what();
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
             case '?':
             default:
                 PrintUsage();
-                exit(2);
+                exit(EXIT_INVALIDARGUMENT);
             }
         }
 
@@ -133,7 +137,7 @@ namespace
         default:
             cout << "Invalid -d parameter value " << debugLevel << endl;
             PrintUsage();
-            exit(2);
+            exit(EXIT_INVALIDARGUMENT);
         }
 
         if (optind < argc) {
@@ -197,12 +201,12 @@ int main(int argc, char* argv[])
     mqttConfig.Id = TGpioDriver::Name;
 
     string configFileName;
-    ParseCommadLine(argc, argv, mqttConfig, configFileName);
+    ParseCommandLine(argc, argv, mqttConfig, configFileName);
 
     WBMQTT::TPromise<void> initialized;
 
     WBMQTT::SetThreadName("wb-mqtt-gpio");
-    WBMQTT::SignalHandling::Handle({SIGINT, SIGTERM, SIGHUP});
+    WBMQTT::SignalHandling::Handle({SIGINT, SIGTERM});
     WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&] { WBMQTT::SignalHandling::Stop(); });
 
     /* if signal arrived before driver is initialized:
@@ -211,80 +215,65 @@ int main(int argc, char* argv[])
     */
     WBMQTT::SignalHandling::SetWaitFor(GPIO_DRIVER_INIT_TIMEOUT_S, initialized.GetFuture(), [&] {
         LOG(Error) << "Driver takes too long to initialize. Exiting.";
-        exit(1);
+        exit(EXIT_FAILURE);
     });
 
     /* if handling of signal takes too much time: exit with error */
     WBMQTT::SignalHandling::SetOnTimeout(GPIO_DRIVER_STOP_TIMEOUT_S, [&] {
         LOG(Error) << "Driver takes too long to stop. Exiting.";
-        exit(2);
+        exit(EXIT_FAILURE);
     });
     WBMQTT::SignalHandling::Start();
 
+    TLinuxKernelVersion kernel = GetLinuxKernelVersion();
+
+    if (HasMonotonicClockForInterruptionTimestamps(kernel)) {
+        LOG(Info) << "Kernel uses monotonic clock for interrupt timestamps";
+        TInterruptionContext::SetMonotonicClockForInterruptTimestamp();
+    }
+
+    TGpioDriverConfig config;
+
     try {
-        TLinuxKernelVersion kernel = GetLinuxKernelVersion();
+        config = LoadConfig(CONFIG_FILE,
+                            configFileName,
+                            SYSTEM_CONFIGS_DIR,
+                            CONFIG_SCHEMA_FILE,
+                            { HasActiveLowEventsBug(kernel) });
+    } catch (const std::exception& e) {
+        LOG(Error) << "FATAL: " << e.what();
+        return EXIT_NOTCONFIGURED;
+    }
 
-        if (HasMonotonicClockForInterruptionTimestamps(kernel)) {
-            LOG(Info) << "Kernel uses monotonic clock for interrupt timestamps";
-            TInterruptionContext::SetMonotonicClockForInterruptTimestamp();
-        }
+    try {
+        auto mqttDriver = WBMQTT::NewDriver(
+            WBMQTT::TDriverArgs{}
+                .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
+                .SetId(mqttConfig.Id)
+                .SetUseStorage(true)
+                .SetReownUnknownDevices(true)
+                .SetStoragePath(WBMQTT_DB_FILE),
+                config.PublishParameters
+            );
+        mqttDriver->StartLoop();
+        mqttDriver->WaitForReady();
+        auto gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, config);
+        Utils::ClearMappingCache();
+        gpioDriver->Start();
 
-        PGpioDriver           gpioDriver;
-        condition_variable    startedCv;
-        mutex                 startedCvMtx;
-        WBMQTT::PDeviceDriver mqttDriver;
-
-        auto start = [&] {
-            {
-                lock_guard<mutex> lk(startedCvMtx);
-                auto config = LoadConfig(CONFIG_FILE,
-                                         configFileName,
-                                         SYSTEM_CONFIGS_DIR,
-                                         CONFIG_SCHEMA_FILE,
-                                         { HasActiveLowEventsBug(kernel) });
-                mqttDriver = WBMQTT::NewDriver(
-                    WBMQTT::TDriverArgs{}
-                        .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
-                        .SetId(mqttConfig.Id)
-                        .SetUseStorage(true)
-                        .SetReownUnknownDevices(true)
-                        .SetStoragePath(WBMQTT_DB_FILE),
-                        config.PublishParameters
-                    );
-                mqttDriver->StartLoop();
-                mqttDriver->WaitForReady();
-                gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, config);
-                Utils::ClearMappingCache();
-                gpioDriver->Start();
-            }
-            startedCv.notify_all();
-        };
-
-        auto stop = [&] {
-            unique_lock<mutex> lk(startedCvMtx);
-            startedCv.wait(lk, [&] { return bool(gpioDriver); });
+        WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&]{
             gpioDriver.reset();
             mqttDriver->StopLoop();
             mqttDriver->Close();
             mqttDriver.reset();
-        };
-
-        start();
-
-        WBMQTT::SignalHandling::OnSignal(SIGHUP, [&] {
-            LOG(Info) << "Reloading config...";
-            stop();
-            start();
         });
-
-        WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, stop);
 
         initialized.Complete();
         WBMQTT::SignalHandling::Wait();
     } catch (const std::exception& e) {
         LOG(Error) << "FATAL: " << e.what();
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
