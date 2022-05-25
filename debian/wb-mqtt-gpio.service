@@ -5,11 +5,12 @@ After=network.target wb-hwconf-manager.service wb-modules.service
 
 [Service]
 Type=simple
-Restart=always
+Restart=on-failure
 RestartSec=1
 User=root
 ExecStart=/usr/bin/wb-mqtt-gpio
 ExecStartPre=/usr/lib/wb-mqtt-gpio/generate-system-config.sh
+RestartPreventExitStatus=2 3 4 5 6 7
 
 [Install]
 WantedBy=multi-user.target
