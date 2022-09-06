@@ -31,6 +31,8 @@ const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup ca
 
 namespace
 {
+    int CommandLineDebugLevel = 0;
+
     void PrintUsage()
     {
         cout << "Usage:" << endl
@@ -56,13 +58,12 @@ namespace
                           WBMQTT::TMosquittoMqttConfig& mqttConfig,
                           string&                       customConfig)
     {
-        int debugLevel = 0;
         int c;
 
         while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:jJ")) != -1) {
             switch (c) {
             case 'd':
-                debugLevel = stoi(optarg);
+                CommandLineDebugLevel = stoi(optarg);
                 break;
             case 'c':
                 customConfig = optarg;
@@ -103,41 +104,6 @@ namespace
                 PrintUsage();
                 exit(EXIT_INVALIDARGUMENT);
             }
-        }
-
-        switch (debugLevel) {
-        case 0:
-            break;
-        case -1:
-            Info.SetEnabled(false);
-            break;
-
-        case -2:
-            WBMQTT::Info.SetEnabled(false);
-            break;
-
-        case -3:
-            WBMQTT::Info.SetEnabled(false);
-            Info.SetEnabled(false);
-            break;
-
-        case 1:
-            Debug.SetEnabled(true);
-            break;
-
-        case 2:
-            WBMQTT::Debug.SetEnabled(true);
-            break;
-
-        case 3:
-            WBMQTT::Debug.SetEnabled(true);
-            Debug.SetEnabled(true);
-            break;
-
-        default:
-            cout << "Invalid -d parameter value " << debugLevel << endl;
-            PrintUsage();
-            exit(EXIT_INVALIDARGUMENT);
         }
 
         if (optind < argc) {
@@ -193,6 +159,44 @@ namespace
         }
         return (kernel.Patchlevel < 3);
     }
+
+    void SetDebugLevel(int32_t level)
+    {
+        switch (level) {
+            case 0:
+                break;
+            case -1:
+                Info.SetEnabled(false);
+                break;
+
+            case -2:
+                WBMQTT::Info.SetEnabled(false);
+                break;
+
+            case -3:
+                WBMQTT::Info.SetEnabled(false);
+                Info.SetEnabled(false);
+                break;
+
+            case 1:
+                Debug.SetEnabled(true);
+                break;
+
+            case 2:
+                WBMQTT::Debug.SetEnabled(true);
+                break;
+
+            case 3:
+                WBMQTT::Debug.SetEnabled(true);
+                Debug.SetEnabled(true);
+                break;
+
+            default:
+                cout << "Invalid -d parameter value " << CommandLineDebugLevel << endl;
+                PrintUsage();
+                exit(EXIT_INVALIDARGUMENT);
+        }
+    }
 } // namespace
 
 int main(int argc, char* argv[])
@@ -243,6 +247,12 @@ int main(int argc, char* argv[])
     } catch (const std::exception& e) {
         LOG(Error) << "FATAL: " << e.what();
         return EXIT_NOTCONFIGURED;
+    }
+
+    if (CommandLineDebugLevel != 0) {
+        SetDebugLevel(CommandLineDebugLevel);
+    } else if (config.Debug) {
+        SetDebugLevel(1);
     }
 
     try {

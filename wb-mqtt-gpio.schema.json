@@ -346,7 +346,8 @@
     "required": [ "device_name", "channels" ],
     "_format": "merge-default",
     "default" : {
-        "max_unchanged_interval": -1
+        "max_unchanged_interval": -1,
+        "debug": false
     },
     "options": {
         "disable_collapse": true,
