@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.9.0) stable; urgency=medium
+
+  * Changed severity level for debug log
+
+ -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Tue, 06 Sep 2022 11:37:03 +0400
+
 wb-mqtt-gpio (2.8.4) stable; urgency=medium
 
   * Do not restart service with invalid config

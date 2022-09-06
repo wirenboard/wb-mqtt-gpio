@@ -237,11 +237,11 @@ bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
     if (!line->IsUsed())
         return true;
 
-    LOG(Warn) << line->Describe() << " is used by '" << line->GetConsumer() << "'.";
+    LOG(Info) << line->Describe() << " is used by '" << line->GetConsumer() << "'.";
     if (line->GetConsumer() == "sysfs") {
         ofstream unexportGpio("/sys/class/gpio/unexport");
         if (unexportGpio.is_open()) {
-            LOG(Info) << "Trying to unexport...";
+            LOG(Debug) << "Trying to unexport...";
             try {
                 unexportGpio << Utils::ToSysfsGpio(line);
             } catch (const TGpioDriverException & e) {
@@ -257,7 +257,7 @@ bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
         return false;
     }
 
-    LOG(Info) << line->DescribeShort() << " successfully released";
+    LOG(Debug) << line->DescribeShort() << " successfully released";
     return true;
 }
 
@@ -292,7 +292,7 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine & line)
     assert(Lines[req.fd].size() == 1);
     line->SetFd(req.fd);
 
-    LOG(Info) << "Listening to " << line->DescribeShort();
+    LOG(Debug) << "Listening to " << line->DescribeShort();
     return true;
 }
 
@@ -324,7 +324,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
             LOG(Debug) << "Initialized output " << line->DescribeShort() << " = " << static_cast<int>(data.values[0]);
         }
     } else {
-        LOG(Info) << "Initialized output " << line->DescribeShort();
+        LOG(Debug) << "Initialized output " << line->DescribeShort();
     }
 
     return true;
