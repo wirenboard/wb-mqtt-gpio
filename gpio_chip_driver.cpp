@@ -167,6 +167,9 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
             assert(lines.size() == 1);
 
             const auto & line = lines.front();
+            bool prevVal = line->GetValue();
+
+            LOG(Debug) << "gpio_chip_driver: Initial val: " << prevVal;
 
             fd_set rfds;
             FD_ZERO(&rfds);
@@ -196,6 +199,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                     }
 
                     line->SetCachedValue(data.values[0]);
+                    LOG(Debug) << "gpio_chip_driver: Final val: " << data.values[0];
                 }
             }
         }
@@ -316,7 +320,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
 
     Lines[req.fd].push_back(line);
     assert(Lines[req.fd].size() == 1);
-    line->SetFd(req.fd); 
+    line->SetFd(req.fd);
 
     if (Debug.IsEnabled()) {
         gpiohandle_data data;
