@@ -403,7 +403,9 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
         bool oldValue = line->GetValue();
         bool newValue = data.values[i];
 
-        LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
+        if (oldValue != newValue) {
+            LOG(Debug) << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
+        }
 
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
