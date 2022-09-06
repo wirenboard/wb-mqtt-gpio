@@ -198,8 +198,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                         wb_throw(TGpioDriverException, "unable to get line value");
                     }
 
-                    line->SetCachedValue(data.values[0]);
-                    LOG(Debug) << "gpio_chip_driver: Final val: " << data.values[0];
+                    line->SetCachedValueUnfiltered(data.values[0]);  // all interrupt events
                 }
             }
         }
@@ -414,7 +413,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
             if (oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
                 if (line->HandleInterrupt(edge, now) != EInterruptStatus::DEBOUNCE) {
-                    line->SetCachedValue(newValue);
+                    line->SetCachedValueUnfiltered(newValue);
                 }
             } else {    /* in other case let line do idle actions */
                 line->Update();

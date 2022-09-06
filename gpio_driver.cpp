@@ -21,6 +21,7 @@ using namespace WBMQTT;
 const char * const TGpioDriver::Name = "wb-gpio";
 const auto EPOLL_TIMEOUT_MS = 500;
 const auto EPOLL_EVENT_COUNT = 20;
+const auto DEBOUNCE_POLL_PERIOD_MS = 10;
 
 namespace
 {
@@ -195,8 +196,25 @@ void TGpioDriver::Start()
         Active = true;
     }
 
+    DebouncePoll = WBMQTT::MakeThread("Debounce poll thread", {[this]{
+        LOG(Info) << "Debounce poll thread started (period: " << DEBOUNCE_POLL_PERIOD_MS << "ms)";
+        while (Active) {
+            auto now = chrono::steady_clock::now();
+            for (const auto & chipDriver: ChipDrivers) {
+                FOR_EACH_LINE(chipDriver, line) {
+                    if (line->GetIntervalFromPreviousInterrupt(now) > line->GetConfig()->DebounceTimeout) {
+                        line->SetCachedValue(line->GetValueUnfiltered());
+                    }
+                }
+            );};
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(DEBOUNCE_POLL_PERIOD_MS));
+        };
+        LOG(Info) << "Debounce poll thread stopped";
+    }});
+
     Worker = WBMQTT::MakeThread("GPIO worker", {[this]{
-        LOG(Info) << "Started";
+        LOG(Info) << "Main worker thread started";
 
         int epfd = epoll_create(1);    // creating epoll for Interrupts
         struct epoll_event events[EPOLL_EVENT_COUNT] {};
@@ -243,7 +261,7 @@ void TGpioDriver::Start()
             }
         }
 
-        LOG(Info) << "Stopped";
+        LOG(Info) << "Main worker thread stopped";
     }});
 }
 
@@ -265,6 +283,13 @@ void TGpioDriver::Stop()
     }
 
     Worker.reset();
+
+    if (DebouncePoll->joinable()) {
+        DebouncePoll->join();
+    }
+
+    DebouncePoll.reset();
+
 }
 
 void TGpioDriver::Clear() noexcept

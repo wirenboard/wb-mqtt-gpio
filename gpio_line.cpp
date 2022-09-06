@@ -20,6 +20,7 @@ TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     , Offset(config.Offset)
     , Fd(-1)
     , Value(0)
+    , ValueUnfiltered(0)
     , InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     assert(Offset < AccessChip()->GetLineCount());
@@ -147,6 +148,11 @@ uint8_t TGpioLine::GetValue() const
     return Value.Get();
 }
 
+uint8_t TGpioLine::GetValueUnfiltered() const
+{
+    return ValueUnfiltered.Get();
+}
+
 void TGpioLine::SetValue(uint8_t value)
 {
     assert(IsOutput());
@@ -169,6 +175,11 @@ void TGpioLine::SetValue(uint8_t value)
 void TGpioLine::SetCachedValue(uint8_t value)
 {
     Value.Set(value);
+}
+
+void TGpioLine::SetCachedValueUnfiltered(uint8_t value)
+{
+    ValueUnfiltered.Set(value);
 }
 
 PGpioChip TGpioLine::AccessChip() const
@@ -215,8 +226,8 @@ EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & i
     auto interruptEdge = GetInterrruptEdge();
     if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
         if (Debug.IsEnabled()) {
-            LOG(Debug) << DescribeShort() 
-                       << " handle interrupt. Edge: " << GpioEdgeToString(edge) 
+            LOG(Debug) << DescribeShort()
+                       << " handle interrupt. Edge: " << GpioEdgeToString(edge)
                        << " interval: " << GetIntervalFromPreviousInterrupt(interruptTimePoint).count() << " us [skip]";
         }
         return EInterruptStatus::SKIP;
@@ -227,13 +238,13 @@ EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & i
                                           : GetIntervalFromPreviousInterrupt(interruptTimePoint);
 
     /* if interval of impulses is bigger than debouncing interval we consider it is not a debounce */
-    auto debouncing = isFirstInterruption ? false : intervalUs <= Config->DebounceTimeout;
+    /* auto debouncing = isFirstInterruption ? false : intervalUs <= Config->DebounceTimeout; */
 
-    LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " interval: " << intervalUs.count() << " us" << (debouncing ? " [debouncing]" : "");
+    // LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " ts: " << interruptTimePoint;
 
-    if (debouncing) {
-        return EInterruptStatus::DEBOUNCE;
-    }
+    // if (debouncing) {
+    //     return EInterruptStatus::DEBOUNCE;
+    // }
 
     if (Counter) {
         Counter->HandleInterrupt(edge, intervalUs);
