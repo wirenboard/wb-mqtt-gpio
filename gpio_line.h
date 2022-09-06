@@ -19,11 +19,10 @@ class TGpioLine
 
     TTimePoint    PreviousInterruptionTimePoint;
 
-    TValue<uint8_t> Value;
+    TValue<uint8_t> Value,
+                    ValueUnfiltered;
 
     EInterruptSupport InterruptSupport;
-
-    std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const;
 
 public:
     TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config);
@@ -42,8 +41,10 @@ public:
     bool IsOpenDrain() const;
     bool IsOpenSource() const;
     uint8_t GetValue() const;
+    uint8_t GetValueUnfiltered() const;
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
+    void SetCachedValueUnfiltered(uint8_t);
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);
@@ -55,4 +56,5 @@ public:
     const PUGpioLineConfig & GetConfig() const;
     void SetInterruptSupport(EInterruptSupport interruptSupport);
     EInterruptSupport GetInterruptSupport() const;
+    std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const;
 };
