@@ -148,3 +148,9 @@ TEST_F(TConfigTest, line_override)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "watt_meter");
     ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(30000));
 }
+
+TEST_F(TConfigTest, good_config_debug_option)
+{
+    TGpioDriverConfig cfg = LoadConfig(testRootDir + "/good1/wb-mqtt-gpio.conf", "", "", schemaFile);
+    ASSERT_EQ(cfg.Debug, true);
+}

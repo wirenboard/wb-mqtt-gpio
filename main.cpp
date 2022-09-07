@@ -31,7 +31,17 @@ const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup ca
 
 namespace
 {
-    int CommandLineDebugLevel = 0;
+    enum class DebugLevel : int32_t
+    {
+        NONE = 0,
+        SILENT_GPIO = -1,
+        SILENT_MQTT = -2,
+        SILENT_GPIO_MQTT = -3,
+        DEBUG_GPIO = 1,
+        DEBUG_MQTT = 2,
+        DEBUG_GPIO_MQTT = 3
+    };
+    DebugLevel CommandLineDebugLevel = DebugLevel::NONE;
 
     void PrintUsage()
     {
@@ -63,7 +73,7 @@ namespace
         while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:jJ")) != -1) {
             switch (c) {
             case 'd':
-                CommandLineDebugLevel = stoi(optarg);
+                CommandLineDebugLevel = static_cast<DebugLevel>(stoi(optarg));
                 break;
             case 'c':
                 customConfig = optarg;
@@ -160,39 +170,39 @@ namespace
         return (kernel.Patchlevel < 3);
     }
 
-    void SetDebugLevel(int32_t level)
+    void SetDebugLevel(DebugLevel level)
     {
         switch (level) {
-            case 0:
+            case DebugLevel::NONE:
                 break;
-            case -1:
+            case DebugLevel::SILENT_GPIO:
                 Info.SetEnabled(false);
                 break;
 
-            case -2:
+            case DebugLevel::SILENT_MQTT:
                 WBMQTT::Info.SetEnabled(false);
                 break;
 
-            case -3:
+            case DebugLevel::SILENT_GPIO_MQTT:
                 WBMQTT::Info.SetEnabled(false);
                 Info.SetEnabled(false);
                 break;
 
-            case 1:
+            case DebugLevel::DEBUG_GPIO:
                 Debug.SetEnabled(true);
                 break;
 
-            case 2:
+            case DebugLevel::DEBUG_MQTT:
                 WBMQTT::Debug.SetEnabled(true);
                 break;
 
-            case 3:
+            case DebugLevel::DEBUG_GPIO_MQTT:
                 WBMQTT::Debug.SetEnabled(true);
                 Debug.SetEnabled(true);
                 break;
 
             default:
-                cout << "Invalid -d parameter value " << CommandLineDebugLevel << endl;
+                cout << "Invalid -d parameter value " << static_cast<int32_t>(CommandLineDebugLevel) << endl;
                 PrintUsage();
                 exit(EXIT_INVALIDARGUMENT);
         }
@@ -249,10 +259,10 @@ int main(int argc, char* argv[])
         return EXIT_NOTCONFIGURED;
     }
 
-    if (CommandLineDebugLevel != 0) {
+    if (CommandLineDebugLevel != DebugLevel::NONE) {
         SetDebugLevel(CommandLineDebugLevel);
     } else if (config.Debug) {
-        SetDebugLevel(1);
+        SetDebugLevel(DebugLevel::DEBUG_GPIO);
     }
 
     try {
