@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.9.0) stable; urgency=medium
+
+  * Switched to the C++17 standard
+  * Changed methods for working with files and directories
+
+ -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Wed, 07 Sep 2022 14:36:09 +0400
+
 wb-mqtt-gpio (2.8.4) stable; urgency=medium
 
   * Do not restart service with invalid config

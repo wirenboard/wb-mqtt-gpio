@@ -1,1 +1,1 @@
-buildDebSbuild defaultTargets: 'wb6'
+buildDebSbuild defaultTargets: 'bullseye-armhf'
