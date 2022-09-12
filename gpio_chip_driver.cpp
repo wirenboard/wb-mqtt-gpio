@@ -324,7 +324,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
             LOG(Debug) << "Initialized output " << line->DescribeShort() << " = " << static_cast<int>(data.values[0]);
         }
     } else {
-        LOG(Debug) << "Initialized output " << line->DescribeShort();
+        LOG(Info) << "Initialized output " << line->DescribeShort();
     }
 
     return true;

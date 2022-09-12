@@ -41,7 +41,6 @@ namespace
         DEBUG_MQTT = 2,
         DEBUG_GPIO_MQTT = 3
     };
-    DebugLevel CommandLineDebugLevel = DebugLevel::NONE;
 
     void PrintUsage()
     {
@@ -66,14 +65,16 @@ namespace
     void ParseCommandLine(int                           argc,
                           char*                         argv[],
                           WBMQTT::TMosquittoMqttConfig& mqttConfig,
-                          string&                       customConfig)
+                          string&                       customConfig,
+                          DebugLevel&                   debugLevel)
     {
         int c;
+        debugLevel = DebugLevel::NONE;
 
         while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:jJ")) != -1) {
             switch (c) {
             case 'd':
-                CommandLineDebugLevel = static_cast<DebugLevel>(stoi(optarg));
+                debugLevel = static_cast<DebugLevel>(stoi(optarg));
                 break;
             case 'c':
                 customConfig = optarg;
@@ -213,9 +214,10 @@ int main(int argc, char* argv[])
 {
     WBMQTT::TMosquittoMqttConfig mqttConfig;
     mqttConfig.Id = TGpioDriver::Name;
+    DebugLevel debugLevel = DebugLevel::NONE;
 
     string configFileName;
-    ParseCommandLine(argc, argv, mqttConfig, configFileName);
+    ParseCommandLine(argc, argv, mqttConfig, configFileName, debugLevel);
 
     WBMQTT::TPromise<void> initialized;
 
@@ -259,8 +261,8 @@ int main(int argc, char* argv[])
         return EXIT_NOTCONFIGURED;
     }
 
-    if (CommandLineDebugLevel != DebugLevel::NONE) {
-        SetDebugLevel(CommandLineDebugLevel);
+    if (debugLevel != DebugLevel::NONE) {
+        SetDebugLevel(debugLevel);
     } else if (config.Debug) {
         SetDebugLevel(DebugLevel::DEBUG_GPIO);
     }
