@@ -203,7 +203,7 @@ namespace
                 break;
 
             default:
-                cout << "Invalid -d parameter value " << static_cast<int32_t>(CommandLineDebugLevel) << endl;
+                cout << "Invalid -d parameter value " << static_cast<int32_t>(level) << endl;
                 PrintUsage();
                 exit(EXIT_INVALIDARGUMENT);
         }
