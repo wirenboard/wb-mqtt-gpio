@@ -1,9 +1,16 @@
-wb-mqtt-gpio (2.9.0) stable; urgency=medium
+wb-mqtt-gpio (2.10.0) stable; urgency=medium
 
   * Changed severity level for debug log
   * Option to enable debug messages in config
 
- -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Tue, 06 Sep 2022 11:37:03 +0400
+ -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Wed, 14 Sep 2022 10:51:13 +0400
+
+wb-mqtt-gpio (2.9.0) stable; urgency=medium
+
+  * Switched to the C++17 standard
+  * Changed methods for working with files and directories
+
+ -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Wed, 07 Sep 2022 14:36:09 +0400
 
 wb-mqtt-gpio (2.8.4) stable; urgency=medium
 
