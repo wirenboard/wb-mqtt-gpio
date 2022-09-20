@@ -196,6 +196,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                     }
 
                     line->SetCachedValueUnfiltered(data.values[0]);  // all interrupt events
+                    LinesRecentlyFired.insert(line);
                 }
             }
         }
