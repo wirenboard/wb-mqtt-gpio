@@ -4,6 +4,7 @@
 #include "types.h"
 
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include <functional>
 
@@ -17,8 +18,11 @@ class TGpioChipDriver
     bool          AddedToEpoll;
 
 public:
+    using TGpioLinesRecentlyFired    = std::set<PGpioLine>;
     using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
     using TGpioLineHandler = std::function<void(const PGpioLine &)>;
+
+    TGpioLinesRecentlyFired LinesRecentlyFired;
 
     explicit TGpioChipDriver(const TGpioChipConfig &);
     ~TGpioChipDriver();
