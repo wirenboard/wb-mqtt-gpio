@@ -34,7 +34,6 @@ void IterateDir(const std::string& dirName, std::function<bool(const std::string
 
         for (auto& filePath: sortedByPath) {
             const auto filenameStr = filePath.filename().string();
-            LOG(Debug) << "filenameStr " << filenameStr;
             if (fn(filenameStr)) {
                 return;
             }
