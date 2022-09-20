@@ -1,5 +1,6 @@
 #include "file_utils.h"
 #include <filesystem>
+#include <set>
 
 TNoDirError::TNoDirError(const std::string& msg) : std::runtime_error(msg) {}
 
@@ -26,9 +27,14 @@ void IterateDir(const std::string& dirName, std::function<bool(const std::string
 {
     try {
         const std::filesystem::path dirPath{dirName};
+        std::set<std::filesystem::path> sortedByPath;
 
-        for (const auto& entry: std::filesystem::directory_iterator(dirPath)) {
-            const auto filenameStr = entry.path().filename().string();
+        for (auto& entry: std::filesystem::directory_iterator(dirPath))
+            sortedByPath.insert(entry.path());
+
+        for (auto& filePath: sortedByPath) {
+            const auto filenameStr = filePath.filename().string();
+            LOG(Debug) << "filenameStr " << filenameStr;
             if (fn(filenameStr)) {
                 return;
             }
