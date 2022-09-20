@@ -201,12 +201,13 @@ void TGpioDriver::Start()
         while (Active) {
             auto now = chrono::steady_clock::now();
             for (const auto & chipDriver: ChipDrivers) {
-                FOR_EACH_LINE(chipDriver, line) {
+                for (const auto & line: chipDriver->LinesRecentlyFired) {
                     if (line->GetIntervalFromPreviousInterrupt(now) > line->GetConfig()->DebounceTimeout) {
                         line->SetCachedValue(line->GetValueUnfiltered());
+                        chipDriver->LinesRecentlyFired.erase(line);
                     }
                 }
-            );};
+            };
 
             std::this_thread::sleep_for(std::chrono::milliseconds(DEBOUNCE_POLL_PERIOD_MS));
         };

@@ -10,6 +10,3 @@ override_dh_systemd_start:
 
 override_dh_systemd_enable:
 	echo "Not using dh_systemd_enable"
-
-override_dh_auto_test:
-	echo "Temporarily disabled tests"
