@@ -233,18 +233,8 @@ EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & i
         return EInterruptStatus::SKIP;
     }
 
-    const auto isFirstInterruption = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero();
-    auto intervalUs = isFirstInterruption ? chrono::microseconds::zero()
+    auto intervalUs = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero() ? chrono::microseconds::zero()
                                           : GetIntervalFromPreviousInterrupt(interruptTimePoint);
-
-    /* if interval of impulses is bigger than debouncing interval we consider it is not a debounce */
-    /* auto debouncing = isFirstInterruption ? false : intervalUs <= Config->DebounceTimeout; */
-
-    // LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge) << " ts: " << interruptTimePoint;
-
-    // if (debouncing) {
-    //     return EInterruptStatus::DEBOUNCE;
-    // }
 
     if (Counter) {
         Counter->HandleInterrupt(edge, intervalUs);

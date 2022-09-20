@@ -191,7 +191,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                 auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
                 auto time = ctx.ToSteadyClock(data.timestamp);
 
-                if (line->HandleInterrupt(edge, time) != EInterruptStatus::DEBOUNCE) {   // update value
+                if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) {   // update gpioline's last interruption ts
                     gpiohandle_data data;
                     if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
                         LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
@@ -412,7 +412,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
             /* if value changed for input we simulate interrupt */
             if (oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
-                if (line->HandleInterrupt(edge, now) != EInterruptStatus::DEBOUNCE) {
+                if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
                     line->SetCachedValueUnfiltered(newValue);
                 }
             } else {    /* in other case let line do idle actions */

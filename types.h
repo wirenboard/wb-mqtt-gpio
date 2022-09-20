@@ -22,7 +22,6 @@ enum class EInterruptSupport: uint8_t
 enum class EInterruptStatus: uint8_t
 {
     SKIP,
-    DEBOUNCE,
     Handled
 };
 
