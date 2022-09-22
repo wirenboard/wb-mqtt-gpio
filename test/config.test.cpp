@@ -83,7 +83,7 @@ TEST_F(TConfigTest, optional_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Multiplier, 1002.0);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 152);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "water_meter");
-    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(10000));
+    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(50000));
 }
 
 TEST_F(TConfigTest, full_main_config)
