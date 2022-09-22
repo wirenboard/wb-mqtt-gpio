@@ -201,11 +201,12 @@ void TGpioDriver::Start()
         while (Active) {
             auto now = chrono::steady_clock::now();
             for (const auto & chipDriver: ChipDrivers) {
-                for (auto it=chipDriver->LinesRecentlyFired.begin(); it != chipDriver->LinesRecentlyFired.end(); ++it) {
-                    auto line = *it;
+                // for (auto it=chipDriver->LinesRecentlyFired.begin(); it != chipDriver->LinesRecentlyFired.end(); ++it) {
+                for (const auto & line: chipDriver->LinesRecentlyFired) {
                     if (line->GetIntervalFromPreviousInterrupt(now) > line->GetConfig()->DebounceTimeout) {
                         line->SetCachedValue(line->GetValueUnfiltered());
                         chipDriver->LinesRecentlyFired.erase(line);
+                        LOG(Info) << "Got stable value on: " << line->DescribeShort();
                     }
                 }
             };
