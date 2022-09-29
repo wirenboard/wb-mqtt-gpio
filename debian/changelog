@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.9.1) stable; urgency=medium
+
+  * Add alphabetical order when reading files from conf.d
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.ru>  Tue, 20 Sep 2022 16:13:35 +0300
+
 wb-mqtt-gpio (2.9.0) stable; urgency=medium
 
   * Switched to the C++17 standard
