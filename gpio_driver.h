@@ -14,8 +14,8 @@ class TGpioDriver
     WBMQTT::PDriverEventHandlerHandle   EventHandlerHandle;
 
     std::vector<PGpioChipDriver>    ChipDrivers;
-    std::unique_ptr<std::thread>    Worker,
-                                    DebouncePoll;
+    std::unique_ptr<std::thread>    Worker;
+
     bool                            Active;
     std::mutex                      ActiveMutex;
 
@@ -28,4 +28,5 @@ public:
     void Start();
     void Stop();
     void Clear() noexcept;
+    int CreateIntervalTimer(uint16_t intervalMsec);
 };
