@@ -20,9 +20,9 @@ using namespace std;
 using namespace WBMQTT;
 
 const char * const TGpioDriver::Name = "wb-gpio";
-const auto NONINTERRUPT_POLL_TIMEOUT_MS = 500;
-const auto EPOLL_EVENT_COUNT = 20;
+const auto POLL_LINES_PERIOD_MS = 500;
 const auto DEBOUNCE_POLL_PERIOD_MS = 10;
+const auto EPOLL_EVENT_COUNT = 20;
 
 namespace
 {
@@ -187,13 +187,13 @@ TGpioDriver::~TGpioDriver()
     }
 }
 
-int TGpioDriver::CreateIntervalTimer(uint16_t intervalMsec)
+int TGpioDriver::CreateIntervalTimer(uint16_t intervalMs)
 {
     struct itimerspec ts; // Periodic timer
-    ts.it_value.tv_sec = 0;
-	ts.it_value.tv_nsec = 0;
-	ts.it_interval.tv_sec = intervalMsec / 1000;
-	ts.it_interval.tv_nsec = (intervalMsec % 1000) * 1000000;
+    ts.it_value.tv_sec = intervalMs / 1000;
+	ts.it_value.tv_nsec = (intervalMs % 1000) * 1000000;
+	ts.it_interval.tv_sec = intervalMs / 1000;
+	ts.it_interval.tv_nsec = (intervalMs % 1000) * 1000000;
 
     int tfd = timerfd_create(CLOCK_MONOTONIC, 0);
 	if (tfd == -1) {
@@ -207,7 +207,7 @@ int TGpioDriver::CreateIntervalTimer(uint16_t intervalMsec)
         wb_throw(TGpioDriverException, "unable to setup timer: timerfd_settime failed with " + string(strerror(errno)));
 	}
 
-    LOG(Debug) << "Created interval timer (fd: " << tfd << "; period: " << intervalMsec << "ms";
+    LOG(Info) << "Created interval timer (fd: " << tfd << "; period: " << intervalMs << "ms";
     return tfd;
 }
 
@@ -221,92 +221,82 @@ void TGpioDriver::Start()
         Active = true;
     }
 
-    // DebouncePoll = WBMQTT::MakeThread("Debounce poll thread", {[this]{
-    //     LOG(Info) << "Debounce poll thread started (period: " << DEBOUNCE_POLL_PERIOD_MS << "ms)";
-    //     while (Active) {
-    //         auto now = chrono::steady_clock::now();
-    //         for (const auto & chipDriver: ChipDrivers) {
-    //             for (const auto & line: chipDriver->LinesRecentlyFired) {
-    //                 if (line->GetIntervalFromPreviousInterrupt(now) > line->GetConfig()->DebounceTimeout) {
-    //                     line->SetCachedValue(line->GetValueUnfiltered());
-    //                     chipDriver->LinesRecentlyFired.erase(line);
-    //                 }
-    //             }
-    //         };
-
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(DEBOUNCE_POLL_PERIOD_MS));
-    //     };
-    //     LOG(Info) << "Debounce poll thread stopped";
-    // }});
-
     Worker = WBMQTT::MakeThread("GPIO worker", {[this]{
         LOG(Info) << "Main worker thread started";
 
-        int epfd = epoll_create(1);    // creating epoll for Interrupts
-        int epTimers = epoll_create(1);    // creating epoll for Timers
+        int epInterruptsFd = epoll_create(1), epTimersFd = epoll_create(1);
         struct epoll_event events[EPOLL_EVENT_COUNT] {}, timers[EPOLL_EVENT_COUNT] {};
 
-        int timerNoInterruptFd = CreateIntervalTimer(500);
-        int timerDebounceFd = CreateIntervalTimer(10);
+        int timerPollLinesFd = CreateIntervalTimer(POLL_LINES_PERIOD_MS);
+        int timerDebounceFd = CreateIntervalTimer(DEBOUNCE_POLL_PERIOD_MS);
+        uint64_t timerfdRes;
 
-        WB_SCOPE_EXIT( close(epfd); close(epTimers); close(timerNoInterruptFd); close(timerDebounceFd); )
+        WB_SCOPE_EXIT( close(epInterruptsFd); close(epTimersFd); close(timerPollLinesFd); close(timerDebounceFd); )
 
         for (const auto & chipDriver: ChipDrivers) {
-            chipDriver->AddToEpoll(epfd);
+            chipDriver->AddToEpoll(epInterruptsFd);
         }
 
+        // add timers to epoll
         struct epoll_event ep_event {};
         ep_event.events = EPOLLIN;
-        ep_event.data.fd = timerNoInterruptFd;
-        if (epoll_ctl(epTimers, EPOLL_CTL_ADD, timerNoInterruptFd, &ep_event) < 0) {
+        ep_event.data.fd = timerPollLinesFd;
+        if (epoll_ctl(epTimersFd, EPOLL_CTL_ADD, timerPollLinesFd, &ep_event) < 0) {
             LOG(Error) << "epoll_ctl error: '" << strerror(errno);
         }
         ep_event.data.fd = timerDebounceFd;
-        if (epoll_ctl(epTimers, EPOLL_CTL_ADD, timerDebounceFd, &ep_event) < 0) {
+        if (epoll_ctl(epTimersFd, EPOLL_CTL_ADD, timerDebounceFd, &ep_event) < 0) {
             LOG(Error) << "epoll_ctl error: '" << strerror(errno);
         }
 
         while (Active) {
             TTimePoint realInterruptTs;
-
             bool isHandled = false;
 
-            if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, 0)) {
+            // real interrupt: fill values to gpio lines (unfiltered)
+            if (int count = epoll_wait(epInterruptsFd, events, EPOLL_EVENT_COUNT, 0)) {
                 realInterruptTs = chrono::steady_clock::now();
-                // LOG(Debug) << "Real interrupt at ts: " << realInterruptTs;
                 TInterruptionContext ctx {count, events};
                 for (const auto & chipDriver: ChipDrivers) {
-                    isHandled |= chipDriver->HandleInterrupt(ctx);
+                    chipDriver->HandleInterrupt(ctx);
                 }
             }
-            // } else {
-            //     for (const auto & chipDriver: ChipDrivers) {
-            //         isHandled |= chipDriver->PollLines();
-            //     }
-            // }
 
-            if (epoll_wait(epTimers, timers, EPOLL_EVENT_COUNT, 20)) {
+            if (epoll_wait(epTimersFd, timers, EPOLL_EVENT_COUNT, 10)) {
                 auto now = chrono::steady_clock::now();
                 for (const auto & timerEvent: timers) {
+                    read(timerEvent.data.fd, &timerfdRes, sizeof(timerfdRes));
+
+                    // gpio value is stable if remains some time
                     if (timerEvent.data.fd == timerDebounceFd) {
-                        LOG(Debug) << "Debounce";
                         for (const auto & chipDriver: ChipDrivers) {
-                            for (const auto & line: chipDriver->LinesRecentlyFired) {
+                            auto it = chipDriver->LinesRecentlyFired.begin();
+                            while(it != chipDriver->LinesRecentlyFired.end()) {
+                                auto line = *it;
                                 if (line->GetIntervalFromPreviousInterrupt(now) > line->GetConfig()->DebounceTimeout) {
                                     line->SetCachedValue(line->GetValueUnfiltered());
-                                    chipDriver->LinesRecentlyFired.erase(line);
+                                    chipDriver->LinesRecentlyFired.erase(it++);
+                                    LOG(Debug) << "Got stable value: " << static_cast<bool>(line->GetValueUnfiltered()) << "on: " << line->DescribeShort();
+                                    isHandled = true;
+                                } else {
+                                    ++it;
                                 }
                             }
+                        };
+                        if (isHandled) {  // faster real-interrupt handling
+                            break;
                         }
-                    } else if (timerEvent.data.fd == timerNoInterruptFd) {
-                        if (chrono::duration_cast<chrono::milliseconds>(now - realInterruptTs) > std::chrono::milliseconds(500)) {
-                            LOG(Debug) << "Fake interrupt";
+
+                    // poll lines, if no real interrupts
+                    } else if (timerEvent.data.fd == timerPollLinesFd) {
+                        if (chrono::duration_cast<chrono::milliseconds>(now - realInterruptTs) > std::chrono::milliseconds(POLL_LINES_PERIOD_MS)) {
                             for (const auto & chipDriver: ChipDrivers) {
                                 isHandled |= chipDriver->PollLines();
                             }
                         }
+
                     } else {
-                        LOG(Error) << "Unknown fd in epoll timers: " << timerEvent.data.fd;
+                        LOG(Debug) << "Unknown fd in epoll timers: " << timerEvent.data.fd;
                     }
                 }
             }
@@ -356,13 +346,6 @@ void TGpioDriver::Stop()
     }
 
     Worker.reset();
-
-    // if (DebouncePoll->joinable()) {
-    //     DebouncePoll->join();
-    // }
-
-    // DebouncePoll.reset();
-
 }
 
 void TGpioDriver::Clear() noexcept
