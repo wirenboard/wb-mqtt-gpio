@@ -207,8 +207,19 @@ int TGpioDriver::CreateIntervalTimer(uint16_t intervalMs)
         wb_throw(TGpioDriverException, "unable to setup timer: timerfd_settime failed with " + string(strerror(errno)));
 	}
 
-    LOG(Info) << "Created interval timer (fd: " << tfd << "; period: " << intervalMs << "ms";
+    LOG(Info) << "Created interval timer (fd: " << tfd << "; period: " << intervalMs << "ms)";
     return tfd;
+}
+
+void TGpioDriver::AddToEpoll(int epollFd, int timerFd)
+{
+    struct epoll_event ep_event {};
+    ep_event.events = EPOLLIN;
+    ep_event.data.fd = timerFd;
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, timerFd, &ep_event) < 0) {
+        LOG(Error) << "epoll_ctl error: '" << strerror(errno);
+        wb_throw(TGpioDriverException, "unable to add timer to epoll: epoll_ctl failed with " + string(strerror(errno)));
+    }
 }
 
 void TGpioDriver::Start()
@@ -236,18 +247,8 @@ void TGpioDriver::Start()
         for (const auto & chipDriver: ChipDrivers) {
             chipDriver->AddToEpoll(epInterruptsFd);
         }
-
-        // add timers to epoll
-        struct epoll_event ep_event {};
-        ep_event.events = EPOLLIN;
-        ep_event.data.fd = timerPollLinesFd;
-        if (epoll_ctl(epTimersFd, EPOLL_CTL_ADD, timerPollLinesFd, &ep_event) < 0) {
-            LOG(Error) << "epoll_ctl error: '" << strerror(errno);
-        }
-        ep_event.data.fd = timerDebounceFd;
-        if (epoll_ctl(epTimersFd, EPOLL_CTL_ADD, timerDebounceFd, &ep_event) < 0) {
-            LOG(Error) << "epoll_ctl error: '" << strerror(errno);
-        }
+        AddToEpoll(epTimersFd, timerPollLinesFd);
+        AddToEpoll(epTimersFd, timerDebounceFd);
 
         while (Active) {
             TTimePoint realInterruptTs;
@@ -273,10 +274,8 @@ void TGpioDriver::Start()
                             auto it = chipDriver->LinesRecentlyFired.begin();
                             while(it != chipDriver->LinesRecentlyFired.end()) {
                                 auto line = *it;
-                                if (line->GetIntervalFromPreviousInterrupt(now) > line->GetConfig()->DebounceTimeout) {
-                                    line->SetCachedValue(line->GetValueUnfiltered());
+                                if (line->UpdateIfStable(now)) {
                                     chipDriver->LinesRecentlyFired.erase(it++);
-                                    LOG(Debug) << "Got stable value: " << static_cast<bool>(line->GetValueUnfiltered()) << "on: " << line->DescribeShort();
                                     isHandled = true;
                                 } else {
                                     ++it;

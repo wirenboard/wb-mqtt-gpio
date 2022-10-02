@@ -57,4 +57,5 @@ public:
     void SetInterruptSupport(EInterruptSupport interruptSupport);
     EInterruptSupport GetInterruptSupport() const;
     std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const;
+    bool UpdateIfStable(const TTimePoint & checkTimePoint);
 };

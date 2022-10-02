@@ -29,4 +29,5 @@ public:
     void Stop();
     void Clear() noexcept;
     int CreateIntervalTimer(uint16_t intervalMsec);
+    void AddToEpoll(int epollFd, int timerFd);
 };
