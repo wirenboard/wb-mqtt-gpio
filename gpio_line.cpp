@@ -274,3 +274,16 @@ EInterruptSupport TGpioLine::GetInterruptSupport() const
 {
     return InterruptSupport;
 }
+
+bool TGpioLine::UpdateIfStable(const TTimePoint & checkTimePoint)
+{
+    auto fromLastTs = GetIntervalFromPreviousInterrupt(checkTimePoint);
+    if (fromLastTs > GetConfig()->DebounceTimeout) {
+        SetCachedValue(GetValueUnfiltered());
+        LOG(Debug) << "Value (" << static_cast<bool>(GetValueUnfiltered()) << ") on ("
+                    << DescribeShort() << " is stable for " << fromLastTs.count() << "us";
+        return true;
+    } else {
+        return false;
+    }
+}
