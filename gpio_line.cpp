@@ -34,6 +34,20 @@ TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     UpdateInfo();
 }
 
+TGpioLine::TGpioLine(const TGpioLineConfig & config)
+    : Chip(PGpioChip())
+    , Offset(config.Offset)
+    , Fd(-1)
+    , Value(0)
+    , ValueUnfiltered(0)
+    , InterruptSupport(EInterruptSupport::UNKNOWN)
+{
+    Name = "Dummy gpio line";
+    Flags = 0;
+    Consumer = "null";
+    Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
+}
+
 void TGpioLine::UpdateInfo()
 {
     gpioline_info info {};
@@ -281,7 +295,7 @@ bool TGpioLine::UpdateIfStable(const TTimePoint & checkTimePoint)
     if (fromLastTs > GetConfig()->DebounceTimeout) {
         SetCachedValue(GetValueUnfiltered());
         LOG(Debug) << "Value (" << static_cast<bool>(GetValueUnfiltered()) << ") on ("
-                    << DescribeShort() << " is stable for " << fromLastTs.count() << "us";
+                    << GetName() << " is stable for " << fromLastTs.count() << "us";
         return true;
     } else {
         return false;
