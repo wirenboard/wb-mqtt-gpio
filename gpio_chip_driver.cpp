@@ -411,7 +411,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
             if (oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
                 if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
-                    line->SetCachedValueUnfiltered(newValue);
+                    line->SetCachedValue(newValue);
                 }
             } else {    /* in other case let line do idle actions */
                 line->Update();
