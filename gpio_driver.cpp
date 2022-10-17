@@ -12,7 +12,6 @@
 #include <cassert>
 #include <unistd.h>
 #include <sys/epoll.h>
-#include <sys/timerfd.h>
 
 #define LOG(logger) ::logger.Log() << "[gpio driver] "
 
@@ -20,7 +19,7 @@ using namespace std;
 using namespace WBMQTT;
 
 const char * const TGpioDriver::Name = "wb-gpio";
-const auto DEBOUNCE_POLL_PERIOD_MS = 10;
+const auto EPOLL_TIMEOUT_MS = 500;
 const auto EPOLL_EVENT_COUNT = 20;
 
 namespace
@@ -186,45 +185,6 @@ TGpioDriver::~TGpioDriver()
     }
 }
 
-int TGpioDriver::CreateIntervalTimer()
-{
-    int tfd = timerfd_create(CLOCK_MONOTONIC, 0);
-	if (tfd == -1) {
-        LOG(Error) << "timerfd_create failed: " << strerror(errno);
-        wb_throw(TGpioDriverException, "unable to create timer: timerfd_create failed with " + string(strerror(errno)));
-	}
-    return tfd;
-}
-
-void TGpioDriver::SetIntervalTimer(int tfd, uint16_t intervalMs)
-{
-    auto sec = (intervalMs) ? intervalMs / 1000 : intervalMs;
-    auto nsec = (intervalMs) ? (intervalMs % 1000) * 1000000 : intervalMs;
-
-    struct itimerspec ts; // Periodic timer
-    ts.it_value.tv_sec = sec;
-	ts.it_value.tv_nsec = nsec;
-	ts.it_interval.tv_sec = sec;
-	ts.it_interval.tv_nsec = nsec;
-
-    if (timerfd_settime(tfd, 0, &ts, NULL) < 0) {
-        LOG(Error) << "timerfd_settime failed: " << strerror(errno);
-		close(tfd);
-        wb_throw(TGpioDriverException, "unable to setup timer: timerfd_settime failed with " + string(strerror(errno)));
-	}
-}
-
-void TGpioDriver::AddToEpoll(int epollFd, int timerFd)
-{
-    struct epoll_event ep_event {};
-    ep_event.events = EPOLLIN;
-    ep_event.data.fd = timerFd;
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, timerFd, &ep_event) < 0) {
-        LOG(Error) << "epoll_ctl error: '" << strerror(errno);
-        wb_throw(TGpioDriverException, "unable to add timer to epoll: epoll_ctl failed with " + string(strerror(errno)));
-    }
-}
-
 void TGpioDriver::Start()
 {
     {
@@ -236,56 +196,27 @@ void TGpioDriver::Start()
     }
 
     Worker = WBMQTT::MakeThread("GPIO worker", {[this]{
-        LOG(Info) << "Main worker thread started";
+        LOG(Info) << "Started";
 
-        int epInterruptsFd = epoll_create(1), epTimersFd = epoll_create(1), timerDebounceFd = CreateIntervalTimer();
-        struct epoll_event events[EPOLL_EVENT_COUNT] {}, timerEpEvent {};
+        int epfd = epoll_create(1);    // creating epoll for Interrupts
+        struct epoll_event events[EPOLL_EVENT_COUNT] {};
 
-        WB_SCOPE_EXIT( close(epInterruptsFd); close(epTimersFd); close(timerDebounceFd); )
+        WB_SCOPE_EXIT( close(epfd); )
 
         for (const auto & chipDriver: ChipDrivers) {
-            chipDriver->AddToEpoll(epInterruptsFd);
+            chipDriver->AddToEpoll(epfd);
         }
-        AddToEpoll(epTimersFd, timerDebounceFd);
-
-        int pollLinesTimeoutMs = 500;  // epoll is locked on interupts during
 
         while (Active) {
-            bool isHandled = false, isInsideInterrupt = false;
-
-            // disarmed by default; firing only after interrupt
-            if (epoll_wait(epTimersFd, &timerEpEvent, 1, 10)) {
-                pollLinesTimeoutMs = 10;
-                isInsideInterrupt = true;
-
-                for (const auto & chipDriver: ChipDrivers) {
-                    auto it = chipDriver->LinesRecentlyFired.begin();
-                    while(it != chipDriver->LinesRecentlyFired.end()) {
-                        auto line = *it;
-                        if (line->UpdateIfStable(chrono::steady_clock::now())) {
-                            chipDriver->LinesRecentlyFired.erase(it++);
-                            isHandled = true;
-                            isInsideInterrupt = false;
-                            SetIntervalTimer(timerDebounceFd, 0); // disarm the timer
-                            pollLinesTimeoutMs = 500;
-                        } else {
-                            ++it;
-                        }
-                    }
-                }
-            }
-
-            if (int count = epoll_wait(epInterruptsFd, events, EPOLL_EVENT_COUNT, pollLinesTimeoutMs)) {
+            bool isHandled = false;
+            if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
                 TInterruptionContext ctx {count, events};
                 for (const auto & chipDriver: ChipDrivers) {
-                    chipDriver->HandleInterrupt(ctx);
+                    isHandled |= chipDriver->HandleInterrupt(ctx);
                 }
-                SetIntervalTimer(timerDebounceFd, DEBOUNCE_POLL_PERIOD_MS);
             } else {
-                if (!isInsideInterrupt) {
-                    for (const auto & chipDriver: ChipDrivers) {
-                        isHandled |= chipDriver->PollLines();
-                    }
+                for (const auto & chipDriver: ChipDrivers) {
+                    isHandled |= chipDriver->PollLines();
                 }
             }
 
@@ -312,7 +243,7 @@ void TGpioDriver::Start()
             }
         }
 
-        LOG(Info) << "Main worker thread stopped";
+        LOG(Info) << "Stopped";
     }});
 }
 
