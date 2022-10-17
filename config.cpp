@@ -43,7 +43,7 @@ namespace
         if (itLine != chipConfig->Lines.end()) {
             wb_throw(TGpioDriverException,
                      "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
-                     chipConfig->Path + "' defined as '" + line.Name + 
+                     chipConfig->Path + "' defined as '" + line.Name +
                      "'. It is already defined as '" + itLine->Name + "'. To override set similar MQTT id (name).");
         }
 
@@ -61,6 +61,8 @@ namespace
         int32_t maxUnchangedInterval = -1;
         Get(root, "max_unchanged_interval", maxUnchangedInterval);
         cfg.PublishParameters.Set(maxUnchangedInterval);
+
+        chrono::microseconds maxDebounceTimeoutUs = chrono::microseconds(999999);
 
         for (const auto& channel : channels) {
             TGpioLineConfig lineConfig;
@@ -100,7 +102,13 @@ namespace
                     LOG(Warn) << "Edge setting for GPIO \"" << lineConfig.Name << "\" is not used. It can be set only for GPIO with \"type\" option";
                 } else {
                     EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
-                } 
+                }
+            }
+
+            if (channel.isMember("debounce") && channel["debounce"] > maxDebounceTimeoutUs.count()) {
+                LOG(Warn) << "Max debounce timeout for GPIO \"" << lineConfig.Name << "\" should be <= " << maxDebounceTimeoutUs.count()
+                    << "us. Has set to " << maxDebounceTimeoutUs.count() << "us.";
+                lineConfig.DebounceTimeout = maxDebounceTimeoutUs;
             }
 
             AppendLine(cfg, path, lineConfig);

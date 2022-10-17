@@ -11,6 +11,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
+#include <sys/timerfd.h>
 #include <unistd.h>
 #include <string.h>
 #include <cassert>
@@ -116,11 +117,39 @@ TGpioChipDriver::~TGpioChipDriver()
             auto logDebug = move(LOG(Debug) << "Close fd for:");
             for (const auto & line: lines) {
                 logDebug << "\n\t" << line->DescribeShort();
+                close(line->GetTimerFd());
             }
         }
 
         close(fd);
     }
+}
+
+int TGpioChipDriver::CreateIntervalTimer()
+{
+    int tfd = timerfd_create(CLOCK_MONOTONIC, 0);
+	if (tfd == -1) {
+        LOG(Error) << "timerfd_create failed: " << strerror(errno);
+        wb_throw(TGpioDriverException, "unable to create timer: timerfd_create failed with " + string(strerror(errno)));
+	}
+    return tfd;
+}
+
+void TGpioChipDriver::SetIntervalTimer(int tfd, std::chrono::microseconds intervalUs)
+{
+    auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(intervalUs).count();
+
+    struct itimerspec ts;
+    ts.it_value.tv_sec = 0;
+	ts.it_value.tv_nsec = nsec;
+	ts.it_interval.tv_sec = 0;
+	ts.it_interval.tv_nsec = 0;
+
+    if (timerfd_settime(tfd, 0, &ts, NULL) < 0) {
+        LOG(Error) << "timerfd_settime failed: " << strerror(errno);
+		close(tfd);
+        wb_throw(TGpioDriverException, "unable to setup timer: timerfd_settime failed with " + string(strerror(errno)));
+	}
 }
 
 TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
@@ -151,6 +180,14 @@ void TGpioChipDriver::AddToEpoll(int epfd)
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, line->GetFd(), &ep_event) < 0) {
             LOG(Error) << "epoll_ctl error: '" << strerror(errno) << "' at " << line->DescribeShort();
         }
+
+        auto timerFd = line->GetTimerFd();
+        ep_event.events = EPOLLIN;
+        ep_event.data.fd = timerFd;
+        if (epoll_ctl(epfd, EPOLL_CTL_ADD, timerFd, &ep_event) < 0) {
+            LOG(Error) << "epoll_ctl error: '" << strerror(errno);
+            wb_throw(TGpioDriverException, "unable to add timer to epoll: epoll_ctl failed with " + string(strerror(errno)));
+        }
     });
 }
 
@@ -159,10 +196,22 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
     bool isHandled = false;
 
     for (int i = 0; i < ctx.Count; i++) {
-        auto itFdLines = Lines.find(ctx.Events[i].data.fd);
+        auto fd = ctx.Events[i].data.fd;
+
+        // debounce timers
+        auto itFdTimers = Timers.find(fd);
+        if (itFdTimers != Timers.end()) {
+            const auto & line = itFdTimers->second.front();
+            if (line->UpdateIfStable(chrono::steady_clock::now())) {
+                isHandled = true;
+                SetIntervalTimer(fd, std::chrono::microseconds(0)); // disarm timer
+            }
+            continue;
+        }
+
+        // read gpio line value
+        auto itFdLines = Lines.find(fd);
         if (itFdLines != Lines.end()) {
-            isHandled = true;
-            auto fd = itFdLines->first;
             const auto & lines = itFdLines->second;
             assert(lines.size() == 1);
 
@@ -196,7 +245,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
                     }
 
                     line->SetCachedValueUnfiltered(data.values[0]);  // all interrupt events
-                    LinesRecentlyFired.insert(line);
+                    SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
                 }
             }
         }
@@ -292,6 +341,10 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine & line)
     Lines[req.fd].push_back(line);
     assert(Lines[req.fd].size() == 1);
     line->SetFd(req.fd);
+
+    auto timerFd = CreateIntervalTimer();
+    line->SetTimerFd(timerFd);
+    Timers[timerFd].push_back(line);
 
     LOG(Info) << "Listening to " << line->DescribeShort();
     return true;
@@ -411,7 +464,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
             if (oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
                 if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
-                    line->SetCachedValueUnfiltered(newValue);
+                    line->SetCachedValue(newValue);
                 }
             } else {    /* in other case let line do idle actions */
                 line->Update();
@@ -448,11 +501,14 @@ void TGpioChipDriver::ReListenLine(PGpioLine line)
     assert(!AddedToEpoll);
 
     auto oldFd = line->GetFd();
+    auto oldTimerFd = line->GetTimerFd();
 
     assert(oldFd > -1);
 
     Lines.erase(oldFd);
+    Timers.erase(oldTimerFd);
     close(oldFd);
+    close(oldTimerFd);
 
     bool ok = TryListenLine(line);
     assert(ok);

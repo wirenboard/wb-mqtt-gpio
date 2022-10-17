@@ -223,6 +223,19 @@ int TGpioLine::GetFd() const
     return Fd;
 }
 
+void TGpioLine::SetTimerFd(int fd)
+{
+    TimerFd = fd;
+    UpdateInfo();
+}
+
+int TGpioLine::GetTimerFd() const
+{
+    assert(TimerFd > -1);
+
+    return TimerFd;
+}
+
 EGpioEdge TGpioLine::GetInterrruptEdge() const
 {
     return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;

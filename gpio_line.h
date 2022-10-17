@@ -13,7 +13,8 @@ class TGpioLine
 
     uint32_t      Offset,
                   Flags;
-    int           Fd;
+    int           Fd,
+                  TimerFd;
     std::string   Name,
                   Consumer;
 
@@ -50,6 +51,8 @@ public:
     bool IsHandled() const;
     void SetFd(int);
     int GetFd() const;
+    void SetTimerFd(int);
+    int GetTimerFd() const;
     EGpioEdge GetInterrruptEdge() const;
     EInterruptStatus HandleInterrupt(EGpioEdge, const TTimePoint &);
     void Update();
