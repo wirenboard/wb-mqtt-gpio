@@ -11,17 +11,17 @@ class TGpioLine
     PUGpioCounter       Counter;
     PUGpioLineConfig    Config;
 
-    uint32_t      Offset,
-                  Flags;
-    int           Fd,
-                  TimerFd;
-    std::string   Name,
-                  Consumer;
+    uint32_t            Offset;
+    uint32_t            Flags;
+    int                 Fd;
+    int                 TimerFd;
+    std::string         Name;
+    std::string         Consumer;
 
-    TTimePoint    PreviousInterruptionTimePoint;
+    TTimePoint          PreviousInterruptionTimePoint;
 
-    TValue<uint8_t> Value,
-                    ValueUnfiltered;
+    uint8_t             Value;
+    uint8_t             ValueUnfiltered;
 
     EInterruptSupport InterruptSupport;
 
