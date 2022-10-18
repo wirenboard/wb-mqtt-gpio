@@ -58,7 +58,7 @@ TEST_F(TConfigTest, good_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Multiplier, 100.0);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 15);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "watt_meter");
-    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(999999));
+    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(20000));
 }
 
 TEST_F(TConfigTest, optional_config)
@@ -147,4 +147,19 @@ TEST_F(TConfigTest, line_override)
     ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 152);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Type, "watt_meter");
     ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(30000));
+}
+
+TEST_F(TConfigTest, unsupported_huge_debounce)
+{
+    TGpioDriverConfig cfg = LoadConfig(testRootDir + "/good4/wb-mqtt-gpio.conf", "", "", schemaFile);
+    ASSERT_EQ(cfg.DeviceName, "Discrete I/O");
+    ASSERT_EQ(cfg.Chips.size(), 1);
+    ASSERT_EQ(cfg.Chips[0].Lines.size(), 1);
+    ASSERT_EQ(cfg.Chips[0].Path, "/dev/gpiochip2");
+    ASSERT_EQ(cfg.Chips[0].Lines[0].Name, "ch_with_unsupported_huge_debounce");
+    ASSERT_EQ(cfg.Chips[0].Lines[0].Direction, EGpioDirection::Input);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].InitialState, true);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].InterruptEdge, EGpioEdge::RISING);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].Offset, 15);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].DebounceTimeout, std::chrono::microseconds(999999));  // max allowed val
 }

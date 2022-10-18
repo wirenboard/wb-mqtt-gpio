@@ -58,7 +58,7 @@ TGpioChip::TGpioChip()
 
 TGpioChip::~TGpioChip()
 {
-    if (Fd) {
+    if (Fd > -1) {
         close(Fd);
         LOG(Debug) << "Close chip at " << Path;
     }
