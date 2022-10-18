@@ -3,7 +3,13 @@ wb-mqtt-gpio (2.10.0) stable; urgency=medium
   * Change severity level for debug log
   * Option to enable debug messages in config
 
- -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Wed, 14 Sep 2022 10:51:13 +0400
+ -- Roman Kochkin <roman.kochkin@wirenboard.ru>  Tue, 18 Oct 2022 11:26:27 +0400
+
+wb-mqtt-gpio (2.9.1) stable; urgency=medium
+
+  * Add alphabetical order when reading files from conf.d
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.ru>  Tue, 20 Sep 2022 16:13:35 +0300
 
 wb-mqtt-gpio (2.9.0) stable; urgency=medium
 
