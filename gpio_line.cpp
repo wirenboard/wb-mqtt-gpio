@@ -250,21 +250,26 @@ int TGpioLine::GetTimerFd() const
     return TimerFd;
 }
 
-EGpioEdge TGpioLine::GetInterrruptEdge() const
+const TTimePoint & TGpioLine::GetInterruptionTimepoint() const
+{
+    return PreviousInterruptionTimePoint;
+}
+
+EGpioEdge TGpioLine::GetInterruptEdge() const
 {
     return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;
 }
 
 std::chrono::microseconds TGpioLine::GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const
 {
-    return chrono::duration_cast<chrono::microseconds>(interruptTimePoint - PreviousInterruptionTimePoint);
+    return chrono::duration_cast<chrono::microseconds>(interruptTimePoint - GetInterruptionTimepoint());
 }
 
 EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
 {
     assert(edge != EGpioEdge::BOTH);
 
-    auto interruptEdge = GetInterrruptEdge();
+    auto interruptEdge = GetInterruptEdge();
     if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
         if (Debug.IsEnabled()) {
             LOG(Debug) << DescribeShort()
@@ -272,13 +277,6 @@ EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & i
                        << " interval: " << GetIntervalFromPreviousInterrupt(interruptTimePoint).count() << " us [skip]";
         }
         return EInterruptStatus::SKIP;
-    }
-
-    auto intervalUs = PreviousInterruptionTimePoint.time_since_epoch() == chrono::nanoseconds::zero() ? chrono::microseconds::zero()
-                                          : GetIntervalFromPreviousInterrupt(interruptTimePoint);
-
-    if (Counter) {
-        Counter->HandleInterrupt(edge, intervalUs);
     }
 
     PreviousInterruptionTimePoint = interruptTimePoint;
@@ -289,7 +287,7 @@ void TGpioLine::Update()
 {
     if (Counter) {
         Counter->Update(chrono::duration_cast<chrono::microseconds>(
-            std::chrono::steady_clock::now() - PreviousInterruptionTimePoint
+            std::chrono::steady_clock::now() - GetInterruptionTimepoint()
         ));
     }
 }

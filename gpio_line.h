@@ -54,7 +54,7 @@ public:
     int GetFd() const;
     void SetTimerFd(int);
     int GetTimerFd() const;
-    EGpioEdge GetInterrruptEdge() const;
+    EGpioEdge GetInterruptEdge() const;
     EInterruptStatus HandleInterrupt(EGpioEdge, const TTimePoint &);
     void Update();
     const PUGpioCounter & GetCounter() const;
@@ -63,4 +63,5 @@ public:
     EInterruptSupport GetInterruptSupport() const;
     std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const;
     bool UpdateIfStable(const TTimePoint & checkTimePoint);
+    const TTimePoint & GetInterruptionTimepoint() const;
 };

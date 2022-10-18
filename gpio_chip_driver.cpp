@@ -234,10 +234,19 @@ bool TGpioChipDriver::HandleTimerInterrupt(const PGpioLine & line)
 {
     bool isHandled = false;
     auto tfd = line->GetTimerFd();
+    auto interruptionTs = chrono::steady_clock::now();
 
-    if (line->UpdateIfStable(chrono::steady_clock::now())) {
+    if (line->UpdateIfStable(interruptionTs)) {
         isHandled = true;
         SetIntervalTimer(tfd, std::chrono::microseconds(0)); // disarm timer
+
+        const auto & gpioCounter = line->GetCounter();
+        if (gpioCounter) {
+            auto prevTimePoint = line->GetInterruptionTimepoint();
+            auto intervalUs = prevTimePoint.time_since_epoch() == chrono::nanoseconds::zero() ? chrono::microseconds::zero()
+                                                    : line->GetIntervalFromPreviousInterrupt(interruptionTs);
+            gpioCounter->HandleInterrupt(line->GetInterruptEdge(), intervalUs);
+        }
     }
     return isHandled;
 }
@@ -252,11 +261,13 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
         auto itFdTimers = Timers.find(fd);
         auto itFdLines = Lines.find(fd);
 
-        if (itFdTimers != Timers.end()) {  // timer event has fired
+        // timer event fired: check, is value stable or bouncing
+        if (itFdTimers != Timers.end()) {
             const auto & line = itFdTimers->second.front();
             isHandled = HandleTimerInterrupt(line);
 
-        } else if (itFdLines != Lines.end()) {  // gpio interrupt event has fired
+        // gpio interrupt event fired: set stable-val-check timer
+        } else if (itFdLines != Lines.end()) {
             const auto & lines = itFdLines->second;
             assert(lines.size() == 1);
             const auto & line = lines.front();
