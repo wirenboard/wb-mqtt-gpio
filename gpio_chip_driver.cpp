@@ -127,10 +127,10 @@ TGpioChipDriver::~TGpioChipDriver()
 int TGpioChipDriver::CreateIntervalTimer()
 {
     int tfd = timerfd_create(CLOCK_MONOTONIC, 0);
-	if (tfd == -1) {
+    if (tfd == -1) {
         LOG(Error) << "timerfd_create failed: " << strerror(errno);
         wb_throw(TGpioDriverException, "unable to create timer: timerfd_create failed with " + string(strerror(errno)));
-	}
+    }
     return tfd;
 }
 
@@ -140,15 +140,15 @@ void TGpioChipDriver::SetIntervalTimer(int tfd, std::chrono::microseconds interv
 
     struct itimerspec ts;
     ts.it_value.tv_sec = 0;
-	ts.it_value.tv_nsec = nsec;
-	ts.it_interval.tv_sec = 0;
-	ts.it_interval.tv_nsec = 0;
+    ts.it_value.tv_nsec = nsec;
+    ts.it_interval.tv_sec = 0;
+    ts.it_interval.tv_nsec = 0;
 
     if (timerfd_settime(tfd, 0, &ts, NULL) < 0) {
         LOG(Error) << "timerfd_settime failed: " << strerror(errno);
-		close(tfd);
+        close(tfd);
         wb_throw(TGpioDriverException, "unable to setup timer: timerfd_settime failed with " + string(strerror(errno)));
-	}
+    }
 }
 
 TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
