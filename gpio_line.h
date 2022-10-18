@@ -20,8 +20,8 @@ class TGpioLine
 
     TTimePoint          PreviousInterruptionTimePoint;
 
-    uint8_t             Value;
-    uint8_t             ValueUnfiltered;
+    TValue<uint8_t>     Value;
+    TValue<uint8_t>     ValueUnfiltered;
 
     EInterruptSupport InterruptSupport;
 

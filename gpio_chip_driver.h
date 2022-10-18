@@ -50,6 +50,9 @@ private:
     void ReListenLine(PGpioLine);
     void AutoDetectInterruptEdges();
     void ReadInputValues();
+
+    bool HandleTimerInterrupt(const PGpioLine &);
+    bool HandleGpioInterrupt(const PGpioLine & line, const TInterruptionContext & ctx);
 };
 
 #define FOR_EACH_LINE(driver, line) driver->ForEachLine([&](const PGpioLine & line)

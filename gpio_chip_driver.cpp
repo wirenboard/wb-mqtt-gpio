@@ -190,6 +190,58 @@ void TGpioChipDriver::AddToEpoll(int epfd)
     });
 }
 
+bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine & line, const TInterruptionContext & ctx)
+{
+    bool isHandled = false;
+    auto fd = line->GetFd();
+
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(fd, &rfds);
+    struct timeval tv {0}; // do not block
+
+    while (auto retVal = select(fd + 1, &rfds, nullptr, nullptr, &tv)) {
+        if (retVal < 0) {
+            LOG(Error) << "select failed: " << strerror(errno);
+            wb_throw(TGpioDriverException, "unable to read line event data: select failed with " + string(strerror(errno)));
+        }
+
+        gpioevent_data data {};
+        if (read(fd, &data, sizeof(data)) < 0) {
+            LOG(Error) << "Read gpioevent_data failed: " << strerror(errno);
+            wb_throw(TGpioDriverException, "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
+        }
+
+        auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
+        auto time = ctx.ToSteadyClock(data.timestamp);
+
+        if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) {   // update gpioline's last interruption ts
+            gpiohandle_data data;
+            if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+                LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+                wb_throw(TGpioDriverException, "unable to get line value");
+            }
+
+            line->SetCachedValueUnfiltered(data.values[0]);  // all interrupt events
+            SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
+            isHandled = true;
+        }
+    }
+    return isHandled;
+}
+
+bool TGpioChipDriver::HandleTimerInterrupt(const PGpioLine & line)
+{
+    bool isHandled = false;
+    auto tfd = line->GetTimerFd();
+
+    if (line->UpdateIfStable(chrono::steady_clock::now())) {
+        isHandled = true;
+        SetIntervalTimer(tfd, std::chrono::microseconds(0)); // disarm timer
+    }
+    return isHandled;
+}
+
 bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
 {
     bool isHandled = false;
@@ -197,59 +249,20 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
     for (int i = 0; i < ctx.Count; i++) {
         auto fd = ctx.Events[i].data.fd;
 
-        // debounce timers
         auto itFdTimers = Timers.find(fd);
-        if (itFdTimers != Timers.end()) {
-            const auto & line = itFdTimers->second.front();
-            if (line->UpdateIfStable(chrono::steady_clock::now())) {
-                isHandled = true;
-                SetIntervalTimer(fd, std::chrono::microseconds(0)); // disarm timer
-            }
-            continue;
-        }
-
-        // read gpio line value
         auto itFdLines = Lines.find(fd);
-        if (itFdLines != Lines.end()) {
+
+        if (itFdTimers != Timers.end()) {  // timer event has fired
+            const auto & line = itFdTimers->second.front();
+            isHandled = HandleTimerInterrupt(line);
+
+        } else if (itFdLines != Lines.end()) {  // gpio interrupt event has fired
             const auto & lines = itFdLines->second;
             assert(lines.size() == 1);
-
             const auto & line = lines.front();
-
-            fd_set rfds;
-            FD_ZERO(&rfds);
-            FD_SET(fd, &rfds);
-            struct timeval tv {0}; // do not block
-
-            while (auto retVal = select(fd + 1, &rfds, nullptr, nullptr, &tv)) {
-                if (retVal < 0) {
-                    LOG(Error) << "select failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to read line event data: select failed with " + string(strerror(errno)));
-                }
-
-                gpioevent_data data {};
-                if (read(fd, &data, sizeof(data)) < 0) {
-                    LOG(Error) << "Read gpioevent_data failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
-                }
-
-                auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
-                auto time = ctx.ToSteadyClock(data.timestamp);
-
-                if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) {   // update gpioline's last interruption ts
-                    gpiohandle_data data;
-                    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-                        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-                        wb_throw(TGpioDriverException, "unable to get line value");
-                    }
-
-                    line->SetCachedValueUnfiltered(data.values[0]);  // all interrupt events
-                    SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
-                }
-            }
+            HandleGpioInterrupt(line, ctx);
         }
     }
-
     return isHandled;
 }
 
