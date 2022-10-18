@@ -28,6 +28,7 @@ class TGpioLine
 public:
     TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config);
     TGpioLine(const TGpioLineConfig & config);  // dummy gpioline for tests
+    ~TGpioLine();
 
     void UpdateInfo();
     std::string DescribeShort() const;

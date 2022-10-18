@@ -117,7 +117,6 @@ TGpioChipDriver::~TGpioChipDriver()
             auto logDebug = move(LOG(Debug) << "Close fd for:");
             for (const auto & line: lines) {
                 logDebug << "\n\t" << line->DescribeShort();
-                close(line->GetTimerFd());
             }
         }
 
@@ -508,7 +507,6 @@ void TGpioChipDriver::ReListenLine(PGpioLine line)
     Lines.erase(oldFd);
     Timers.erase(oldTimerFd);
     close(oldFd);
-    close(oldTimerFd);
 
     bool ok = TryListenLine(line);
     assert(ok);

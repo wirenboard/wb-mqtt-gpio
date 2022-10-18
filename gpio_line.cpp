@@ -50,6 +50,13 @@ TGpioLine::TGpioLine(const TGpioLineConfig & config)
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 }
 
+TGpioLine::~TGpioLine()
+{
+    if (TimerFd > -1) {
+        close(TimerFd);
+    }
+}
+
 void TGpioLine::UpdateInfo()
 {
     gpioline_info info {};
@@ -227,6 +234,10 @@ int TGpioLine::GetFd() const
 
 void TGpioLine::SetTimerFd(int fd)
 {
+    if (TimerFd > -1) {
+        close(TimerFd);
+    }
+
     TimerFd = fd;
     UpdateInfo();
 }
