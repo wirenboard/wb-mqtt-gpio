@@ -25,7 +25,7 @@ struct TGpioLineConfig
     int                       DecimalPlacesTotal   = -1;
     int                       DecimalPlacesCurrent = -1;
     bool                      InitialState         = false;
-    std::chrono::microseconds DebounceTimeout      = std::chrono::microseconds(50000);
+    std::chrono::microseconds DebounceTimeout      = std::chrono::microseconds(10000);
 };
 
 using TLinesConfig = std::vector<TGpioLineConfig>;
