@@ -237,7 +237,7 @@ bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
     if (!line->IsUsed())
         return true;
 
-    LOG(Info) << line->Describe() << " is used by '" << line->GetConsumer() << "'.";
+    LOG(Debug) << line->Describe() << " is used by '" << line->GetConsumer() << "'.";
     if (line->GetConsumer() == "sysfs") {
         ofstream unexportGpio("/sys/class/gpio/unexport");
         if (unexportGpio.is_open()) {
@@ -245,7 +245,8 @@ bool TGpioChipDriver::ReleaseLineIfUsed(const PGpioLine & line)
             try {
                 unexportGpio << Utils::ToSysfsGpio(line);
             } catch (const TGpioDriverException & e) {
-                LOG(Error) << "During unexport: " << e.what();
+                LOG(Error) << line->Describe() << " is used by '" << line->GetConsumer() << "',"
+                           <<" during unexport: " << e.what();
             }
         }
     }
@@ -403,9 +404,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
         bool oldValue = line->GetValue();
         bool newValue = data.values[i];
 
-        if (oldValue != newValue) {
-            LOG(Debug) << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
-        }
+        LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
 
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
