@@ -136,11 +136,12 @@ int TGpioChipDriver::CreateIntervalTimer()
 
 void TGpioChipDriver::SetIntervalTimer(int tfd, std::chrono::microseconds intervalUs)
 {
-    auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(intervalUs).count();
+    auto sec = std::chrono::floor<std::chrono::seconds>(intervalUs);
+    auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(intervalUs - sec);
 
     struct itimerspec ts;
-    ts.it_value.tv_sec = 0;
-    ts.it_value.tv_nsec = nsec;
+    ts.it_value.tv_sec = sec.count();
+    ts.it_value.tv_nsec = nsec.count();
     ts.it_interval.tv_sec = 0;
     ts.it_interval.tv_nsec = 0;
 
@@ -522,7 +523,6 @@ void TGpioChipDriver::ReListenLine(PGpioLine line)
     Lines.erase(oldFd);
     Timers.erase(oldTimerFd);
     close(oldFd);
-    close(oldTimerFd);
 
     bool ok = TryListenLine(line);
     assert(ok);

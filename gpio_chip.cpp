@@ -53,7 +53,6 @@ TGpioChip::TGpioChip()
     LineCount = 0;
     Name = "Dummy gpiochip";
     Label = "unknown";
-    LOG(Debug) << "Initialized dummy gpiochip: " << Describe();
 }
 
 TGpioChip::~TGpioChip()
