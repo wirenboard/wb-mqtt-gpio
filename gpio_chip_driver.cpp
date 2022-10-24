@@ -234,20 +234,10 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine & line, const TInterru
 bool TGpioChipDriver::HandleTimerInterrupt(const PGpioLine & line)
 {
     bool isHandled = false;
-    auto tfd = line->GetTimerFd();
-    auto interruptionTs = chrono::steady_clock::now();
 
-    if (line->UpdateIfStable(interruptionTs)) {
+    if (line->UpdateIfStable(chrono::steady_clock::now())) {
         isHandled = true;
-        SetIntervalTimer(tfd, std::chrono::microseconds(0)); // disarm timer
-
-        const auto & gpioCounter = line->GetCounter();
-        if (gpioCounter) {
-            auto prevTimePoint = line->GetInterruptionTimepoint();
-            auto intervalUs = prevTimePoint.time_since_epoch() == chrono::nanoseconds::zero() ? chrono::microseconds::zero()
-                                                    : line->GetIntervalFromPreviousInterrupt(interruptionTs);
-            gpioCounter->HandleInterrupt(line->GetInterruptEdge(), intervalUs);
-        }
+        SetIntervalTimer(line->GetTimerFd(), std::chrono::microseconds(0)); // disarm timer
     }
     return isHandled;
 }

@@ -321,6 +321,12 @@ bool TGpioLine::UpdateIfStable(const TTimePoint & checkTimePoint)
         SetCachedValue(GetValueUnfiltered());
         LOG(Debug) << "Value (" << static_cast<bool>(GetValueUnfiltered()) << ") on ("
                     << GetName() << " is stable for " << fromLastTs.count() << "us";
+
+        const auto & gpioCounter = GetCounter();
+        if (gpioCounter) {
+            gpioCounter->HandleInterrupt(GetInterruptEdge(), fromLastTs);
+        }
+
         return true;
     } else {
         return false;
