@@ -240,7 +240,6 @@ void TGpioLine::SetTimerFd(int fd)
     }
 
     TimerFd = fd;
-    UpdateInfo();
 }
 
 int TGpioLine::GetTimerFd() const

@@ -117,7 +117,6 @@ TGpioChipDriver::~TGpioChipDriver()
             auto logDebug = move(LOG(Debug) << "Close fd for:");
             for (const auto & line: lines) {
                 logDebug << "\n\t" << line->DescribeShort();
-                close(line->GetTimerFd());
             }
         }
 
@@ -249,20 +248,21 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
     for (int i = 0; i < ctx.Count; i++) {
         auto fd = ctx.Events[i].data.fd;
 
-        auto itFdTimers = Timers.find(fd);
-        auto itFdLines = Lines.find(fd);
-
-        // timer event fired: check, is value stable or bouncing
-        if (itFdTimers != Timers.end()) {
-            const auto & line = itFdTimers->second.front();
-            isHandled = HandleTimerInterrupt(line);
-
         // gpio interrupt event fired: set stable-val-check timer
-        } else if (itFdLines != Lines.end()) {
+        auto itFdLines = Lines.find(fd);
+        if (itFdLines != Lines.end()) {
             const auto & lines = itFdLines->second;
             assert(lines.size() == 1);
             const auto & line = lines.front();
             HandleGpioInterrupt(line, ctx);
+
+        // timer event fired: check, is value stable or bouncing
+        } else {
+            auto itFdTimers = Timers.find(fd);
+            if (itFdTimers != Timers.end()) {
+                const auto & line = itFdTimers->second.front();
+                isHandled = HandleTimerInterrupt(line);
+            }
         }
     }
     return isHandled;
