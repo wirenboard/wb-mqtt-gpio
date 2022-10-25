@@ -11,6 +11,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
+#include <sys/timerfd.h>
 #include <unistd.h>
 #include <string.h>
 #include <cassert>
@@ -123,6 +124,34 @@ TGpioChipDriver::~TGpioChipDriver()
     }
 }
 
+int TGpioChipDriver::CreateIntervalTimer()
+{
+    int tfd = timerfd_create(CLOCK_MONOTONIC, 0);
+    if (tfd == -1) {
+        LOG(Error) << "timerfd_create failed: " << strerror(errno);
+        wb_throw(TGpioDriverException, "unable to create timer: timerfd_create failed with " + string(strerror(errno)));
+    }
+    return tfd;
+}
+
+void TGpioChipDriver::SetIntervalTimer(int tfd, std::chrono::microseconds intervalUs)
+{
+    auto sec = std::chrono::floor<std::chrono::seconds>(intervalUs);
+    auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(intervalUs - sec);
+
+    struct itimerspec ts;
+    ts.it_value.tv_sec = sec.count();
+    ts.it_value.tv_nsec = nsec.count();
+    ts.it_interval.tv_sec = 0;
+    ts.it_interval.tv_nsec = 0;
+
+    if (timerfd_settime(tfd, 0, &ts, NULL) < 0) {
+        LOG(Error) << "timerfd_settime failed: " << strerror(errno);
+        close(tfd);
+        wb_throw(TGpioDriverException, "unable to setup timer: timerfd_settime failed with " + string(strerror(errno)));
+    }
+}
+
 TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
 {
     TGpioLinesByOffsetMap linesByOffset;
@@ -151,7 +180,66 @@ void TGpioChipDriver::AddToEpoll(int epfd)
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, line->GetFd(), &ep_event) < 0) {
             LOG(Error) << "epoll_ctl error: '" << strerror(errno) << "' at " << line->DescribeShort();
         }
+
+        auto timerFd = line->GetTimerFd();
+        ep_event.events = EPOLLIN;
+        ep_event.data.fd = timerFd;
+        if (epoll_ctl(epfd, EPOLL_CTL_ADD, timerFd, &ep_event) < 0) {
+            LOG(Error) << "epoll_ctl error: '" << strerror(errno);
+            wb_throw(TGpioDriverException, "unable to add timer to epoll: epoll_ctl failed with " + string(strerror(errno)));
+        }
     });
+}
+
+bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine & line, const TInterruptionContext & ctx)
+{
+    bool isHandled = false;
+    auto fd = line->GetFd();
+
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(fd, &rfds);
+    struct timeval tv {0}; // do not block
+
+    while (auto retVal = select(fd + 1, &rfds, nullptr, nullptr, &tv)) {
+        if (retVal < 0) {
+            LOG(Error) << "select failed: " << strerror(errno);
+            wb_throw(TGpioDriverException, "unable to read line event data: select failed with " + string(strerror(errno)));
+        }
+
+        gpioevent_data data {};
+        if (read(fd, &data, sizeof(data)) < 0) {
+            LOG(Error) << "Read gpioevent_data failed: " << strerror(errno);
+            wb_throw(TGpioDriverException, "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
+        }
+
+        auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
+        auto time = ctx.ToSteadyClock(data.timestamp);
+
+        if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) {   // update gpioline's last interruption ts
+            gpiohandle_data data;
+            if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+                LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+                wb_throw(TGpioDriverException, "unable to get line value");
+            }
+
+            line->SetCachedValueUnfiltered(data.values[0]);  // all interrupt events
+            SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
+            isHandled = true;
+        }
+    }
+    return isHandled;
+}
+
+bool TGpioChipDriver::HandleTimerInterrupt(const PGpioLine & line)
+{
+    bool isHandled = false;
+
+    if (line->UpdateIfStable(chrono::steady_clock::now())) {
+        isHandled = true;
+        SetIntervalTimer(line->GetTimerFd(), std::chrono::microseconds(0)); // disarm timer
+    }
+    return isHandled;
 }
 
 bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
@@ -159,48 +247,25 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
     bool isHandled = false;
 
     for (int i = 0; i < ctx.Count; i++) {
-        auto itFdLines = Lines.find(ctx.Events[i].data.fd);
+        auto fd = ctx.Events[i].data.fd;
+
+        // gpio interrupt event fired: set stable-val-check timer
+        auto itFdLines = Lines.find(fd);
         if (itFdLines != Lines.end()) {
-            isHandled = true;
-            auto fd = itFdLines->first;
             const auto & lines = itFdLines->second;
             assert(lines.size() == 1);
-
             const auto & line = lines.front();
+            HandleGpioInterrupt(line, ctx);
 
-            fd_set rfds;
-            FD_ZERO(&rfds);
-            FD_SET(fd, &rfds);
-            struct timeval tv {0}; // do not block
-
-            while (auto retVal = select(fd + 1, &rfds, nullptr, nullptr, &tv)) {
-                if (retVal < 0) {
-                    LOG(Error) << "select failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to read line event data: select failed with " + string(strerror(errno)));
-                }
-
-                gpioevent_data data {};
-                if (read(fd, &data, sizeof(data)) < 0) {
-                    LOG(Error) << "Read gpioevent_data failed: " << strerror(errno);
-                    wb_throw(TGpioDriverException, "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
-                }
-
-                auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
-                auto time = ctx.ToSteadyClock(data.timestamp);
-
-                if (line->HandleInterrupt(edge, time) != EInterruptStatus::DEBOUNCE) {   // update value
-                    gpiohandle_data data;
-                    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-                        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-                        wb_throw(TGpioDriverException, "unable to get line value");
-                    }
-
-                    line->SetCachedValue(data.values[0]);
-                }
+        // timer event fired: check, is value stable or bouncing
+        } else {
+            auto itFdTimers = Timers.find(fd);
+            if (itFdTimers != Timers.end()) {
+                const auto & line = itFdTimers->second.front();
+                isHandled |= HandleTimerInterrupt(line);
             }
         }
     }
-
     return isHandled;
 }
 
@@ -292,6 +357,10 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine & line)
     assert(Lines[req.fd].size() == 1);
     line->SetFd(req.fd);
 
+    auto timerFd = CreateIntervalTimer();
+    line->SetTimerFd(timerFd);
+    Timers[timerFd].push_back(line);
+
     LOG(Info) << "Listening to " << line->DescribeShort();
     return true;
 }
@@ -316,7 +385,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine & line)
 
     Lines[req.fd].push_back(line);
     assert(Lines[req.fd].size() == 1);
-    line->SetFd(req.fd); 
+    line->SetFd(req.fd);
 
     if (Debug.IsEnabled()) {
         gpiohandle_data data;
@@ -409,7 +478,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines & lines)
             /* if value changed for input we simulate interrupt */
             if (oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
-                if (line->HandleInterrupt(edge, now) != EInterruptStatus::DEBOUNCE) {
+                if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
                     line->SetCachedValue(newValue);
                 }
             } else {    /* in other case let line do idle actions */
@@ -447,10 +516,12 @@ void TGpioChipDriver::ReListenLine(PGpioLine line)
     assert(!AddedToEpoll);
 
     auto oldFd = line->GetFd();
+    auto oldTimerFd = line->GetTimerFd();
 
     assert(oldFd > -1);
 
     Lines.erase(oldFd);
+    Timers.erase(oldTimerFd);
     close(oldFd);
 
     bool ok = TryListenLine(line);

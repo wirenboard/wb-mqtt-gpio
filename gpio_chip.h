@@ -14,6 +14,7 @@ class TGpioChip: public std::enable_shared_from_this<TGpioChip>
     uint32_t                                        LineCount;
 
 public:
+    TGpioChip();  // dummy gpiochip for tests
     TGpioChip(const std::string & path);
     ~TGpioChip();
 

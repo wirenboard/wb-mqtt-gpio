@@ -15,6 +15,7 @@ class TGpioDriver
 
     std::vector<PGpioChipDriver>    ChipDrivers;
     std::unique_ptr<std::thread>    Worker;
+
     bool                            Active;
     std::mutex                      ActiveMutex;
 

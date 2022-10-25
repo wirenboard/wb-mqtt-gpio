@@ -63,7 +63,7 @@ struct TConfigValidationHints
  * It will be loaded if optional config file is empty.
  * @param optionalConfigFile - path and name of an optional config file. It will be loaded instead
  * of all other config files
- * @param systemConfigsDir - folder with system generated config files. 
+ * @param systemConfigsDir - folder with system generated config files.
  * They will be loaded if optional config file is empty.
  * @param schemaFile - path and name of a file with JSONSchema for configs
  * @param validationHints - an object with config validation hints
