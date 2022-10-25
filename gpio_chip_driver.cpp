@@ -262,7 +262,7 @@ bool TGpioChipDriver::HandleInterrupt(const TInterruptionContext & ctx)
             auto itFdTimers = Timers.find(fd);
             if (itFdTimers != Timers.end()) {
                 const auto & line = itFdTimers->second.front();
-                isHandled = HandleTimerInterrupt(line);
+                isHandled |= HandleTimerInterrupt(line);
             }
         }
     }
