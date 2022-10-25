@@ -11,8 +11,10 @@ class TGpioChipDriver
 {
     using TGpioLines    = std::vector<PGpioLine>;
     using TGpioLinesMap = std::unordered_map<int, TGpioLines>;
+    using TGpioTimersMap = std::unordered_map<int, TGpioLines>;
 
     TGpioLinesMap Lines;
+    TGpioTimersMap Timers;
     PGpioChip     Chip;
     bool          AddedToEpoll;
 
@@ -27,6 +29,9 @@ public:
 
     void AddToEpoll(int epfd);
     bool HandleInterrupt(const TInterruptionContext &);
+
+    int CreateIntervalTimer();
+    void SetIntervalTimer(int tfd, std::chrono::microseconds intervalUs);
 
     bool PollLines();
 
@@ -45,6 +50,9 @@ private:
     void ReListenLine(PGpioLine);
     void AutoDetectInterruptEdges();
     void ReadInputValues();
+
+    bool HandleTimerInterrupt(const PGpioLine &);
+    bool HandleGpioInterrupt(const PGpioLine & line, const TInterruptionContext & ctx);
 };
 
 #define FOR_EACH_LINE(driver, line) driver->ForEachLine([&](const PGpioLine & line)
