@@ -8,20 +8,17 @@
 class TDebounceTest : public testing::Test
 {
 protected:
-    const PGpioLine & InitFakeGpioLine(int debounceTimeoutUs, uint8_t initialGpioState);
+    PGpioLine InitFakeGpioLine(int debounceTimeoutUs);
     void HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts);
 };
 
-const PGpioLine & TDebounceTest::InitFakeGpioLine(int debounceTimeoutUs, uint8_t initialGpioState)
+PGpioLine TDebounceTest::InitFakeGpioLine(int debounceTimeoutUs)
 {
     TGpioLineConfig fakeGpioLineConfig;
     fakeGpioLineConfig.DebounceTimeout = std::chrono::microseconds(debounceTimeoutUs);
     fakeGpioLineConfig.Offset = 0;
     fakeGpioLineConfig.Name = "testline";
-    const auto & line = std::make_shared<TGpioLine>(fakeGpioLineConfig);
-    line->SetCachedValue(initialGpioState);
-    line->SetCachedValueUnfiltered(initialGpioState);
-    return line;
+    return std::make_shared<TGpioLine>(fakeGpioLineConfig);
 }
 
 void TDebounceTest::HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts)
@@ -35,7 +32,10 @@ TEST_F(TDebounceTest, value_is_stable)
     uint8_t initialGpioState = 0, assumedGpioState = 1;
     int debounceTimeoutUs = 50000;
     auto now = std::chrono::steady_clock::now();
-    const auto & fakeGpioLine = InitFakeGpioLine(debounceTimeoutUs, initialGpioState);
+    const auto fakeGpioLine = InitFakeGpioLine(debounceTimeoutUs);
+
+    fakeGpioLine->SetCachedValue(initialGpioState);
+    fakeGpioLine->SetCachedValueUnfiltered(initialGpioState);
 
     ASSERT_EQ(fakeGpioLine->GetValue(), initialGpioState);
     ASSERT_EQ(fakeGpioLine->GetValueUnfiltered(), initialGpioState);
@@ -52,7 +52,10 @@ TEST_F(TDebounceTest, value_is_unstable)
     uint8_t initialGpioState = 0, assumedGpioState = 1;
     int debounceTimeoutUs = 50000;
     auto now = std::chrono::steady_clock::now();
-    const auto & fakeGpioLine = InitFakeGpioLine(debounceTimeoutUs, initialGpioState);
+    const auto fakeGpioLine = InitFakeGpioLine(debounceTimeoutUs);
+
+    fakeGpioLine->SetCachedValue(initialGpioState);
+    fakeGpioLine->SetCachedValueUnfiltered(initialGpioState);
 
     ASSERT_EQ(fakeGpioLine->GetValue(), initialGpioState);
     ASSERT_EQ(fakeGpioLine->GetValueUnfiltered(), initialGpioState);
