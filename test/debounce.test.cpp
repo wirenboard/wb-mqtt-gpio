@@ -8,40 +8,47 @@
 class TDebounceTest : public testing::Test
 {
 protected:
-    PGpioLine InitFakeGpioLine(int debounceTimeoutUs);
+    int debounceTimeoutUs;
+    TGpioLineConfig fakeGpioLineConfig;
+    void InitGpioLine(const PGpioLine & gpioLine, uint8_t gpioValue);
     void HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts);
+
+    void SetUp()
+    {
+        debounceTimeoutUs = 50000;
+
+        fakeGpioLineConfig.DebounceTimeout = std::chrono::microseconds(debounceTimeoutUs);
+        fakeGpioLineConfig.Offset = 0;
+        fakeGpioLineConfig.Name = "testline";
+    }
 };
 
-PGpioLine TDebounceTest::InitFakeGpioLine(int debounceTimeoutUs)
+void TDebounceTest::InitGpioLine(const PGpioLine & gpioLine, uint8_t gpioValue)
 {
-    TGpioLineConfig fakeGpioLineConfig;
-    fakeGpioLineConfig.DebounceTimeout = std::chrono::microseconds(debounceTimeoutUs);
-    fakeGpioLineConfig.Offset = 0;
-    fakeGpioLineConfig.Name = "testline";
-    return std::make_shared<TGpioLine>(fakeGpioLineConfig);
+    gpioLine->SetCachedValue(gpioValue);
+    gpioLine->SetCachedValueUnfiltered(gpioValue);
+
+    ASSERT_EQ(gpioLine->GetValue(), gpioValue);
+    ASSERT_EQ(gpioLine->GetValueUnfiltered(), gpioValue);
+
 }
 
 void TDebounceTest::HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts)
 {
     gpioLine->HandleInterrupt(EGpioEdge::BOTH, ts);
     gpioLine->SetCachedValueUnfiltered(gpioValue);
+
+    ASSERT_EQ(gpioLine->GetValueUnfiltered(), gpioValue);
 }
 
 TEST_F(TDebounceTest, value_is_stable)
 {
     uint8_t initialGpioState = 0, assumedGpioState = 1;
-    int debounceTimeoutUs = 50000;
     auto now = std::chrono::steady_clock::now();
-    const auto fakeGpioLine = InitFakeGpioLine(debounceTimeoutUs);
+    const auto fakeGpioLine = std::make_shared<TGpioLine>(fakeGpioLineConfig);
 
-    fakeGpioLine->SetCachedValue(initialGpioState);
-    fakeGpioLine->SetCachedValueUnfiltered(initialGpioState);
-
-    ASSERT_EQ(fakeGpioLine->GetValue(), initialGpioState);
-    ASSERT_EQ(fakeGpioLine->GetValueUnfiltered(), initialGpioState);
-
+    InitGpioLine(fakeGpioLine, initialGpioState);
     HandleGpioEvent(fakeGpioLine, assumedGpioState, now);
-    ASSERT_EQ(fakeGpioLine->GetValueUnfiltered(), assumedGpioState);
 
     ASSERT_TRUE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(debounceTimeoutUs + 1)));
     ASSERT_EQ(fakeGpioLine->GetValue(), assumedGpioState);
@@ -50,18 +57,11 @@ TEST_F(TDebounceTest, value_is_stable)
 TEST_F(TDebounceTest, value_is_unstable)
 {
     uint8_t initialGpioState = 0, assumedGpioState = 1;
-    int debounceTimeoutUs = 50000;
     auto now = std::chrono::steady_clock::now();
-    const auto fakeGpioLine = InitFakeGpioLine(debounceTimeoutUs);
+    const auto fakeGpioLine = std::make_shared<TGpioLine>(fakeGpioLineConfig);
 
-    fakeGpioLine->SetCachedValue(initialGpioState);
-    fakeGpioLine->SetCachedValueUnfiltered(initialGpioState);
-
-    ASSERT_EQ(fakeGpioLine->GetValue(), initialGpioState);
-    ASSERT_EQ(fakeGpioLine->GetValueUnfiltered(), initialGpioState);
-
+    InitGpioLine(fakeGpioLine, initialGpioState);
     HandleGpioEvent(fakeGpioLine, assumedGpioState, now);
-    ASSERT_EQ(fakeGpioLine->GetValueUnfiltered(), assumedGpioState);
 
     ASSERT_FALSE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(debounceTimeoutUs - 1)));
     ASSERT_EQ(fakeGpioLine->GetValue(), initialGpioState);
