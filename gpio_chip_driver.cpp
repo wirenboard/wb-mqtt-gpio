@@ -136,7 +136,7 @@ int TGpioChipDriver::CreateIntervalTimer()
 
 void TGpioChipDriver::SetIntervalTimer(int tfd, std::chrono::microseconds intervalUs)
 {
-    auto sec = std::chrono::floor<std::chrono::seconds>(intervalUs);
+    auto sec = std::chrono::duration_cast<std::chrono::seconds>(intervalUs);
     auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(intervalUs - sec);
 
     struct itimerspec ts;

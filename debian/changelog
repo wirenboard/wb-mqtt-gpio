@@ -1,6 +1,7 @@
 wb-mqtt-gpio (2.8.4-wb101) stable; urgency=medium
 
-  * internals: fix debounce-test to build on non-armhf, remove debian-source-format
+  * internals: fix debounce-test to build on non-armhf, remove debian-source-format,
+    rework c++17-required time rounding
 
  -- Vladimir Romanov <v.romanov@wirenboard.ru>  Wed, 26 Oct 2022 10:36:19 +0500
 
