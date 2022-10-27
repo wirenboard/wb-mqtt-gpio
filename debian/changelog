@@ -1,15 +1,10 @@
-wb-mqtt-gpio (2.8.4-wb101) stable; urgency=medium
+wb-mqtt-gpio (2.8.4-wb100) stable; urgency=medium
 
+  * Rework gpio debounce-filtering approach
   * internals: fix debounce-test to build on non-armhf, remove debian-source-format,
     rework c++17-required time rounding
 
  -- Vladimir Romanov <v.romanov@wirenboard.ru>  Wed, 26 Oct 2022 10:36:19 +0500
-
-wb-mqtt-gpio (2.8.4-wb100) stable; urgency=medium
-
-  * Rework gpio debounce-filtering approach
-
- -- Vladimir Romanov <v.romanov@wirenboard.ru>  Wed, 21 Sep 2022 09:45:12 +0500
 
 wb-mqtt-gpio (2.8.4) stable; urgency=medium
 
