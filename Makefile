@@ -39,6 +39,7 @@ export TEST_DIR_ABS = $(shell pwd)/$(TEST_DIR)
 GPIO_TEST_SOURCES= 						\
 			$(TEST_DIR)/test_main.cpp	\
 			$(TEST_DIR)/config.test.cpp	\
+			$(TEST_DIR)/debounce.test.cpp	\
 
 GPIO_TEST_OBJECTS=$(GPIO_TEST_SOURCES:.cpp=.o)
 TEST_BIN=wb-mqtt-gpio-test

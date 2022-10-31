@@ -46,10 +46,21 @@ TGpioChip::TGpioChip(const string & path)
     }
 }
 
+TGpioChip::TGpioChip()
+    : Fd(-1)
+    , Path("/dev/null")
+{
+    LineCount = 0;
+    Name = "Dummy gpiochip";
+    Label = "unknown";
+}
+
 TGpioChip::~TGpioChip()
 {
-    close(Fd);
-    LOG(Debug) << "Close chip at " << Path;
+    if (Fd > -1) {
+        close(Fd);
+        LOG(Debug) << "Close chip at " << Path;
+    }
 }
 
 vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
