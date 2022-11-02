@@ -31,6 +31,17 @@ const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup ca
 
 namespace
 {
+    enum class DebugLevel : int32_t
+    {
+        NONE = 0,
+        SILENT_GPIO = -1,
+        SILENT_MQTT = -2,
+        SILENT_GPIO_MQTT = -3,
+        DEBUG_GPIO = 1,
+        DEBUG_MQTT = 2,
+        DEBUG_GPIO_MQTT = 3
+    };
+
     void PrintUsage()
     {
         cout << "Usage:" << endl
@@ -54,15 +65,16 @@ namespace
     void ParseCommandLine(int                           argc,
                           char*                         argv[],
                           WBMQTT::TMosquittoMqttConfig& mqttConfig,
-                          string&                       customConfig)
+                          string&                       customConfig,
+                          DebugLevel&                   debugLevel)
     {
-        int debugLevel = 0;
         int c;
+        debugLevel = DebugLevel::NONE;
 
         while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:jJ")) != -1) {
             switch (c) {
             case 'd':
-                debugLevel = stoi(optarg);
+                debugLevel = static_cast<DebugLevel>(stoi(optarg));
                 break;
             case 'c':
                 customConfig = optarg;
@@ -103,41 +115,6 @@ namespace
                 PrintUsage();
                 exit(EXIT_INVALIDARGUMENT);
             }
-        }
-
-        switch (debugLevel) {
-        case 0:
-            break;
-        case -1:
-            Info.SetEnabled(false);
-            break;
-
-        case -2:
-            WBMQTT::Info.SetEnabled(false);
-            break;
-
-        case -3:
-            WBMQTT::Info.SetEnabled(false);
-            Info.SetEnabled(false);
-            break;
-
-        case 1:
-            Debug.SetEnabled(true);
-            break;
-
-        case 2:
-            WBMQTT::Debug.SetEnabled(true);
-            break;
-
-        case 3:
-            WBMQTT::Debug.SetEnabled(true);
-            Debug.SetEnabled(true);
-            break;
-
-        default:
-            cout << "Invalid -d parameter value " << debugLevel << endl;
-            PrintUsage();
-            exit(EXIT_INVALIDARGUMENT);
         }
 
         if (optind < argc) {
@@ -193,15 +170,54 @@ namespace
         }
         return (kernel.Patchlevel < 3);
     }
+
+    void SetDebugLevel(DebugLevel level)
+    {
+        switch (level) {
+            case DebugLevel::NONE:
+                break;
+            case DebugLevel::SILENT_GPIO:
+                Info.SetEnabled(false);
+                break;
+
+            case DebugLevel::SILENT_MQTT:
+                WBMQTT::Info.SetEnabled(false);
+                break;
+
+            case DebugLevel::SILENT_GPIO_MQTT:
+                WBMQTT::Info.SetEnabled(false);
+                Info.SetEnabled(false);
+                break;
+
+            case DebugLevel::DEBUG_GPIO:
+                Debug.SetEnabled(true);
+                break;
+
+            case DebugLevel::DEBUG_MQTT:
+                WBMQTT::Debug.SetEnabled(true);
+                break;
+
+            case DebugLevel::DEBUG_GPIO_MQTT:
+                WBMQTT::Debug.SetEnabled(true);
+                Debug.SetEnabled(true);
+                break;
+
+            default:
+                cout << "Invalid -d parameter value " << static_cast<int32_t>(level) << endl;
+                PrintUsage();
+                exit(EXIT_INVALIDARGUMENT);
+        }
+    }
 } // namespace
 
 int main(int argc, char* argv[])
 {
     WBMQTT::TMosquittoMqttConfig mqttConfig;
     mqttConfig.Id = TGpioDriver::Name;
+    DebugLevel debugLevel = DebugLevel::NONE;
 
     string configFileName;
-    ParseCommandLine(argc, argv, mqttConfig, configFileName);
+    ParseCommandLine(argc, argv, mqttConfig, configFileName, debugLevel);
 
     WBMQTT::TPromise<void> initialized;
 
@@ -243,6 +259,12 @@ int main(int argc, char* argv[])
     } catch (const std::exception& e) {
         LOG(Error) << "FATAL: " << e.what();
         return EXIT_NOTCONFIGURED;
+    }
+
+    if (debugLevel != DebugLevel::NONE) {
+        SetDebugLevel(debugLevel);
+    } else if (config.Debug) {
+        SetDebugLevel(DebugLevel::DEBUG_GPIO);
     }
 
     try {

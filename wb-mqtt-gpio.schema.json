@@ -291,18 +291,25 @@
         }
     },
     "properties": {
+        "debug": {
+            "type": "boolean",
+            "title": "Enable debug logging",
+            "default": false,
+            "_format": "checkbox",
+            "propertyOrder": 1
+        },
         "device_name": {
             "type": "string",
             "title": "MQTT device name",
             "default": "GPIOs",
-            "propertyOrder": 1
+            "propertyOrder": 2
         },
         "max_unchanged_interval": {
             "type": "integer",
             "title": "Unchanged value posting interval",
             "description": "max_unchanged_interval_description",
             "default": -1,
-            "propertyOrder": 2
+            "propertyOrder": 3
         },
         "channels": {
             "type": "array",
@@ -321,7 +328,7 @@
                     { "$ref": "#/definitions/system_output" }
                 ]
             },
-            "propertyOrder": 3,
+            "propertyOrder": 4,
             "options": {
                 "disable_array_reorder": true,
                 "disable_collapse": true,
@@ -335,10 +342,12 @@
             }
         }
     },
+    "defaultProperties": [ "debug" ],
     "required": [ "device_name", "channels" ],
     "_format": "merge-default",
     "default" : {
-        "max_unchanged_interval": -1
+        "max_unchanged_interval": -1,
+        "debug": false
     },
     "options": {
         "disable_collapse": true,
@@ -384,7 +393,8 @@
             "List of GPIO channels": "Список каналов GPIO",
             "GPIO channel": "Канал GPIO",
             "Direction": "Режим канала",
-            "Pulse counter type": "Тип счетчика импульсов"
+            "Pulse counter type": "Тип счетчика импульсов",
+            "Enable debug logging": "Включить отладочные сообщения"
         }
     }
 }

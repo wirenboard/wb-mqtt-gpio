@@ -209,7 +209,7 @@ namespace Utils
 
         uint32_t gpio = pRange->Begin + line->GetOffset();
 
-        LOG(Info) << line->DescribeShort() << " => sysfs GPIO number " << gpio;
+        LOG(Debug) << line->DescribeShort() << " => sysfs GPIO number " << gpio;
 
         return gpio;
     }

@@ -40,8 +40,9 @@ struct TGpioChipConfig
 
 struct TGpioDriverConfig
 {
-    std::string                  DeviceName;
-    WBMQTT::TPublishParameters   PublishParameters;
+    bool Debug;
+    std::string DeviceName;
+    WBMQTT::TPublishParameters PublishParameters;
     std::vector<TGpioChipConfig> Chips;
 };
 

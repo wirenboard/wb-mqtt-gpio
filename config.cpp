@@ -54,6 +54,9 @@ namespace
     {
         TGpioDriverConfig cfg;
         const auto&       channels = root["channels"];
+
+        cfg.Debug = root.isMember("debug") && root["debug"].asBool();
+
         if (root.isMember("device_name")) {
             cfg.DeviceName = root["device_name"].asString();
         }
