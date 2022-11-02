@@ -43,7 +43,7 @@ namespace
         if (itLine != chipConfig->Lines.end()) {
             wb_throw(TGpioDriverException,
                      "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
-                     chipConfig->Path + "' defined as '" + line.Name + 
+                     chipConfig->Path + "' defined as '" + line.Name +
                      "'. It is already defined as '" + itLine->Name + "'. To override set similar MQTT id (name).");
         }
 
@@ -103,7 +103,7 @@ namespace
                     LOG(Warn) << "Edge setting for GPIO \"" << lineConfig.Name << "\" is not used. It can be set only for GPIO with \"type\" option";
                 } else {
                     EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
-                } 
+                }
             }
 
             AppendLine(cfg, path, lineConfig);
