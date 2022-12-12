@@ -266,7 +266,7 @@ std::chrono::microseconds TGpioLine::GetIntervalFromPreviousInterrupt(const TTim
 
 EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
 {
-    assert(edge != EGpioEdge::BOTH);
+    //assert(edge != EGpioEdge::BOTH);
 
     auto interruptEdge = GetInterruptEdge();
     if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {

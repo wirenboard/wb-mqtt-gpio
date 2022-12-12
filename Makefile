@@ -9,53 +9,53 @@ ifeq ($(origin CXX),default)
 	CXX := $(CROSS_COMPILE)g++
 endif
 
-DEBUG_CFLAGS=-Wall -ggdb -rdynamic -std=c++17 -O0 -I.
-RELEASE_CFLAGS=-Wall -DNDEBUG -std=c++17 -Os -I.
-TESTING_CFLAGS=-Wall -std=c++17 -Os -I.	# release with asserts
-CFLAGS=$(if $(DEBUG), $(DEBUG_CFLAGS), $(if $(TESTING), $(TESTING_CFLAGS), $(RELEASE_CFLAGS)))
-LDFLAGS= -lwbmqtt1 -lpthread
+ifeq ($(DEBUG),)
+	BUILD_DIR ?= build/release
+else
+	BUILD_DIR ?= build/debug
+endif
 
-GPIO_BIN=wb-mqtt-gpio
+PREFIX = /usr
 
-GPIO_SOURCES=              \
-  gpio_driver.cpp          \
-  gpio_chip_driver.cpp     \
-  gpio_chip.cpp            \
-  gpio_line.cpp            \
-  gpio_counter.cpp         \
-  utils.cpp                \
-  types.cpp                \
-  log.cpp                  \
-  exceptions.cpp           \
-  config.cpp               \
-  file_utils.cpp           \
-  interruption_context.cpp \
+GPIO_BIN = wb-mqtt-gpio
+SRC_DIR = src
 
-GPIO_OBJECTS=$(GPIO_SOURCES:.cpp=.o)
+COMMON_SRCS := $(shell find $(SRC_DIR) -name *.cpp -and -not -name main.cpp)
+COMMON_OBJS := $(COMMON_SRCS:%=$(BUILD_DIR)/%.o)
 
-TEST_DIR=test
+CXXFLAGS = -Wall -std=c++17 -I$(SRC_DIR)
+LDFLAGS = -lwbmqtt1 -lpthread
+
+ifeq ($(DEBUG), 1)
+	CXXFLAGS += -O0 -ggdb -rdynamic -fprofile-arcs -ftest-coverage
+	LDFLAGS += -lgcov
+else
+	CXXFLAGS += -Os -DNDEBUG
+endif
+
+TEST_DIR = test
+TEST_SRCS := $(shell find $(TEST_DIR) -name *.cpp)
+TEST_OBJS := $(TEST_SRCS:%=$(BUILD_DIR)/%.o)
+TEST_BIN = wb-mqtt-gpio-test
+TEST_LIBS = -lgtest
+
 export TEST_DIR_ABS = $(shell pwd)/$(TEST_DIR)
-
-GPIO_TEST_SOURCES= 						\
-			$(TEST_DIR)/test_main.cpp	\
-			$(TEST_DIR)/config.test.cpp	\
-			$(TEST_DIR)/debounce.test.cpp	\
-
-GPIO_TEST_OBJECTS=$(GPIO_TEST_SOURCES:.cpp=.o)
-TEST_BIN=wb-mqtt-gpio-test
-TEST_LIBS=-lgtest
 
 all : $(GPIO_BIN)
 
 # GPIO
-%.o : %.cpp
-	${CXX} -c $< -o $@ ${CFLAGS}
+$(BUILD_DIR)/%.cpp.o: %.cpp
+	mkdir -p $(dir $@)
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-$(GPIO_BIN) : main.o $(GPIO_OBJECTS)
-	${CXX} $^ ${LDFLAGS} -o $@
+$(GPIO_BIN) : $(COMMON_OBJS) $(BUILD_DIR)/src/main.cpp.o
+	$(CXX) $^ $(LDFLAGS) -o $(BUILD_DIR)/$@
 
-$(TEST_DIR)/$(TEST_BIN): $(GPIO_OBJECTS) $(GPIO_TEST_OBJECTS)
-	${CXX} $^ $(LDFLAGS) $(TEST_LIBS) -o $@
+$(BUILD_DIR)/test/%.o: test/%.cpp
+	$(CXX) -c $(CXXFLAGS) -o $@ $^
+
+$(TEST_DIR)/$(TEST_BIN): $(COMMON_OBJS) $(TEST_OBJS)
+	$(CXX) $^ $(LDFLAGS) $(TEST_LIBS) -o $@
 
 test: $(TEST_DIR)/$(TEST_BIN)
 	rm -f $(TEST_DIR)/*.dat.out
@@ -65,34 +65,42 @@ test: $(TEST_DIR)/$(TEST_BIN)
 			echo "*** VALGRIND DETECTED ERRORS ***" 1>& 2; \
 			exit 1; \
 		else $(TEST_DIR)/abt.sh show; exit 1; fi; \
-    else \
-        $(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || { $(TEST_DIR)/abt.sh show; exit 1; } \
+	else \
+		$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || { $(TEST_DIR)/abt.sh show; exit 1; } \
 	fi
 
+lcov: test
+ifeq ($(DEBUG), 1)
+	geninfo --no-external -b . -o $(BUILD_DIR)/coverage.info $(BUILD_DIR)/src
+	genhtml $(BUILD_DIR)/coverage.info -o $(BUILD_DIR)/cov_html
+endif
+
 clean :
-	-rm -f *.o $(GPIO_BIN) $(TEST_DIR)/$(TEST_BIN) $(TEST_DIR)/*.o
+	-rm -rf build/release
+	-rm -rf build/debug
+	-rm -f $(TEST_DIR)/$(TEST_BIN) $(TEST_DIR)/*.o
 
 install: all
 	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio/conf.d
 
-	install -D -m 0644  config.json.devicetree $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.devicetree
-	install -D -m 0644  config.json.wb52 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb52
-	install -D -m 0644  config.json.wb55 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb55
-	install -D -m 0644  config.json.wb58 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb58
-	install -D -m 0644  config.json.wb60 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb60
-	install -D -m 0644  config.json.wb61 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb61
-	install -D -m 0644  config.json.wbsh5 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh5
-	install -D -m 0644  config.json.wbsh4 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh4
-	install -D -m 0644  config.json.wbsh3 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh3
-	install -D -m 0644  config.json.default $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.default
-	install -D -m 0644  config.json.mka3 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.mka3
-	install -D -m 0644  config.json.cqc10 $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.cqc10
+	install -Dm0644 config.json.devicetree $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.devicetree
+	install -Dm0644 config.json.wb52 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb52
+	install -Dm0644 config.json.wb55 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb55
+	install -Dm0644 config.json.wb58 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb58
+	install -Dm0644 config.json.wb60 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb60
+	install -Dm0644 config.json.wb61 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb61
+	install -Dm0644 config.json.wbsh5 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh5
+	install -Dm0644 config.json.wbsh4 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh4
+	install -Dm0644 config.json.wbsh3 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh3
+	install -Dm0644 config.json.default $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.default
+	install -Dm0644 config.json.mka3 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.mka3
+	install -Dm0644 config.json.cqc10 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.cqc10
 
-	install -D -m 0755  $(GPIO_BIN) $(DESTDIR)/usr/bin/$(GPIO_BIN)
-	install -D -m 0755  generate-system-config.sh $(DESTDIR)/usr/lib/wb-mqtt-gpio/generate-system-config.sh
+	install -Dm0755 $(GPIO_BIN) -t $(DESTDIR)$(PREFIX)/bin
+	install -Dm0755 generate-system-config.sh -t $(DESTDIR)$(PREFIX)/lib/wb-mqtt-gpio
 
-	install -D -m 0644  wb-mqtt-gpio.schema.json $(DESTDIR)/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.schema.json
-	install -D -m 0644  wb-mqtt-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-mqtt-gpio
+	install -Dm0644 wb-mqtt-gpio.schema.json -t $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio
+	install -Dm0644 wb-mqtt-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-mqtt-gpio
 
 
-.PHONY: all clean
+.PHONY: all clean test
