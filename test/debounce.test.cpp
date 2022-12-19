@@ -35,7 +35,7 @@ void TDebounceTest::InitGpioLine(const PGpioLine & gpioLine, uint8_t gpioValue)
 
 void TDebounceTest::HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts)
 {
-    gpioLine->HandleInterrupt(EGpioEdge::BOTH, ts);
+    gpioLine->HandleInterrupt(EGpioEdge::RISING, ts);
     gpioLine->SetCachedValueUnfiltered(gpioValue);
 
     ASSERT_EQ(gpioLine->GetValueUnfiltered(), gpioValue);
