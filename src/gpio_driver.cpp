@@ -123,7 +123,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                             .SetReadonly(false)
                             .SetUserData(line)
                             .SetRawValue(lineConfig.InitialState ? "1" : "0")
-                            .SetDoLoadPrevious(true)
+                            .SetDoLoadPrevious(lineConfig.LoadPreviousState)
                         );
                         line->SetValue(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
                     }

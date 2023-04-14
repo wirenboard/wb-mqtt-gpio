@@ -25,6 +25,7 @@ struct TGpioLineConfig
     int                       DecimalPlacesTotal   = -1;
     int                       DecimalPlacesCurrent = -1;
     bool                      InitialState         = false;
+    bool                      LoadPreviousState    = true;
     std::chrono::microseconds DebounceTimeout      = std::chrono::microseconds(10000);
 };
 
