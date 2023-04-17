@@ -34,10 +34,10 @@
                 },
                 "load_previous_state": {
                     "type": "boolean",
-                    "title": "Load and publicate previous state or set it to initial_state",
+                    "title": "Load output previous state after restart",
                     "default": true,
                     "_format": "checkbox",
-                    "propertyOrder": 13
+                    "propertyOrder": 14
                 }
             },
             "defaultProperties": [ "inverted", "open_drain", "open_source", "initial_state", "load_previous_state" ]
@@ -251,6 +251,13 @@
                     "_format": "checkbox",
                     "propertyOrder": 13
                 },
+                "load_previous_state": {
+                    "type": "boolean",
+                    "title": "Load output previous state after restart",
+                    "default": true,
+                    "_format": "checkbox",
+                    "propertyOrder": 14
+                },
                 "name": {
                     "type": "string",
                     "options": {
@@ -290,7 +297,8 @@
             },
             "required": [ "name" ],
             "default": {
-                "initial_state": false
+                "initial_state": false,
+                "load_previous_state":true
             },
             "options": {
                 "disable_properties": true
@@ -372,6 +380,7 @@
             "Open drain": "Открытый коллектор",
             "Open source": "Открытый эмиттер",
             "Output initial state": "Начальное состояние выхода",
+            "Load output previous state after restart": "Восстанавливать состояние выхода после перезапуска",
             "without pulse counting": "Без счета импульсов",
             "watt meter": "Ваттметр",
             "water meter": "Счетчик расхода воды",
