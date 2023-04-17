@@ -51,6 +51,7 @@ TEST_F(TConfigTest, good_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].DecimalPlacesTotal, 3);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Direction, EGpioDirection::Input);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InitialState, true);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].LoadPreviousState, true);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InterruptEdge, EGpioEdge::RISING);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsActiveLow, true);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenDrain, true);
@@ -76,6 +77,7 @@ TEST_F(TConfigTest, optional_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].DecimalPlacesTotal, 32);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Direction, EGpioDirection::Output);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InitialState, false);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].LoadPreviousState, false);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InterruptEdge, EGpioEdge::FALLING);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsActiveLow, false);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenDrain, false);
@@ -101,6 +103,7 @@ TEST_F(TConfigTest, full_main_config)
     ASSERT_EQ(cfg.Chips[1].Lines[0].DecimalPlacesTotal, 3);
     ASSERT_EQ(cfg.Chips[1].Lines[0].Direction, EGpioDirection::Input);
     ASSERT_EQ(cfg.Chips[1].Lines[0].InitialState, true);
+    ASSERT_EQ(cfg.Chips[1].Lines[0].LoadPreviousState, true);
     ASSERT_EQ(cfg.Chips[1].Lines[0].InterruptEdge, EGpioEdge::RISING);
     ASSERT_EQ(cfg.Chips[1].Lines[0].IsActiveLow, true);
     ASSERT_EQ(cfg.Chips[1].Lines[0].IsOpenDrain, true);
@@ -115,6 +118,7 @@ TEST_F(TConfigTest, full_main_config)
     ASSERT_EQ(cfg.Chips[0].Lines[0].DecimalPlacesTotal, 32);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Direction, EGpioDirection::Output);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InitialState, false);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].LoadPreviousState, true);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InterruptEdge, EGpioEdge::FALLING);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsActiveLow, false);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenDrain, false);
@@ -139,6 +143,7 @@ TEST_F(TConfigTest, line_override)
     ASSERT_EQ(cfg.Chips[0].Lines[0].DecimalPlacesTotal, 3);
     ASSERT_EQ(cfg.Chips[0].Lines[0].Direction, EGpioDirection::Output);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InitialState, true);
+    ASSERT_EQ(cfg.Chips[0].Lines[0].LoadPreviousState, false);
     ASSERT_EQ(cfg.Chips[0].Lines[0].InterruptEdge, EGpioEdge::RISING);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsActiveLow, false);
     ASSERT_EQ(cfg.Chips[0].Lines[0].IsOpenDrain, false);
