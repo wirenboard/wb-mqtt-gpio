@@ -2,11 +2,12 @@
 #include <filesystem>
 #include <set>
 
-TNoDirError::TNoDirError(const std::string& msg) : std::runtime_error(msg) {}
+TNoDirError::TNoDirError(const std::string& msg): std::runtime_error(msg)
+{}
 
 bool TryOpen(const std::vector<std::string>& fnames, std::ifstream& file)
 {
-    for (auto& fname : fnames) {
+    for (auto& fname: fnames) {
         file.open(fname);
         if (file.is_open()) {
             return true;
@@ -43,8 +44,8 @@ void IterateDir(const std::string& dirName, std::function<bool(const std::string
     }
 }
 
-std::string IterateDirByPattern(const std::string&                      dirName,
-                                const std::string&                      pattern,
+std::string IterateDirByPattern(const std::string& dirName,
+                                const std::string& pattern,
                                 std::function<bool(const std::string&)> fn)
 {
     std::string res;

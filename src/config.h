@@ -1,9 +1,9 @@
 #pragma once
 
 #include "types.h"
-#include <wblib/driver_args.h>
-#include <vector>
 #include <chrono>
+#include <vector>
+#include <wblib/driver_args.h>
 
 enum class EGpioDirection
 {
@@ -13,29 +13,30 @@ enum class EGpioDirection
 
 struct TGpioLineConfig
 {
-    uint32_t                  Offset;
-    bool                      IsOpenDrain  = false;
-    bool                      IsOpenSource = false;
-    bool                      IsActiveLow  = false;
-    std::string               Name;
-    EGpioDirection            Direction     = EGpioDirection::Output;
-    EGpioEdge                 InterruptEdge = EGpioEdge::BOTH;
-    std::string               Type;
-    float                     Multiplier           = 1.0;
-    int                       DecimalPlacesTotal   = -1;
-    int                       DecimalPlacesCurrent = -1;
-    bool                      InitialState         = false;
-    std::chrono::microseconds DebounceTimeout      = std::chrono::microseconds(10000);
+    uint32_t Offset;
+    bool IsOpenDrain = false;
+    bool IsOpenSource = false;
+    bool IsActiveLow = false;
+    std::string Name;
+    EGpioDirection Direction = EGpioDirection::Output;
+    EGpioEdge InterruptEdge = EGpioEdge::BOTH;
+    std::string Type;
+    float Multiplier = 1.0;
+    int DecimalPlacesTotal = -1;
+    int DecimalPlacesCurrent = -1;
+    bool InitialState = false;
+    std::chrono::microseconds DebounceTimeout = std::chrono::microseconds(10000);
 };
 
 using TLinesConfig = std::vector<TGpioLineConfig>;
 
 struct TGpioChipConfig
 {
-    std::string  Path;
+    std::string Path;
     TLinesConfig Lines;
 
-    TGpioChipConfig(const std::string& path) : Path(path) {}
+    TGpioChipConfig(const std::string& path): Path(path)
+    {}
 };
 
 struct TGpioDriverConfig
@@ -50,20 +51,21 @@ struct TConfigValidationHints
 {
     /**
      * @brief Print warning about inverted inputs used as impulse counters.
-     *        Linux kernels prior to v5.3-rc3 send events with inverted polarity not with requested.
-     *        So they are filtered during impulse counting.
-     *        It is recommended to upgrade kernel.
+     *        Linux kernels prior to v5.3-rc3 send events with inverted polarity
+     * not with requested. So they are filtered during impulse counting. It is
+     * recommended to upgrade kernel.
      */
     bool WarnAboutCountersWithInvertedInput = false;
 };
 
 /**
- * @brief Load configuration from config files. Throws TBadConfigError on validation error.
+ * @brief Load configuration from config files. Throws TBadConfigError on
+ * validation error.
  *
  * @param mainConfigFile - path and name of a main config file.
  * It will be loaded if optional config file is empty.
- * @param optionalConfigFile - path and name of an optional config file. It will be loaded instead
- * of all other config files
+ * @param optionalConfigFile - path and name of an optional config file. It will
+ * be loaded instead of all other config files
  * @param systemConfigsDir - folder with system generated config files.
  * They will be loaded if optional config file is empty.
  * @param schemaFile - path and name of a file with JSONSchema for configs
@@ -79,5 +81,4 @@ void MakeJsonForConfed(const std::string& configFile,
                        const std::string& systemConfigsDir,
                        const std::string& schemaFile);
 
-void MakeConfigFromConfed(const std::string& systemConfigsDir,
-                          const std::string& schemaFile);
+void MakeConfigFromConfed(const std::string& systemConfigsDir, const std::string& schemaFile);

@@ -2,13 +2,14 @@
 
 bool TInterruptionContext::InterruptTimestampClockIsMonotonic = false;
 
-TInterruptionContext::TInterruptionContext(int count, struct epoll_event * events)
-    : Count(count)
-    , Events(events)
-    , Diff(std::chrono::nanoseconds::zero())
+TInterruptionContext::TInterruptionContext(int count, struct epoll_event* events)
+    : Count(count),
+      Events(events),
+      Diff(std::chrono::nanoseconds::zero())
 {
     if (!InterruptTimestampClockIsMonotonic) {
-        Diff = std::chrono::nanoseconds(std::chrono::steady_clock::now().time_since_epoch() - std::chrono::system_clock::now().time_since_epoch());
+        Diff = std::chrono::nanoseconds(std::chrono::steady_clock::now().time_since_epoch() -
+                                        std::chrono::system_clock::now().time_since_epoch());
     }
 }
 

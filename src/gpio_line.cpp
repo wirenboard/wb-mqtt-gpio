@@ -1,29 +1,29 @@
 #include "gpio_line.h"
-#include "gpio_counter.h"
-#include "gpio_chip.h"
 #include "exceptions.h"
+#include "gpio_chip.h"
+#include "gpio_counter.h"
 #include "log.h"
 
-#include <wblib/utils.h>
 #include <sys/ioctl.h>
+#include <wblib/utils.h>
 
+#include <cassert>
+#include <sstream>
 #include <string.h>
 #include <unistd.h>
-#include <sstream>
-#include <cassert>
 
 #define LOG(logger) ::logger.Log() << "[gpio line] "
 
 using namespace std;
 
-TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
-    : Chip(chip)
-    , Offset(config.Offset)
-    , Fd(-1)
-    , TimerFd(-1)
-    , Value(0)
-    , ValueUnfiltered(0)
-    , InterruptSupport(EInterruptSupport::UNKNOWN)
+TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
+    : Chip(chip),
+      Offset(config.Offset),
+      Fd(-1),
+      TimerFd(-1),
+      Value(0),
+      ValueUnfiltered(0),
+      InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     assert(Offset < AccessChip()->GetLineCount());
 
@@ -36,14 +36,14 @@ TGpioLine::TGpioLine(const PGpioChip & chip, const TGpioLineConfig & config)
     UpdateInfo();
 }
 
-TGpioLine::TGpioLine(const TGpioLineConfig & config)
-    : Chip(PGpioChip())
-    , Offset(config.Offset)
-    , Fd(-1)
-    , TimerFd(-1)
-    , Value(0)
-    , ValueUnfiltered(0)
-    , InterruptSupport(EInterruptSupport::UNKNOWN)
+TGpioLine::TGpioLine(const TGpioLineConfig& config)
+    : Chip(PGpioChip()),
+      Offset(config.Offset),
+      Fd(-1),
+      TimerFd(-1),
+      Value(0),
+      ValueUnfiltered(0),
+      InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     Name = "Dummy gpio line";
     Flags = 0;
@@ -60,7 +60,7 @@ TGpioLine::~TGpioLine()
 
 void TGpioLine::UpdateInfo()
 {
-    gpioline_info info {};
+    gpioline_info info{};
 
     info.line_offset = Offset;
 
@@ -69,8 +69,8 @@ void TGpioLine::UpdateInfo()
         wb_throw(TGpioDriverException, "unable to load " + Describe());
     }
 
-    Name     = info.name;
-    Flags    = info.flags;
+    Name = info.name;
+    Flags = info.flags;
     Consumer = info.consumer;
 }
 
@@ -122,12 +122,12 @@ std::string TGpioLine::DescribeVerbose() const
     return ss.str();
 }
 
-const std::string & TGpioLine::GetName() const
+const std::string& TGpioLine::GetName() const
 {
     return Name;
 }
 
-const std::string & TGpioLine::GetConsumer() const
+const std::string& TGpioLine::GetConsumer() const
 {
     return Consumer;
 }
@@ -184,13 +184,14 @@ void TGpioLine::SetValue(uint8_t value)
 
     LOG(Debug) << DescribeShort() << " = " << static_cast<int>(value);
 
-    gpiohandle_data data {};
+    gpiohandle_data data{};
 
     data.values[0] = value;
 
     if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << "GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        wb_throw(TGpioDriverException, "unable to set value '" + to_string((int)value) + "' to line " + DescribeShort());
+        wb_throw(TGpioDriverException,
+                 "unable to set value '" + to_string((int)value) + "' to line " + DescribeShort());
     }
 
     SetCachedValue(value);
@@ -249,7 +250,7 @@ int TGpioLine::GetTimerFd() const
     return TimerFd;
 }
 
-const TTimePoint & TGpioLine::GetInterruptionTimepoint() const
+const TTimePoint& TGpioLine::GetInterruptionTimepoint() const
 {
     return PreviousInterruptionTimePoint;
 }
@@ -259,20 +260,19 @@ EGpioEdge TGpioLine::GetInterruptEdge() const
     return Counter ? Counter->GetInterruptEdge() : EGpioEdge::BOTH;
 }
 
-std::chrono::microseconds TGpioLine::GetIntervalFromPreviousInterrupt(const TTimePoint & interruptTimePoint) const
+std::chrono::microseconds TGpioLine::GetIntervalFromPreviousInterrupt(const TTimePoint& interruptTimePoint) const
 {
     return chrono::duration_cast<chrono::microseconds>(interruptTimePoint - GetInterruptionTimepoint());
 }
 
-EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & interruptTimePoint)
+EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint& interruptTimePoint)
 {
     assert(edge != EGpioEdge::BOTH);
 
     auto interruptEdge = GetInterruptEdge();
     if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
         if (Debug.IsEnabled()) {
-            LOG(Debug) << DescribeShort()
-                       << " handle interrupt. Edge: " << GpioEdgeToString(edge)
+            LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge)
                        << " interval: " << GetIntervalFromPreviousInterrupt(interruptTimePoint).count() << " us [skip]";
         }
         return EInterruptStatus::SKIP;
@@ -285,18 +285,17 @@ EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint & i
 void TGpioLine::Update()
 {
     if (Counter) {
-        Counter->Update(chrono::duration_cast<chrono::microseconds>(
-            std::chrono::steady_clock::now() - GetInterruptionTimepoint()
-        ));
+        Counter->Update(
+            chrono::duration_cast<chrono::microseconds>(std::chrono::steady_clock::now() - GetInterruptionTimepoint()));
     }
 }
 
-const PUGpioCounter & TGpioLine::GetCounter() const
+const PUGpioCounter& TGpioLine::GetCounter() const
 {
     return Counter;
 }
 
-const PUGpioLineConfig & TGpioLine::GetConfig() const
+const PUGpioLineConfig& TGpioLine::GetConfig() const
 {
     assert(Config);
 
@@ -313,15 +312,15 @@ EInterruptSupport TGpioLine::GetInterruptSupport() const
     return InterruptSupport;
 }
 
-bool TGpioLine::UpdateIfStable(const TTimePoint & checkTimePoint)
+bool TGpioLine::UpdateIfStable(const TTimePoint& checkTimePoint)
 {
     auto fromLastTs = GetIntervalFromPreviousInterrupt(checkTimePoint);
     if (fromLastTs > GetConfig()->DebounceTimeout) {
         SetCachedValue(GetValueUnfiltered());
-        LOG(Debug) << "Value (" << static_cast<bool>(GetValueUnfiltered()) << ") on ("
-                    << GetName() << " is stable for " << fromLastTs.count() << "us";
+        LOG(Debug) << "Value (" << static_cast<bool>(GetValueUnfiltered()) << ") on (" << GetName() << " is stable for "
+                   << fromLastTs.count() << "us";
 
-        const auto & gpioCounter = GetCounter();
+        const auto& gpioCounter = GetCounter();
         if (gpioCounter) {
             gpioCounter->HandleInterrupt(GetInterruptEdge(), fromLastTs);
         }

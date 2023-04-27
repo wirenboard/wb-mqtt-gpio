@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-class TConfigTest : public testing::Test
+class TConfigTest: public testing::Test
 {
 protected:
     std::string testRootDir;
@@ -31,9 +31,8 @@ TEST_F(TConfigTest, no_file)
 TEST_F(TConfigTest, bad_config)
 {
     for (size_t i = 1; i <= 9; ++i) {
-        ASSERT_THROW(
-            LoadConfig(testRootDir + "/bad/bad" + std::to_string(i) + ".conf", "", "", schemaFile),
-            std::runtime_error)
+        ASSERT_THROW(LoadConfig(testRootDir + "/bad/bad" + std::to_string(i) + ".conf", "", "", schemaFile),
+                     std::runtime_error)
             << "bad" << i << ".conf";
     }
     ASSERT_THROW(LoadConfig("", testRootDir + "/bad/bad1.conf", "", schemaFile), std::runtime_error);
@@ -63,10 +62,8 @@ TEST_F(TConfigTest, good_config)
 
 TEST_F(TConfigTest, optional_config)
 {
-    TGpioDriverConfig cfg = LoadConfig(testRootDir + "/good1/wb-mqtt-gpio.conf",
-                                       testRootDir + "/good1/optional.conf",
-                                       "",
-                                       schemaFile);
+    TGpioDriverConfig cfg =
+        LoadConfig(testRootDir + "/good1/wb-mqtt-gpio.conf", testRootDir + "/good1/optional.conf", "", schemaFile);
     ASSERT_EQ(cfg.DeviceName, "I/O");
     ASSERT_EQ(cfg.Chips.size(), 1);
     ASSERT_EQ(cfg.Chips[0].Lines.size(), 1);

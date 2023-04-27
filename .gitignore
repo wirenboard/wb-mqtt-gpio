@@ -27,6 +27,7 @@ wb-mqtt-gpio
 wb-mqtt-gpio-test
 *.substvars
 .clang-format
+.devcontainer
 
 ### direnv ###
 .direnv
