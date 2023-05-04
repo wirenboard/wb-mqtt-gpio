@@ -1,16 +1,16 @@
 #include "config.h"
 #include "gpio_driver.h"
+#include "interruption_context.h"
 #include "log.h"
 #include "utils.h"
-#include "interruption_context.h"
 
+#include <wblib/json_utils.h>
 #include <wblib/signal_handling.h>
 #include <wblib/wbmqtt.h>
-#include <wblib/json_utils.h>
 
-#include <unordered_set>
 #include <getopt.h>
 #include <sys/utsname.h>
+#include <unordered_set>
 
 // From LSB
 #define EXIT_INVALIDARGUMENT 2 // Invalid or excess arguments
@@ -22,10 +22,10 @@ using PGpioDriver = unique_ptr<TGpioDriver>;
 
 #define LOG(logger) ::logger.Log() << "[gpio] "
 
-const auto WBMQTT_DB_FILE       = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
-const auto CONFIG_FILE          = "/etc/wb-mqtt-gpio.conf";
-const auto SYSTEM_CONFIGS_DIR   = "/var/lib/wb-mqtt-gpio/conf.d";
-const auto CONFIG_SCHEMA_FILE   = "/var/lib/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json";
+const auto WBMQTT_DB_FILE = "/var/lib/wb-mqtt-gpio/libwbmqtt.db";
+const auto CONFIG_FILE = "/etc/wb-mqtt-gpio.conf";
+const auto SYSTEM_CONFIGS_DIR = "/var/lib/wb-mqtt-gpio/conf.d";
+const auto CONFIG_SCHEMA_FILE = "/var/lib/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json";
 const auto GPIO_DRIVER_INIT_TIMEOUT_S = chrono::seconds(30);
 const auto GPIO_DRIVER_STOP_TIMEOUT_S = chrono::seconds(60); // topic cleanup can take a lot of time
 
@@ -58,62 +58,64 @@ namespace
              << "  -u user      MQTT user (optional)" << endl
              << "  -P password  MQTT user password (optional)" << endl
              << "  -T prefix    MQTT topic prefix (optional)" << endl
-             << "  -j           Make JSON for wb-mqtt-confed from /etc/wb-mqtt-gpio.conf" << endl
+             << "  -j           Make JSON for wb-mqtt-confed from "
+                "/etc/wb-mqtt-gpio.conf"
+             << endl
              << "  -J           Make /etc/wb-mqtt-gpio.conf from wb-mqtt-confed output" << endl;
     }
 
-    void ParseCommandLine(int                           argc,
-                          char*                         argv[],
+    void ParseCommandLine(int argc,
+                          char* argv[],
                           WBMQTT::TMosquittoMqttConfig& mqttConfig,
-                          string&                       customConfig,
-                          DebugLevel&                   debugLevel)
+                          string& customConfig,
+                          DebugLevel& debugLevel)
     {
         int c;
         debugLevel = DebugLevel::NONE;
 
         while ((c = getopt(argc, argv, "d:c:h:p:u:P:T:jJ")) != -1) {
             switch (c) {
-            case 'd':
-                debugLevel = static_cast<DebugLevel>(stoi(optarg));
-                break;
-            case 'c':
-                customConfig = optarg;
-                break;
-            case 'p':
-                mqttConfig.Port = stoi(optarg);
-                break;
-            case 'h':
-                mqttConfig.Host = optarg;
-                break;
-            case 'T':
-                mqttConfig.Prefix = optarg;
-                break;
-            case 'u':
-                mqttConfig.User = optarg;
-                break;
-            case 'P':
-                mqttConfig.Password = optarg;
-                break;
-            case 'j':
-                try {
-                    MakeJsonForConfed(CONFIG_FILE, SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
-                    exit(EXIT_SUCCESS);
-                } catch (const std::exception& e) {
-                    LOG(Error) << "FATAL: " << e.what();
-                    exit(EXIT_FAILURE);
-                }
-            case 'J':
-                try {
-                    MakeConfigFromConfed(SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
-                    exit(EXIT_SUCCESS);
-                } catch (const std::exception& e) {
-                    LOG(Error) << "FATAL: " << e.what();
-                    exit(EXIT_FAILURE);
-                }
-            case '?':
-            default:
-                PrintUsage();
-                exit(EXIT_INVALIDARGUMENT);
+                case 'd':
+                    debugLevel = static_cast<DebugLevel>(stoi(optarg));
+                    break;
+                case 'c':
+                    customConfig = optarg;
+                    break;
+                case 'p':
+                    mqttConfig.Port = stoi(optarg);
+                    break;
+                case 'h':
+                    mqttConfig.Host = optarg;
+                    break;
+                case 'T':
+                    mqttConfig.Prefix = optarg;
+                    break;
+                case 'u':
+                    mqttConfig.User = optarg;
+                    break;
+                case 'P':
+                    mqttConfig.Password = optarg;
+                    break;
+                case 'j':
+                    try {
+                        MakeJsonForConfed(CONFIG_FILE, SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
+                        exit(EXIT_SUCCESS);
+                    } catch (const std::exception& e) {
+                        LOG(Error) << "FATAL: " << e.what();
+                        exit(EXIT_FAILURE);
+                    }
+                case 'J':
+                    try {
+                        MakeConfigFromConfed(SYSTEM_CONFIGS_DIR, CONFIG_SCHEMA_FILE);
+                        exit(EXIT_SUCCESS);
+                    } catch (const std::exception& e) {
+                        LOG(Error) << "FATAL: " << e.what();
+                        exit(EXIT_FAILURE);
+                    }
+                case '?':
+                default:
+                    PrintUsage();
+                    exit(EXIT_INVALIDARGUMENT);
             }
         }
 
@@ -157,8 +159,9 @@ namespace
         return (kernel.Patchlevel >= 7);
     }
 
-    // In kernels prior to v5.3-rc3 there is a bug with events polarity and GPIOHANDLE_REQUEST_ACTIVE_LOW.
-    // A kernel sends events with inverted polarity not with requested.
+    // In kernels prior to v5.3-rc3 there is a bug with events polarity and
+    // GPIOHANDLE_REQUEST_ACTIVE_LOW. A kernel sends events with inverted polarity
+    // not with requested.
     // https://github.com/torvalds/linux/commit/223ecaf140b1dd1c1d2a1a1d96281efc5c906984
     bool HasActiveLowEventsBug(const TLinuxKernelVersion& kernel)
     {
@@ -255,7 +258,7 @@ int main(int argc, char* argv[])
                             configFileName,
                             SYSTEM_CONFIGS_DIR,
                             CONFIG_SCHEMA_FILE,
-                            { HasActiveLowEventsBug(kernel) });
+                            {HasActiveLowEventsBug(kernel)});
     } catch (const std::exception& e) {
         LOG(Error) << "FATAL: " << e.what();
         return EXIT_NOTCONFIGURED;
@@ -268,22 +271,21 @@ int main(int argc, char* argv[])
     }
 
     try {
-        auto mqttDriver = WBMQTT::NewDriver(
-            WBMQTT::TDriverArgs{}
-                .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
-                .SetId(mqttConfig.Id)
-                .SetUseStorage(true)
-                .SetReownUnknownDevices(true)
-                .SetStoragePath(WBMQTT_DB_FILE),
-                config.PublishParameters
-            );
+        auto mqttDriver =
+            WBMQTT::NewDriver(WBMQTT::TDriverArgs{}
+                                  .SetBackend(WBMQTT::NewDriverBackend(WBMQTT::NewMosquittoMqttClient(mqttConfig)))
+                                  .SetId(mqttConfig.Id)
+                                  .SetUseStorage(true)
+                                  .SetReownUnknownDevices(true)
+                                  .SetStoragePath(WBMQTT_DB_FILE),
+                              config.PublishParameters);
         mqttDriver->StartLoop();
         mqttDriver->WaitForReady();
         auto gpioDriver = WBMQTT::MakeUnique<TGpioDriver>(mqttDriver, config);
         Utils::ClearMappingCache();
         gpioDriver->Start();
 
-        WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&]{
+        WBMQTT::SignalHandling::OnSignals({SIGINT, SIGTERM}, [&] {
             gpioDriver.reset();
             mqttDriver->StopLoop();
             mqttDriver->Close();

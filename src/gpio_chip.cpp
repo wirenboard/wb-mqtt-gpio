@@ -1,25 +1,22 @@
 #include "gpio_chip.h"
-#include "gpio_line.h"
-#include "gpio_counter.h"
 #include "exceptions.h"
-#include "utils.h"
+#include "gpio_counter.h"
+#include "gpio_line.h"
 #include "log.h"
+#include "utils.h"
 
 #include <wblib/utils.h>
 
-#include <sys/ioctl.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <cassert>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #define LOG(logger) ::logger.Log() << "[gpio chip] "
 
 using namespace std;
 
-
-TGpioChip::TGpioChip(const string & path)
-    : Fd(-1)
-    , Path(path)
+TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
 {
     Fd = open(Path.c_str(), O_RDWR | O_CLOEXEC);
     if (Fd < 0) {
@@ -28,9 +25,9 @@ TGpioChip::TGpioChip(const string & path)
 
     LOG(Debug) << "Open chip at " << Path;
 
-    WB_SCOPE_THROW_EXIT( close(Fd); )
+    WB_SCOPE_THROW_EXIT(close(Fd);)
 
-    gpiochip_info info {};
+    gpiochip_info info{};
     int retVal = ioctl(Fd, GPIO_GET_CHIPINFO_IOCTL, &info);
     if (retVal < 0) {
         wb_throw(TGpioDriverException, "unable to get GPIO chip info from '" + Path + "'");
@@ -46,9 +43,7 @@ TGpioChip::TGpioChip(const string & path)
     }
 }
 
-TGpioChip::TGpioChip()
-    : Fd(-1)
-    , Path("/dev/null")
+TGpioChip::TGpioChip(): Fd(-1), Path("/dev/null")
 {
     LineCount = 0;
     Name = "Dummy gpiochip";
@@ -63,13 +58,13 @@ TGpioChip::~TGpioChip()
     }
 }
 
-vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
+vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig& linesConfigs)
 {
     vector<PGpioLine> lines;
 
     lines.reserve(linesConfigs.size());
 
-    for (const auto & lineConfig: linesConfigs) {
+    for (const auto& lineConfig: linesConfigs) {
         auto line = make_shared<TGpioLine>(shared_from_this(), lineConfig);
         lines.push_back(line);
     }
@@ -77,17 +72,17 @@ vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig & linesConfigs)
     return lines;
 }
 
-const string & TGpioChip::GetName() const
+const string& TGpioChip::GetName() const
 {
     return Name;
 }
 
-const string & TGpioChip::GetLabel() const
+const string& TGpioChip::GetLabel() const
 {
     return Label;
 }
 
-const string & TGpioChip::GetPath() const
+const string& TGpioChip::GetPath() const
 {
     return Path;
 }

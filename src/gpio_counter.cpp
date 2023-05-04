@@ -1,7 +1,7 @@
 #include "gpio_counter.h"
 #include "config.h"
-#include "log.h"
 #include "exceptions.h"
+#include "log.h"
 #include "utils.h"
 
 #include <wblib/utils.h>
@@ -12,32 +12,32 @@
 
 using namespace std;
 
-const auto WATT_METER            = "watt_meter";
-const auto WATER_METER           = "water_meter";
-const auto ID_POSTFIX_TOTAL      = "_total";
-const auto ID_POSTFIX_CURRENT    = "_current";
+const auto WATT_METER = "watt_meter";
+const auto WATER_METER = "water_meter";
+const auto ID_POSTFIX_TOTAL = "_total";
+const auto ID_POSTFIX_CURRENT = "_current";
 const auto CURRENT_TIME_INTERVAL = 1;
-const auto NULL_TIME_INTERVAL    = 100;
+const auto NULL_TIME_INTERVAL = 100;
 
-TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
-    : Multiplier(config.Multiplier)
-    , InitialTotal(0)
-    , Total(0)
-    , Current(0)
-    , DecimalPlacesTotal(config.DecimalPlacesTotal)
-    , DecimalPlacesCurrent(config.DecimalPlacesCurrent)
-    , Counts(0)
-    , InterruptEdge(config.InterruptEdge)
-    , PreviousInterval(TTimeIntervalUs::zero())
+TGpioCounter::TGpioCounter(const TGpioLineConfig& config)
+    : Multiplier(config.Multiplier),
+      InitialTotal(0),
+      Total(0),
+      Current(0),
+      DecimalPlacesTotal(config.DecimalPlacesTotal),
+      DecimalPlacesCurrent(config.DecimalPlacesCurrent),
+      Counts(0),
+      InterruptEdge(config.InterruptEdge),
+      PreviousInterval(TTimeIntervalUs::zero())
 {
     if (config.Type == WATT_METER) {
-        TotalType   = "power_consumption";
+        TotalType = "power_consumption";
         CurrentType = "power";
-        ConvertingMultiplier = 1000;// convert kW to W (1/h)
+        ConvertingMultiplier = 1000; // convert kW to W (1/h)
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 2 : DecimalPlacesCurrent;
         DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 3 : DecimalPlacesTotal;
     } else if (config.Type == WATER_METER) {
-        TotalType   = "water_consumption";
+        TotalType = "water_consumption";
         CurrentType = "water_flow";
         ConvertingMultiplier = 1.0 / 3600; // convert 1/h to 1/s
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 3 : DecimalPlacesCurrent;
@@ -47,13 +47,14 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig & config)
         wb_throw(TGpioDriverException, "unknown GPIO type: '" + config.Type + "'");
     }
 
-    LOG(Debug) << "New counter of type '" << config.Type << "' for " << config.Name << " edge: " << GpioEdgeToString(config.InterruptEdge);
+    LOG(Debug) << "New counter of type '" << config.Type << "' for " << config.Name
+               << " edge: " << GpioEdgeToString(config.InterruptEdge);
 }
 
 TGpioCounter::~TGpioCounter()
 {}
 
-void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & interval)
+void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs& interval)
 {
     assert(edge == InterruptEdge);
 
@@ -70,7 +71,7 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs & inter
     UpdateTotal();
 }
 
-void TGpioCounter::Update(const TTimeIntervalUs & interval)
+void TGpioCounter::Update(const TTimeIntervalUs& interval)
 {
     if (interval > NULL_TIME_INTERVAL * PreviousInterval) {
         Current.Set(0);
@@ -96,20 +97,17 @@ uint64_t TGpioCounter::GetCounts() const
     return Counts;
 }
 
-vector<TGpioCounter::TMetadataPair> TGpioCounter::GetIdsAndTypes(const string & baseId) const
+vector<TGpioCounter::TMetadataPair> TGpioCounter::GetIdsAndTypes(const string& baseId) const
 {
-    return {
-        { baseId + ID_POSTFIX_TOTAL,   TotalType },
-        { baseId + ID_POSTFIX_CURRENT, CurrentType }
-    };
+    return {{baseId + ID_POSTFIX_TOTAL, TotalType}, {baseId + ID_POSTFIX_CURRENT, CurrentType}};
 }
 
-vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string & baseId) const
+vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string& baseId) const
 {
     vector<TGpioCounter::TValuePair> idsAndValues;
 
-    idsAndValues.push_back({ baseId + ID_POSTFIX_TOTAL, GetRoundedTotal() });
-    idsAndValues.push_back({ baseId + ID_POSTFIX_CURRENT, Utils::SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent) });
+    idsAndValues.push_back({baseId + ID_POSTFIX_TOTAL, GetRoundedTotal()});
+    idsAndValues.push_back({baseId + ID_POSTFIX_CURRENT, Utils::SetDecimalPlaces(Current.Get(), DecimalPlacesCurrent)});
 
     return idsAndValues;
 }
@@ -137,12 +135,13 @@ void TGpioCounter::SetInitialValues(float total)
     Total.Set(total);
 }
 
-void TGpioCounter::UpdateCurrent(const TTimeIntervalUs & interval)
+void TGpioCounter::UpdateCurrent(const TTimeIntervalUs& interval)
 {
-    Current.Set(3600.0 * 1000000 * ConvertingMultiplier / (interval.count() * Multiplier)); // convert microseconds to seconds, hours to seconds
+    Current.Set(3600.0 * 1000000 * ConvertingMultiplier /
+                (interval.count() * Multiplier)); // convert microseconds to seconds, hours to seconds
 }
 
 void TGpioCounter::UpdateTotal()
 {
-    Total.Set((float) Counts / Multiplier + InitialTotal);
+    Total.Set((float)Counts / Multiplier + InitialTotal);
 }

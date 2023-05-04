@@ -24,13 +24,10 @@ namespace
 {
     const string ProtectedProperties[] = {"gpio", "direction", "inverted", "open_drain", "open_source"};
 
-    void AppendLine(TGpioDriverConfig&     cfg,
-                    const std::string&     gpioChipPath,
-                    const TGpioLineConfig& line)
+    void AppendLine(TGpioDriverConfig& cfg, const std::string& gpioChipPath, const TGpioLineConfig& line)
     {
-        auto chipConfig = find_if(cfg.Chips.begin(), cfg.Chips.end(), [&](const auto& c) {
-            return c.Path == gpioChipPath;
-        });
+        auto chipConfig =
+            find_if(cfg.Chips.begin(), cfg.Chips.end(), [&](const auto& c) { return c.Path == gpioChipPath; });
         if (chipConfig == cfg.Chips.end()) {
             cfg.Chips.emplace_back(gpioChipPath);
             chipConfig = cfg.Chips.end();
@@ -42,9 +39,9 @@ namespace
         });
         if (itLine != chipConfig->Lines.end()) {
             wb_throw(TGpioDriverException,
-                     "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" +
-                     chipConfig->Path + "' defined as '" + line.Name +
-                     "'. It is already defined as '" + itLine->Name + "'. To override set similar MQTT id (name).");
+                     "duplicate GPIO offset in config: '" + to_string(line.Offset) + "' at chip '" + chipConfig->Path +
+                         "' defined as '" + line.Name + "'. It is already defined as '" + itLine->Name +
+                         "'. To override set similar MQTT id (name).");
         }
 
         chipConfig->Lines.push_back(line);
@@ -53,7 +50,7 @@ namespace
     TGpioDriverConfig LoadFromJSON(const Json::Value& root)
     {
         TGpioDriverConfig cfg;
-        const auto&       channels = root["channels"];
+        const auto& channels = root["channels"];
 
         cfg.Debug = root.isMember("debug") && root["debug"].asBool();
 
@@ -65,9 +62,9 @@ namespace
         Get(root, "max_unchanged_interval", maxUnchangedInterval);
         cfg.PublishParameters.Set(maxUnchangedInterval);
 
-        for (const auto& channel : channels) {
+        for (const auto& channel: channels) {
             TGpioLineConfig lineConfig;
-            string          path;
+            string path;
             if (channel["gpio"].isUInt()) {
                 uint32_t gpioNumber = channel["gpio"].asUInt();
                 uint32_t chipNumber;
@@ -80,7 +77,7 @@ namespace
                 path = GpioChipNumberToPath(chipNumber);
             } else {
                 lineConfig.Offset = channel["gpio"]["offset"].asUInt();
-                path              = channel["gpio"]["chip"].asString();
+                path = channel["gpio"]["chip"].asString();
             }
 
             lineConfig.Name = channel["name"].asString();
@@ -100,7 +97,9 @@ namespace
 
             if (channel.isMember("edge")) {
                 if (lineConfig.Type.empty()) {
-                    LOG(Warn) << "Edge setting for GPIO \"" << lineConfig.Name << "\" is not used. It can be set only for GPIO with \"type\" option";
+                    LOG(Warn) << "Edge setting for GPIO \"" << lineConfig.Name
+                              << "\" is not used. It can be set only for GPIO with "
+                                 "\"type\" option";
                 } else {
                     EnumerateGpioEdge(channel["edge"].asString(), lineConfig.InterruptEdge);
                 }
@@ -115,7 +114,7 @@ namespace
     {
         auto res = schema;
         Json::Value newArray = Json::arrayValue;
-        for (auto& v : schema["required"]) {
+        for (auto& v: schema["required"]) {
             if (v.asString() != "device_name") {
                 newArray.append(v);
             }
@@ -124,7 +123,7 @@ namespace
         return res;
     }
 
-    template <class T, class Pred> void erase_if(T& c, Pred pred)
+    template<class T, class Pred> void erase_if(T& c, Pred pred)
     {
         c.erase(std::remove_if(c.begin(), c.end(), pred), c.end());
     }
@@ -184,8 +183,7 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& schemaFile,
                              const TConfigValidationHints& validationHints)
 {
-    TGpioDriverConfig cfg(
-        LoadConfigInternal(mainConfigFile, optionalConfigFile, systemConfigsDir, schemaFile));
+    TGpioDriverConfig cfg(LoadConfigInternal(mainConfigFile, optionalConfigFile, systemConfigsDir, schemaFile));
     RemoveUnusedChips(cfg);
     if (validationHints.WarnAboutCountersWithInvertedInput) {
         for (const auto& chip: cfg.Chips) {
@@ -193,7 +191,8 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                 if (!line.Type.empty() && line.IsActiveLow) {
                     LOG(Warn) << line.Name << "(" << chip.Path << ":" << to_string(line.Offset)
                               << ") is used as counter and has inverted option. "
-                              << "Impulse counting could be wrong because of a kernel bug. It is recommended to upgrade kernel to v5.3 or newer";
+                              << "Impulse counting could be wrong because of a kernel bug. It "
+                                 "is recommended to upgrade kernel to v5.3 or newer";
                 }
             }
         }
@@ -201,9 +200,7 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
     return cfg;
 }
 
-void MakeJsonForConfed(const string& configFile,
-                       const string& systemConfigsDir,
-                       const string& schemaFile)
+void MakeJsonForConfed(const string& configFile, const string& systemConfigsDir, const string& schemaFile)
 {
     Json::Value schema = Parse(schemaFile);
     Json::Value noDeviceNameSchema = RemoveDeviceNameRequirement(schema);

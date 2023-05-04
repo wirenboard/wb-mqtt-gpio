@@ -1,17 +1,17 @@
-#include "gpio_line.h"
-#include "gpio_counter.h"
-#include "gpio_chip.h"
 #include "declarations.h"
+#include "gpio_chip.h"
+#include "gpio_counter.h"
+#include "gpio_line.h"
 #include "types.h"
 #include <gtest/gtest.h>
 
-class TDebounceTest : public testing::Test
+class TDebounceTest: public testing::Test
 {
 protected:
     int debounceTimeoutUs;
     TGpioLineConfig fakeGpioLineConfig;
-    void InitGpioLine(const PGpioLine & gpioLine, uint8_t gpioValue);
-    void HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts);
+    void InitGpioLine(const PGpioLine& gpioLine, uint8_t gpioValue);
+    void HandleGpioEvent(const PGpioLine& gpioLine, uint8_t gpioValue, TTimePoint ts);
 
     void SetUp()
     {
@@ -23,17 +23,16 @@ protected:
     }
 };
 
-void TDebounceTest::InitGpioLine(const PGpioLine & gpioLine, uint8_t gpioValue)
+void TDebounceTest::InitGpioLine(const PGpioLine& gpioLine, uint8_t gpioValue)
 {
     gpioLine->SetCachedValue(gpioValue);
     gpioLine->SetCachedValueUnfiltered(gpioValue);
 
     ASSERT_EQ(gpioLine->GetValue(), gpioValue);
     ASSERT_EQ(gpioLine->GetValueUnfiltered(), gpioValue);
-
 }
 
-void TDebounceTest::HandleGpioEvent(const PGpioLine & gpioLine, uint8_t gpioValue, TTimePoint ts)
+void TDebounceTest::HandleGpioEvent(const PGpioLine& gpioLine, uint8_t gpioValue, TTimePoint ts)
 {
     gpioLine->HandleInterrupt(EGpioEdge::RISING, ts);
     gpioLine->SetCachedValueUnfiltered(gpioValue);

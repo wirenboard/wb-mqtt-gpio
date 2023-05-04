@@ -5,7 +5,7 @@
 
 using namespace std;
 
-void EnumerateGpioEdge(const std::string & edge, EGpioEdge & enumEdge)
+void EnumerateGpioEdge(const std::string& edge, EGpioEdge& enumEdge)
 {
     if (edge == "rising")
         enumEdge = EGpioEdge::RISING;
@@ -14,15 +14,20 @@ void EnumerateGpioEdge(const std::string & edge, EGpioEdge & enumEdge)
     else if (edge == "both")
         enumEdge = EGpioEdge::BOTH;
     else if (!edge.empty())
-        LOG(Warn) << "Unable to determine edge from '" << edge << "': needs to be either 'rising', 'falling' or 'both'. Using: '" << GpioEdgeToString(enumEdge) << "'";
+        LOG(Warn) << "Unable to determine edge from '" << edge
+                  << "': needs to be either 'rising', 'falling' or 'both'. Using: '" << GpioEdgeToString(enumEdge)
+                  << "'";
 }
 
 string GpioEdgeToString(EGpioEdge edge)
 {
-    switch(edge) {
-        case EGpioEdge::RISING: return "rising";
-        case EGpioEdge::FALLING: return "falling";
-        case EGpioEdge::BOTH: return "both";
+    switch (edge) {
+        case EGpioEdge::RISING:
+            return "rising";
+        case EGpioEdge::FALLING:
+            return "falling";
+        case EGpioEdge::BOTH:
+            return "both";
         default:
             return "<unknown (" + to_string((int)edge) + ")>";
     }

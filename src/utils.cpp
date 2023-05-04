@@ -1,17 +1,17 @@
 #include "utils.h"
+#include "exceptions.h"
 #include "gpio_chip.h"
 #include "gpio_line.h"
-#include "exceptions.h"
 #include "log.h"
 
 #include <wblib/utils.h>
 
-#include <dirent.h>
-#include <cstring>
-#include <fstream>
-#include <unordered_map>
 #include <cassert>
+#include <cstring>
+#include <dirent.h>
+#include <fstream>
 #include <set>
+#include <unordered_map>
 
 #define LOG(logger) ::logger.Log() << "[utils] "
 
@@ -21,7 +21,7 @@ namespace Utils
 {
     namespace
     {
-        int chip_filter(const dirent * dir)
+        int chip_filter(const dirent* dir)
         {
             return string(dir->d_name).find("gpiochip") == 0;
         }
@@ -30,7 +30,7 @@ namespace Utils
         {
             static const auto sysfsBase = string("/sys/class/gpio/");
 
-            dirent ** dirs;
+            dirent** dirs;
             auto chipCount = scandir(sysfsBase.c_str(), &dirs, chip_filter, alphasort);
 
             if (chipCount < 0) {
@@ -58,18 +58,20 @@ namespace Utils
 
                 uint32_t number;
                 {
-                    dirent ** devDirs;
+                    dirent** devDirs;
                     auto deviceDir = sysfsBase + dirName + "/device";
                     auto retVal = scandir(deviceDir.c_str(), &devDirs, chip_filter, alphasort);
                     if (retVal < 0) {
                         wb_throw(TGpioDriverException, "scandir of '" + deviceDir + "' failed: " + strerror(errno));
                     } else if (retVal != 1) {
-                        wb_throw(TGpioDriverException, "too many gpiochips in '" + deviceDir + "': " + to_string(retVal) + "; expected only one");
+                        wb_throw(TGpioDriverException,
+                                 "too many gpiochips in '" + deviceDir + "': " + to_string(retVal) +
+                                     "; expected only one");
                     }
                     number = GpioPathToChipNumber("/dev/" + string(devDirs[0]->d_name));
                 }
 
-                chipPaths.push_back({ number, base });
+                chipPaths.push_back({number, base});
             }
 
             return chipPaths;
@@ -86,12 +88,10 @@ namespace Utils
         {
             uint32_t ChipNumber;
 
-            TChipRange(uint32_t chipNumber)
-                : ChipNumber(chipNumber)
+            TChipRange(uint32_t chipNumber): ChipNumber(chipNumber)
             {}
 
-            TChipRange(const PGpioChip & chip)
-                : ChipNumber(chip->GetNumber())
+            TChipRange(const PGpioChip& chip): ChipNumber(chip->GetNumber())
             {}
         };
 
@@ -99,9 +99,7 @@ namespace Utils
         {
             uint32_t Begin, End;
 
-            TGpioRange(uint32_t begin, uint32_t end)
-                : Begin(begin)
-                , End(end)
+            TGpioRange(uint32_t begin, uint32_t end): Begin(begin), End(end)
             {}
 
             bool InRange(uint32_t gpio) const
@@ -112,15 +110,16 @@ namespace Utils
 
         struct TRange: TChipRange, TGpioRange
         {
-            TRange(const PGpioChip & chip, uint32_t positionOffset)
-                : TChipRange(chip->GetNumber())
-                , TGpioRange(positionOffset, positionOffset + chip->GetLineCount())
+            TRange(const PGpioChip& chip, uint32_t positionOffset)
+                : TChipRange(chip->GetNumber()),
+                  TGpioRange(positionOffset, positionOffset + chip->GetLineCount())
             {}
         };
 
         struct TRangeCompare
         {
-            bool operator()(const PAbstractRange & a, const PAbstractRange & b) const {
+            bool operator()(const PAbstractRange& a, const PAbstractRange& b) const
+            {
                 if (auto rangeA = dynamic_pointer_cast<TRange>(a)) {
                     if (auto rangeB = dynamic_pointer_cast<TGpioRange>(b)) {
                         return rangeA->End <= rangeB->Begin;
@@ -146,9 +145,8 @@ namespace Utils
         };
 
         set<PAbstractRange, TRangeCompare> ChipSet;
-        unordered_map<string, uint32_t>    ChipLabelToNumber;
-        bool MappingsAreReady = false,
-            MappingsWereCleared = false;
+        unordered_map<string, uint32_t> ChipLabelToNumber;
+        bool MappingsAreReady = false, MappingsWereCleared = false;
 
         void EnsureMappingsAreReady()
         {
@@ -158,11 +156,11 @@ namespace Utils
                 return;
             }
 
-            for (const auto & numberBase: EnumerateGpioChipsSorted()) {
+            for (const auto& numberBase: EnumerateGpioChipsSorted()) {
                 auto number = numberBase.first;
                 auto base = numberBase.second;
 
-                const auto & chip = make_shared<TGpioChip>(GpioChipNumberToPath(number));
+                const auto& chip = make_shared<TGpioChip>(GpioChipNumberToPath(number));
 
                 ChipSet.insert(make_shared<TRange>(chip, base));
                 ChipLabelToNumber[chip->GetLabel()] = chip->GetNumber();
@@ -170,19 +168,19 @@ namespace Utils
 
             MappingsAreReady = true;
         }
-    }
+    } // namespace
 
     string GpioChipNumberToPath(uint32_t number)
     {
         return "/dev/gpiochip" + to_string(number);
     }
 
-    uint32_t GpioPathToChipNumber(const string & path)
+    uint32_t GpioPathToChipNumber(const string& path)
     {
         return stoul(path.substr(13));
     }
 
-    uint32_t GpioChipLabelToNumber(const string & label)
+    uint32_t GpioChipLabelToNumber(const string& label)
     {
         EnsureMappingsAreReady();
 
@@ -193,7 +191,7 @@ namespace Utils
         return itLabelNumber->second;
     }
 
-    uint32_t ToSysfsGpio(const PGpioLine & line)
+    uint32_t ToSysfsGpio(const PGpioLine& line)
     {
         EnsureMappingsAreReady();
 
@@ -226,7 +224,7 @@ namespace Utils
 
         auto pRange = dynamic_pointer_cast<TRange>(*itRange);
 
-        pair<uint32_t, uint32_t> res { pRange->ChipNumber, gpio - pRange->Begin };
+        pair<uint32_t, uint32_t> res{pRange->ChipNumber, gpio - pRange->Begin};
 
         LOG(Info) << "Sysfs GPIO number " << gpio << " => GPIO line " << res.first << ": " << res.second;
 
@@ -247,4 +245,4 @@ namespace Utils
         MappingsAreReady = false;
         MappingsWereCleared = true;
     }
-}
+} // namespace Utils
