@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.11.3) stable; urgency=medium
+
+  * Add dependency from libwbmqtt1-4. No functional changes
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.com>  Thu, 01 Jun 2023 17:45:33 +0500
+
 wb-mqtt-gpio (2.11.2) stable; urgency=medium
 
   * Fix clang-format, no functional changes
