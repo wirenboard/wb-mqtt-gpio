@@ -37,7 +37,7 @@ TEST_DIR = test
 TEST_SRCS := $(shell find $(TEST_DIR) -name *.cpp)
 TEST_OBJS := $(TEST_SRCS:%=$(BUILD_DIR)/%.o)
 TEST_BIN = test
-TEST_LIBS = -lgtest -lwbmqtt_test_utils
+TEST_LIBS = -lgtest -lwbmqtt_test_utils -lgmock
 
 export TEST_DIR_ABS = $(shell pwd)/$(TEST_DIR)
 

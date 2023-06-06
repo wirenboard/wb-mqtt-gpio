@@ -12,6 +12,7 @@
 #include <wblib/transaction.h>
 #include <wblib/utils.h>
 #include <filesystem>
+#include <gmock/gmock.h>
 
 #include "config.h"
 #include "gpio_driver.h"
@@ -74,16 +75,15 @@ TEST_F(TInitialStateTest, InitialStateTest)
     ).GetValue();
 
     TGpioLineConfig lineConfig;
+    ::testing::MockFunction<void(uint8_t)> mockSetValue;
     {
         lineConfig.Name = "test";
         lineConfig.InitialState = 1;
         lineConfig.LoadPreviousState = false;
 
-        uint8_t setValue = 0;
-
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue= val;});
+        EXPECT_CALL(mockSetValue, Call(1));
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
         future.Wait();
-        ASSERT_EQ(setValue, 1);
     }
 
     {
@@ -91,11 +91,9 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.InitialState = 0;
         lineConfig.LoadPreviousState = false;
 
-        uint8_t setValue = 1;
-
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue= val;});
+        EXPECT_CALL(mockSetValue, Call(0));
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
         future.Wait();
-        ASSERT_EQ(setValue, 0);
     }
 
     {
@@ -103,11 +101,9 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.InitialState = 0;
         lineConfig.LoadPreviousState = true;
 
-        uint8_t setValue = 0;
-
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue = val;});
+        EXPECT_CALL(mockSetValue, Call(1));
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
         future.Wait();
-        ASSERT_EQ(setValue, 1);
     }
 
     {
@@ -115,10 +111,8 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.InitialState = 1;
         lineConfig.LoadPreviousState = true;
 
-        uint8_t setValue = 1;
-
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue = val;});
+        EXPECT_CALL(mockSetValue, Call(0));
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
         future.Wait();
-        ASSERT_EQ(setValue, 0);
     }
 }
