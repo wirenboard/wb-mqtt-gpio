@@ -401,7 +401,7 @@
             "(deprecated) GPIO number": "Номер GPIO (устаревшее)",
             "Input": "Вход",
             "Output": "Выход",
-            "Invert polarity": "Инвертиовать сигнал",
+            "Invert polarity": "Инвертировать сигнал",
             "System input": "Системный вход",
             "System output": "Системный выход",
             "Unchanged value posting interval": "Интервал публикации неизменившегося состояния (с)",

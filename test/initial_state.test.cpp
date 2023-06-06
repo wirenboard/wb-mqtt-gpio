@@ -11,6 +11,11 @@
 #include <wblib/testing/testlog.h>
 #include <wblib/transaction.h>
 #include <wblib/utils.h>
+#include <filesystem>
+
+#include "config.h"
+#include "gpio_driver.h"
+#include "utils.h"
 
 using namespace WBMQTT;
 using namespace WBMQTT::Testing;
@@ -20,51 +25,100 @@ class TInitialStateTest: public virtual TLoggedFixture
 {
 protected:
     PFakeMqttBroker MqttBroker;
-    PDeviceDriver MqttDriver;
-    PDriverTx Tx;
-    PLocalDevice LocalDevice;
+    std::string testRootDir;
+    std::string schemaFile;
 
     void SetUp()
     {
         TLoggedFixture::SetUp();
 
+        char* d = getenv("TEST_DIR_ABS");
+        if (d != NULL) {
+            testRootDir = d;
+            testRootDir += '/';
+        }
+        testRootDir += "config_test_data";
+
+        schemaFile = testRootDir + "/../../wb-mqtt-gpio.schema.json";
+
         MqttBroker = WBMQTT::Testing::NewFakeMqttBroker(*this);
-        auto mqttClient = MqttBroker->MakeClient("test");
-        auto driverBackend = NewDriverBackend(mqttClient);
-        auto MqttDriver = NewDriver(TDriverArgs{}
-                                        .SetId("em-test")
-                                        .SetBackend(driverBackend)
-                                        .SetIsTesting(true)
-                                        .SetReownUnknownDevices(true)
-                                        .SetUseStorage(false));
-
-        MqttDriver->StartLoop();
-        Tx = MqttDriver->BeginTx();
-        LocalDevice = Tx->CreateDevice(TLocalDeviceArgs{}
-                                           .SetId("InitialStateTest")
-                                           .SetTitle("InitialStateTestDevice")
-                                           .SetIsVirtual(true)
-                                           .SetDoLoadPrevious(false))
-                          .GetValue();
-    }
-
-    void TearDown()
-    {
-        TLoggedFixture::TearDown();
-        MqttDriver->StopLoop();
     }
 };
 
 TEST_F(TInitialStateTest, InitialStateTest)
 {
-    MqttBroker->Publish("test", {TMqttMessage{"/devices/InitialStateTest/controls/TestControl", "1", 0, true}});
-    // MqttBroker->WaitForPublish();
-    auto futureControl = LocalDevice->CreateControl(Tx,
-                                                    TControlArgs{}
-                                                        .SetId("TestControl")
-                                                        .SetType("switch")
-                                                        .SetReadonly(false)
-                                                        .SetRawValue("1")
-                                                        .SetDoLoadPrevious(false));
-    bool result = futureControl.GetValue()->GetValue().As<bool>();
+    const auto DB_FILE = "/tmp/test.db";
+    std::filesystem::remove(DB_FILE);
+    std::filesystem::copy_file(testRootDir + "/test.db", DB_FILE);
+
+    TPublishParameters publishParameters;
+    publishParameters.Policy =  WBMQTT::TPublishParameters::PublishAll;
+
+    auto mqttDriver = WBMQTT::NewDriver(WBMQTT::TDriverArgs{}
+                                    .SetBackend(NewDriverBackend(MqttBroker->MakeClient("test")))
+                                    .SetId("test")
+                                    .SetUseStorage(true)
+                                    .SetReownUnknownDevices(true)
+                                    .SetStoragePath(DB_FILE),
+                                publishParameters);
+
+    mqttDriver->StartLoop();
+    mqttDriver->WaitForReady();
+
+    auto tx = mqttDriver->BeginTx();
+    auto device = tx->CreateDevice(TLocalDeviceArgs{}
+        .SetId("wb-gpio")
+        .SetTitle("test")
+        .SetIsVirtual(true)
+        .SetDoLoadPrevious(false)
+    ).GetValue();
+
+    TGpioLineConfig lineConfig;
+    {
+        lineConfig.Name = "test";
+        lineConfig.InitialState = 1;
+        lineConfig.LoadPreviousState = false;
+
+        uint8_t setValue = 0;
+
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue= val;});
+        future.Wait();
+        ASSERT_EQ(setValue, 1);
+    }
+
+    {
+        lineConfig.Name = "test2";
+        lineConfig.InitialState = 0;
+        lineConfig.LoadPreviousState = false;
+
+        uint8_t setValue = 1;
+
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue= val;});
+        future.Wait();
+        ASSERT_EQ(setValue, 0);
+    }
+
+    {
+        lineConfig.Name = "A1_OUT";
+        lineConfig.InitialState = 0;
+        lineConfig.LoadPreviousState = true;
+
+        uint8_t setValue = 0;
+
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue = val;});
+        future.Wait();
+        ASSERT_EQ(setValue, 1);
+    }
+
+    {
+        lineConfig.Name = "A2_OUT";
+        lineConfig.InitialState = 1;
+        lineConfig.LoadPreviousState = true;
+
+        uint8_t setValue = 1;
+
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, [&](uint8_t val) {setValue = val;});
+        future.Wait();
+        ASSERT_EQ(setValue, 0);
+    }
 }
