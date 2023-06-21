@@ -3,6 +3,7 @@
 #include "declarations.h"
 
 #include <wblib/declarations.h>
+#include <wblib/promise.h>
 
 #include <mutex>
 #include <vector>
@@ -28,3 +29,9 @@ public:
     void Stop();
     void Clear() noexcept;
 };
+
+WBMQTT::TFuture<WBMQTT::PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
+                                                      const WBMQTT::PDriverTx& tx,
+                                                      PGpioLine line,
+                                                      const TGpioLineConfig& lineConfig,
+                                                      std::function<void(uint8_t)> setLineValueFn);

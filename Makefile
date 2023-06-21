@@ -36,8 +36,8 @@ endif
 TEST_DIR = test
 TEST_SRCS := $(shell find $(TEST_DIR) -name *.cpp)
 TEST_OBJS := $(TEST_SRCS:%=$(BUILD_DIR)/%.o)
-TEST_BIN = wb-mqtt-gpio-test
-TEST_LIBS = -lgtest
+TEST_BIN = test
+TEST_LIBS = -lgtest -lwbmqtt_test_utils -lgmock
 
 export TEST_DIR_ABS = $(shell pwd)/$(TEST_DIR)
 
@@ -51,22 +51,22 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 $(GPIO_BIN) : $(COMMON_OBJS) $(BUILD_DIR)/src/main.cpp.o
 	$(CXX) $^ $(LDFLAGS) -o $(BUILD_DIR)/$@
 
-$(BUILD_DIR)/test/%.o: test/%.cpp
+$(BUILD_DIR)/$(TEST_DIR)/%.o: $(TEST_DIR)/%.cpp
 	$(CXX) -c $(CXXFLAGS) -o $@ $^
 
-$(TEST_DIR)/$(TEST_BIN): $(COMMON_OBJS) $(TEST_OBJS)
+$(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN): $(COMMON_OBJS) $(TEST_OBJS)
 	$(CXX) $^ $(LDFLAGS) $(TEST_LIBS) -o $@
 
-test: $(TEST_DIR)/$(TEST_BIN)
+test: $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN)
 	rm -f $(TEST_DIR)/*.dat.out
 	if [ "$(shell arch)" != "armv7l" ] && [ "$(CROSS_COMPILE)" = "" ] || [ "$(CROSS_COMPILE)" = "x86_64-linux-gnu-" ]; then \
-		valgrind --error-exitcode=180 -q $(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || \
+		valgrind --error-exitcode=180 -q $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || \
 		if [ $$? = 180 ]; then \
 			echo "*** VALGRIND DETECTED ERRORS ***" 1>& 2; \
 			exit 1; \
 		else $(TEST_DIR)/abt.sh show; exit 1; fi; \
 	else \
-		$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || { $(TEST_DIR)/abt.sh show; exit 1; } \
+		$(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || { $(TEST_DIR)/abt.sh show; exit 1; } \
 	fi
 
 lcov: test
@@ -76,9 +76,7 @@ ifeq ($(DEBUG), 1)
 endif
 
 clean :
-	-rm -rf build/release
-	-rm -rf build/debug
-	-rm -f $(TEST_DIR)/$(TEST_BIN) $(TEST_DIR)/*.o
+	-rm -rf build
 
 install: all
 	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio/conf.d
