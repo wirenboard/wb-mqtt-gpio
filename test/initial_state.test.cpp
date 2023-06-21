@@ -1,3 +1,5 @@
+#include <filesystem>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <wblib/control.h>
 #include <wblib/control_args.h>
@@ -11,8 +13,6 @@
 #include <wblib/testing/testlog.h>
 #include <wblib/transaction.h>
 #include <wblib/utils.h>
-#include <filesystem>
-#include <gmock/gmock.h>
 
 #include "config.h"
 #include "gpio_driver.h"
@@ -53,26 +53,24 @@ TEST_F(TInitialStateTest, InitialStateTest)
     std::filesystem::copy_file(testRootDir + "/test.db", DB_FILE);
 
     TPublishParameters publishParameters;
-    publishParameters.Policy =  WBMQTT::TPublishParameters::PublishAll;
+    publishParameters.Policy = WBMQTT::TPublishParameters::PublishAll;
 
     auto mqttDriver = WBMQTT::NewDriver(WBMQTT::TDriverArgs{}
-                                    .SetBackend(NewDriverBackend(MqttBroker->MakeClient("test")))
-                                    .SetId("test")
-                                    .SetUseStorage(true)
-                                    .SetReownUnknownDevices(true)
-                                    .SetStoragePath(DB_FILE),
-                                publishParameters);
+                                            .SetBackend(NewDriverBackend(MqttBroker->MakeClient("test")))
+                                            .SetId("test")
+                                            .SetUseStorage(true)
+                                            .SetReownUnknownDevices(true)
+                                            .SetStoragePath(DB_FILE),
+                                        publishParameters);
 
     mqttDriver->StartLoop();
     mqttDriver->WaitForReady();
 
     auto tx = mqttDriver->BeginTx();
-    auto device = tx->CreateDevice(TLocalDeviceArgs{}
-        .SetId("wb-gpio")
-        .SetTitle("test")
-        .SetIsVirtual(true)
-        .SetDoLoadPrevious(false)
-    ).GetValue();
+    auto device =
+        tx->CreateDevice(
+              TLocalDeviceArgs{}.SetId("wb-gpio").SetTitle("test").SetIsVirtual(true).SetDoLoadPrevious(false))
+            .GetValue();
 
     TGpioLineConfig lineConfig;
     ::testing::MockFunction<void(uint8_t)> mockSetValue;

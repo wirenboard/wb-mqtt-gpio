@@ -59,9 +59,9 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
     return futureControl;
 }
 
-TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDriverConfig & config)
-    : MqttDriver(mqttDriver)
-    , Active(false)
+TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDriverConfig& config)
+    : MqttDriver(mqttDriver),
+      Active(false)
 {
     try {
         auto tx = MqttDriver->BeginTx();
@@ -134,7 +134,9 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver & mqttDriver, const TGpioDr
                                                                   .SetUserData(line)
                                                                   .SetRawValue(line->GetValue() == 1 ? "1" : "0"));
                     } else {
-                        futureControl = CreateOutputControl(device, tx, line, lineConfig, [&](uint8_t value) {line->SetValue(value);});
+                        futureControl = CreateOutputControl(device, tx, line, lineConfig, [&](uint8_t value) {
+                            line->SetValue(value);
+                        });
                     }
                 }
 
