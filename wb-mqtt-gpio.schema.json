@@ -31,9 +31,16 @@
                     "default": false,
                     "_format": "checkbox",
                     "propertyOrder": 13
+                },
+                "load_previous_state": {
+                    "type": "boolean",
+                    "title": "Load output previous state after restart",
+                    "default": true,
+                    "_format": "checkbox",
+                    "propertyOrder": 14
                 }
             },
-            "defaultProperties": [ "inverted", "open_drain", "open_source", "initial_state" ]
+            "defaultProperties": [ "inverted", "open_drain", "open_source", "initial_state", "load_previous_state" ]
         },
         "input_properties": {
             "properties": {
@@ -244,6 +251,13 @@
                     "_format": "checkbox",
                     "propertyOrder": 13
                 },
+                "load_previous_state": {
+                    "type": "boolean",
+                    "title": "Load output previous state after restart",
+                    "default": true,
+                    "_format": "checkbox",
+                    "propertyOrder": 14
+                },
                 "name": {
                     "type": "string",
                     "options": {
@@ -283,7 +297,8 @@
             },
             "required": [ "name" ],
             "default": {
-                "initial_state": false
+                "initial_state": false,
+                "load_previous_state":true
             },
             "options": {
                 "disable_properties": true
@@ -365,6 +380,7 @@
             "Open drain": "Открытый коллектор",
             "Open source": "Открытый эмиттер",
             "Output initial state": "Начальное состояние выхода",
+            "Load output previous state after restart": "Восстанавливать состояние выхода после перезапуска",
             "without pulse counting": "Без счета импульсов",
             "watt meter": "Ваттметр",
             "water meter": "Счетчик расхода воды",
@@ -385,7 +401,7 @@
             "(deprecated) GPIO number": "Номер GPIO (устаревшее)",
             "Input": "Вход",
             "Output": "Выход",
-            "Invert polarity": "Инвертиовать сигнал",
+            "Invert polarity": "Инвертировать сигнал",
             "System input": "Системный вход",
             "System output": "Системный выход",
             "Unchanged value posting interval": "Интервал публикации неизменившегося состояния (с)",

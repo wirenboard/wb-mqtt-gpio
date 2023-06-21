@@ -41,6 +41,24 @@ namespace
     }
 } // namespace
 
+TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
+                                      const WBMQTT::PDriverTx& tx,
+                                      PGpioLine line,
+                                      const TGpioLineConfig& lineConfig,
+                                      std::function<void(uint8_t)> setLineValueFn)
+{
+    auto futureControl = device->CreateControl(tx,
+                                               TControlArgs{}
+                                                   .SetId(lineConfig.Name)
+                                                   .SetType("switch")
+                                                   .SetReadonly(false)
+                                                   .SetUserData(line)
+                                                   .SetRawValue(lineConfig.InitialState ? "1" : "0")
+                                                   .SetDoLoadPrevious(lineConfig.LoadPreviousState));
+    setLineValueFn(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
+    return futureControl;
+}
+
 TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDriverConfig& config)
     : MqttDriver(mqttDriver),
       Active(false)
@@ -116,15 +134,9 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                                                   .SetUserData(line)
                                                                   .SetRawValue(line->GetValue() == 1 ? "1" : "0"));
                     } else {
-                        futureControl = device->CreateControl(tx,
-                                                              TControlArgs{}
-                                                                  .SetId(lineConfig.Name)
-                                                                  .SetType("switch")
-                                                                  .SetReadonly(false)
-                                                                  .SetUserData(line)
-                                                                  .SetRawValue(lineConfig.InitialState ? "1" : "0")
-                                                                  .SetDoLoadPrevious(true));
-                        line->SetValue(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
+                        futureControl = CreateOutputControl(device, tx, line, lineConfig, [&](uint8_t value) {
+                            line->SetValue(value);
+                        });
                     }
                 }
 
