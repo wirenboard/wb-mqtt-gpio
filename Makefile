@@ -76,8 +76,7 @@ ifeq ($(DEBUG), 1)
 endif
 
 clean :
-	-rm -rf build/release
-	-rm -rf build/debug
+	-rm -rf build
 
 install: all
 	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio/conf.d
