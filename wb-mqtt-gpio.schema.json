@@ -303,6 +303,21 @@
             "options": {
                 "disable_properties": true
             }
+        },
+        "undefined_channel": {
+            "type": "object",
+            "not": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "enum": []
+                    }
+                }
+            },
+            "properties": {
+                "gpio": { "not" : {} },
+                "direction": { "not" : {} }
+            }
         }
     },
     "properties": {
@@ -340,7 +355,8 @@
                 "oneOf": [
                     { "$ref": "#/definitions/gpio_channel" },
                     { "$ref": "#/definitions/system_input" },
-                    { "$ref": "#/definitions/system_output" }
+                    { "$ref": "#/definitions/system_output" },
+                    { "$ref": "#/definitions/undefined_channel" }
                 ]
             },
             "propertyOrder": 4,
