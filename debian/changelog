@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.12.3) stable; urgency=medium
+
+  * fix translation
+
+ -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Mon, 23 Oct 2023 17:18:11 +0600
+
 wb-mqtt-gpio (2.12.2) stable; urgency=medium
 
   * Ignore unavailable GPIOs in config without crashing the service
