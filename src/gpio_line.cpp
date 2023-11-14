@@ -327,6 +327,7 @@ bool TGpioLine::UpdateIfStable(const TTimePoint& checkTimePoint)
 
         return true;
     } else {
+        LOG(Warn) << "Debounce on: " << GetName();
         return false;
     }
 }
