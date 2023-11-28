@@ -1,8 +1,26 @@
-wb-mqtt-gpio (2.12.2) stable; urgency=medium
+wb-mqtt-gpio (2.12.5) stable; urgency=medium
 
   * fail package operation on maintscripts errors; no functional changes
 
- -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Wed, 02 Aug 2023 19:32:22 +0600
+ -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Tue, 28 Nov 2023 15:41:52 +0600
+
+wb-mqtt-gpio (2.12.4) stable; urgency=medium
+
+  * add arm64 build, no functional changes
+
+ -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Mon, 13 Nov 2023 17:14:45 +0600
+
+wb-mqtt-gpio (2.12.3) stable; urgency=medium
+
+  * fix translation
+
+ -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Mon, 23 Oct 2023 17:18:11 +0600
+
+wb-mqtt-gpio (2.12.2) stable; urgency=medium
+
+  * Ignore unavailable GPIOs in config without crashing the service
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.com>  Fri, 11 Aug 2023 11:09:26 +0500
 
 wb-mqtt-gpio (2.12.1) stable; urgency=medium
 

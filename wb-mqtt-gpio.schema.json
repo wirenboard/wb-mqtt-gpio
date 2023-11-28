@@ -303,6 +303,21 @@
             "options": {
                 "disable_properties": true
             }
+        },
+        "undefined_channel": {
+            "type": "object",
+            "not": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "enum": []
+                    }
+                }
+            },
+            "properties": {
+                "gpio": { "not" : {} },
+                "direction": { "not" : {} }
+            }
         }
     },
     "properties": {
@@ -340,7 +355,8 @@
                 "oneOf": [
                     { "$ref": "#/definitions/gpio_channel" },
                     { "$ref": "#/definitions/system_input" },
-                    { "$ref": "#/definitions/system_output" }
+                    { "$ref": "#/definitions/system_output" },
+                    { "$ref": "#/definitions/undefined_channel" }
                 ]
             },
             "propertyOrder": 4,
@@ -405,7 +421,7 @@
             "System input": "Системный вход",
             "System output": "Системный выход",
             "Unchanged value posting interval": "Интервал публикации неизменившегося состояния (с)",
-            "max_unchanged_interval_description": "Задает интервал публикации состояния, если оно не изменилось. Ноль задает публикацию после каждого чтения данных из устрйоства. По умолчанию публикация происходит по изменению состояния. Отрицательное число задает поведение по умолчанию",
+            "max_unchanged_interval_description": "Задает интервал публикации состояния, если оно не изменилось. Ноль задает публикацию после каждого чтения данных из устройства. По умолчанию публикация происходит по изменению состояния. Отрицательное число задает поведение по умолчанию",
             "List of GPIO channels": "Список каналов GPIO",
             "GPIO channel": "Канал GPIO",
             "Direction": "Режим канала",

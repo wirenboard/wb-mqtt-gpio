@@ -90,9 +90,10 @@ if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
     echo "$GPIOSYSCONF" | jq '.channels|=sort_by(.order)|.channels|=map(del(.order))' > ${SYS_CONFFILE}
 
     custom_channels_filter=".definitions.gpio_channel.not.properties.name.enum=[$item_names]"
+    undefined_channels_filter=".definitions.undefined_channel.not.properties.name.enum=[$item_names]"
     system_inputs_filter=".definitions.system_input.properties.name.enum=[$input_names]"
     system_outputs_filter=".definitions.system_output.properties.name.enum=[$output_names]"
-    cat $SCHEMA_FILE | jq "$custom_channels_filter|$system_inputs_filter|$system_outputs_filter" > ${CONFED_SCHEMA_FILE}
+    cat $SCHEMA_FILE | jq "$undefined_channels_filter|$custom_channels_filter|$system_inputs_filter|$system_outputs_filter" > ${CONFED_SCHEMA_FILE}
 else
 	echo "/sys/firmware/devicetree/base/wirenboard/gpios is missing"
 fi

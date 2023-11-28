@@ -63,6 +63,11 @@ namespace
         cfg.PublishParameters.Set(maxUnchangedInterval);
 
         for (const auto& channel: channels) {
+            if (!channel.isMember("gpio")) {
+                LOG(Warn) << "Skip GPIO \"" << channel["name"].asString()
+                          << "\", it is unavailable or badly configured";
+                continue;
+            }
             TGpioLineConfig lineConfig;
             string path;
             if (channel["gpio"].isUInt()) {
@@ -233,9 +238,13 @@ void MakeJsonForConfed(const string& configFile, const string& systemConfigsDir,
         });
     } catch (const TNoDirError&) {
     }
+
+    // Add custom channels.
+    // They must contain "gpio" property,
+    // otherwise it is a config for unavailable channel and must be skipped
     for (const auto& ch: config["channels"]) {
         auto it = configuredChannels.find(ch["name"].asString());
-        if (it != configuredChannels.end()) {
+        if (it != configuredChannels.end() && ch.isMember("gpio")) {
             newChannels.append(ch);
         }
     }
