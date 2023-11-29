@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.12.6) stable; urgency=medium
+
+  * fix WB7 image build
+
+ -- Nikita Maslov <nikita.maslov@wirenboard.ru>  Wed, 29 Nov 2023 18:01:24 +0600
+
 wb-mqtt-gpio (2.12.5) stable; urgency=medium
 
   * fail package operation on maintscripts errors; no functional changes
