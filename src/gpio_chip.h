@@ -3,10 +3,7 @@
 #include "config.h"
 #include "declarations.h"
 
-// #ifndef LINUX_GPIO
-// #define LINUX_GPIO
 #include <linux/gpio.h>
-// #endif
 
 class TGpioChip: public std::enable_shared_from_this<TGpioChip>
 {

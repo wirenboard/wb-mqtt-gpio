@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.12.7) stable; urgency=medium
+
+  * publish meta/error on gpiohandle_get_values ioctl
+
+ -- Vladimir Romanov <v.romanov@wirenboard.ru>  Wed, 20 Dec 2023 01:12:19 +0300
+
 wb-mqtt-gpio (2.12.6) stable; urgency=medium
 
   * fix WB7 image build
