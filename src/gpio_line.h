@@ -46,7 +46,7 @@ public:
     bool IsOpenSource() const;
     uint8_t GetValue() const;
     uint8_t GetValueUnfiltered() const;
-    gpiohandle_data ReadFd() const;
+    struct gpiohandle_data ReadFd();
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);

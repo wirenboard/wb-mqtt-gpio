@@ -224,12 +224,7 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
         auto time = ctx.ToSteadyClock(data.timestamp);
 
         if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) { // update gpioline's last interruption ts
-            gpiohandle_data data;
-            if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-                LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-                wb_throw(TGpioDriverException, "unable to get line value");
-            }
-
+            auto data = line->ReadFd();
             line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
             SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
             isHandled = true;
@@ -465,13 +460,9 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 {
     assert(!lines.empty());
 
-    auto fd = lines.front()->GetFd();
-
-    gpiohandle_data data;
-    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        wb_throw(TGpioDriverException, "unable to get line value");
-    }
+    const auto& line = lines.front();
+    auto fd = line->GetFd();
+    auto data = line->ReadFd();
 
     auto now = chrono::steady_clock::now();
     for (uint32_t i = 0; i < lines.size(); ++i) {
@@ -508,13 +499,7 @@ void TGpioChipDriver::ReadLinesValues(const TGpioLines& lines)
     const auto& line = lines.front();
     auto fd = line->GetFd();
 
-    gpiohandle_data data;
-    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << line->DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        line->SetError(errno);
-    } else {
-        line->ClearError();
-    }
+    auto data = line->ReadFd();
 
     uint32_t i = 0;
     for (const auto& line: lines) {

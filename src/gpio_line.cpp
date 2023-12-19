@@ -179,7 +179,7 @@ uint8_t TGpioLine::GetValueUnfiltered() const
     return ValueUnfiltered.Get();
 }
 
-gpiohandle_data TGpioLine::ReadFd() const
+struct gpiohandle_data TGpioLine::ReadFd()
 {
     gpiohandle_data data;
     if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
@@ -241,9 +241,9 @@ void TGpioLine::SetFd(int fd)
     UpdateInfo();
 }
 
-void TGpioLine::SetError(int errno)
+void TGpioLine::SetError(int err)
 {
-    Error = errno;
+    Error = err;
 }
 
 void TGpioLine::ClearError()
