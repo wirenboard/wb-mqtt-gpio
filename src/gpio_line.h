@@ -51,6 +51,7 @@ public:
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
     void SetError(int);
+    int GetError() const;
     void ClearError();
     PGpioChip AccessChip() const;
     bool IsHandled() const;

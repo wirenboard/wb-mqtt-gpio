@@ -241,17 +241,23 @@ void TGpioDriver::Start()
                                         for (const auto& chipDriver: ChipDrivers) {
                                             FOR_EACH_LINE(chipDriver, line)
                                             {
-                                                if (const auto& counter = line->GetCounter()) {
-                                                    for (const auto& idValue:
-                                                         counter->GetIdsAndValues(line->GetConfig()->Name)) {
-                                                        const auto& id = idValue.first;
-                                                        const auto value = idValue.second;
-
-                                                        device->GetControl(id)->SetRawValue(tx, value);
-                                                    }
-                                                } else {
+                                                const auto err = line->GetError();
+                                                if (err) {
                                                     device->GetControl(line->GetConfig()->Name)
-                                                        ->SetValue(tx, static_cast<bool>(line->GetValue()));
+                                                        ->SetError(tx, strerror(err));
+                                                } else {
+                                                    if (const auto& counter = line->GetCounter()) {
+                                                        for (const auto& idValue:
+                                                            counter->GetIdsAndValues(line->GetConfig()->Name)) {
+                                                            const auto& id = idValue.first;
+                                                            const auto value = idValue.second;
+
+                                                            device->GetControl(id)->SetRawValue(tx, value);
+                                                        }
+                                                    } else {
+                                                        device->GetControl(line->GetConfig()->Name)
+                                                            ->SetValue(tx, static_cast<bool>(line->GetValue()));
+                                                    }
                                                 }
                                             });
                                         }

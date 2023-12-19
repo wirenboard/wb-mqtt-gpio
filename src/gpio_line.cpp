@@ -246,9 +246,14 @@ void TGpioLine::SetError(int err)
     Error = err;
 }
 
+int TGpioLine::GetError() const
+{
+    return Error;
+}
+
 void TGpioLine::ClearError()
 {
-    Error = 0;
+    SetError(0);
 }
 
 int TGpioLine::GetFd() const
