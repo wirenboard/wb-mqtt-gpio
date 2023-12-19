@@ -21,6 +21,7 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       Offset(config.Offset),
       Fd(-1),
       TimerFd(-1),
+      Error(0),
       Value(0),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
@@ -41,6 +42,7 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       Offset(config.Offset),
       Fd(-1),
       TimerFd(-1),
+      Error(0),
       Value(0),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
@@ -177,6 +179,18 @@ uint8_t TGpioLine::GetValueUnfiltered() const
     return ValueUnfiltered.Get();
 }
 
+gpiohandle_data TGpioLine::ReadFd() const
+{
+    gpiohandle_data data;
+    if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+        LOG(Error) << DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        SetError(errno);
+    } else {
+        ClearError();
+    }
+    return data;
+}
+
 void TGpioLine::SetValue(uint8_t value)
 {
     assert(IsOutput());
@@ -225,6 +239,16 @@ void TGpioLine::SetFd(int fd)
 {
     Fd = fd;
     UpdateInfo();
+}
+
+void TGpioLine::SetError(int errno)
+{
+    Error = errno;
+}
+
+void TGpioLine::ClearError()
+{
+    Error = 0;
 }
 
 int TGpioLine::GetFd() const

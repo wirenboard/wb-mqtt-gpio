@@ -15,6 +15,7 @@ class TGpioLine
     uint32_t Flags;
     int Fd;
     int TimerFd;
+    int Error;
     std::string Name;
     std::string Consumer;
 
@@ -45,9 +46,12 @@ public:
     bool IsOpenSource() const;
     uint8_t GetValue() const;
     uint8_t GetValueUnfiltered() const;
+    gpiohandle_data ReadFd() const;
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
+    void SetError(int);
+    void ClearError();
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);

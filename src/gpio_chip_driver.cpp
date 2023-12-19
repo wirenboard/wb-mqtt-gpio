@@ -505,12 +505,15 @@ void TGpioChipDriver::ReadLinesValues(const TGpioLines& lines)
     if (lines.empty()) {
         return;
     }
-    auto fd = lines.front()->GetFd();
+    const auto& line = lines.front();
+    auto fd = line->GetFd();
 
     gpiohandle_data data;
     if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        wb_throw(TGpioDriverException, "unable to get line value");
+        LOG(Error) << line->DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        line->SetError(errno);
+    } else {
+        line->ClearError();
     }
 
     uint32_t i = 0;
