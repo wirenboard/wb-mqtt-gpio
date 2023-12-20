@@ -20,7 +20,11 @@ TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
 {
     Fd = open(Path.c_str(), O_RDWR | O_CLOEXEC);
     if (Fd < 0) {
-        wb_throw(TGpioDriverException, "unable to open device path '" + Path + "'");
+        Name = Path;
+        Label = "disconnected";
+        LineCount = 0;
+        LOG(Error) << "Unable to open device path '" << Path << "'";
+        return;
     }
 
     LOG(Debug) << "Open chip at " << Path;

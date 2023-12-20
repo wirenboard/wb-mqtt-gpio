@@ -40,6 +40,7 @@ public:
     uint32_t GetOffset() const;
     uint32_t GetFlags() const;
     bool IsOutput() const;
+    void MakeOutput();
     bool IsActiveLow() const;
     bool IsUsed() const;
     bool IsOpenDrain() const;

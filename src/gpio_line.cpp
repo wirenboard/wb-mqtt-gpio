@@ -68,7 +68,9 @@ void TGpioLine::UpdateInfo()
 
     int retVal = ioctl(AccessChip()->GetFd(), GPIO_GET_LINEINFO_IOCTL, &info);
     if (retVal < 0) {
-        wb_throw(TGpioDriverException, "unable to load " + Describe());
+        LOG(Error) << "Unable to load " << Describe();
+        SetError(retVal);
+        return;
     }
 
     Name = info.name;
@@ -149,6 +151,11 @@ bool TGpioLine::IsOutput() const
     return Flags & GPIOLINE_FLAG_IS_OUT;
 }
 
+void TGpioLine::MakeOutput()
+{
+    Flags |= GPIOLINE_FLAG_IS_OUT;
+}
+
 bool TGpioLine::IsActiveLow() const
 {
     return Flags & GPIOLINE_FLAG_ACTIVE_LOW;
@@ -203,9 +210,12 @@ void TGpioLine::SetValue(uint8_t value)
     data.values[0] = value;
 
     if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << "GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        wb_throw(TGpioDriverException,
-                 "unable to set value '" + to_string((int)value) + "' to line " + DescribeShort());
+        LOG(Error) "Set " << to_string((int)value) << "to line: " << DescribeShort()
+                    << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        SetError(errno);
+        return;
+    } else {
+        ClearError();
     }
 
     SetCachedValue(value);
