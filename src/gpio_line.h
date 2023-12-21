@@ -16,6 +16,7 @@ class TGpioLine
     int Fd;
     int TimerFd;
     int Error;
+    bool NeedReinit;
     std::string Name;
     std::string Consumer;
 
@@ -40,6 +41,8 @@ public:
     uint32_t GetOffset() const;
     uint32_t GetFlags() const;
     bool IsOutput() const;
+    bool DoesNeedReinit() const;
+    void SetDoesNeedReinit(bool);
     void MakeOutput();
     bool IsActiveLow() const;
     bool IsUsed() const;
@@ -47,7 +50,8 @@ public:
     bool IsOpenSource() const;
     uint8_t GetValue() const;
     uint8_t GetValueUnfiltered() const;
-    struct gpiohandle_data ReadFd();
+    struct gpiohandle_data FdGet();
+    void FdSet(uint8_t);
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);

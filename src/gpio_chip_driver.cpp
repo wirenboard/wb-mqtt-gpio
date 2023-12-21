@@ -74,7 +74,7 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
                 break;
             }
             case EGpioDirection::Output: {
-                if (!InitOutput(line)) {
+                if (!InitOutput(line, line->GetConfig()->InitialState)) {
                     LOG(Error) << "Skipping output" << line->DescribeShort();
                 }
                 break;
@@ -224,7 +224,7 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
         auto time = ctx.ToSteadyClock(data.timestamp);
 
         if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) { // update gpioline's last interruption ts
-            auto data = line->ReadFd();
+            auto data = line->FdGet();
             line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
             SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
             isHandled = true;
@@ -371,13 +371,47 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
 
 void TGpioChipDriver::AddDisconnectedLine(const PGpioLine& line)
 {
+    LOG(Warn) << "Add line " << line->DescribeShort() << " to poll as disconnected one";
     Lines[FakeLineFd].push_back(line);
     assert(Lines[FakeLineFd].size() == 1);
     line->SetFd(FakeLineFd);
     --FakeLineFd;
 }
 
-bool TGpioChipDriver::InitOutput(const PGpioLine& line)
+void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
+{
+    assert(config->Direction == EGpioDirection::Output);
+
+    LOG(Warn) << "Reinit (request as input -> output) " << line->DescribeShort() << " to bring it back to life";
+
+    auto oldFd = line->GetFd();
+    auto it = Lines.find(oldFd);
+    assert(it != Lines.end());
+    const auto copiedLine = std::move(it->second.front());
+    Lines.erase(it);
+    if (oldFd > 0)
+        close(oldFd);
+
+    gpioevent_request req{};
+    req.lineoffset = copiedLine->GetOffset();
+    req.handleflags |= GPIOHANDLE_REQUEST_INPUT;
+    req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
+    strcpy(req.consumer_label, CONSUMER);
+
+    if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {
+        LOG(Error) << "Re-init " << copiedLine->DescribeShort() << " as input failed";
+        wb_throw(TGpioDriverException, "GPIO_GET_LINEEVENT_IOCTL: " + string(strerror(errno)));
+    }
+    close(req.fd);
+
+    if (!InitOutput(copiedLine, copiedLine->GetValue())) {
+        wb_throw(TGpioDriverException, "Failed to init " + copiedLine->DescribeShort() + " as output");
+    }
+    copiedLine->SetDoesNeedReinit(false);
+    LOG(Debug) << copiedLine->DescribeShort() << "is alive again";
+}
+
+bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
 {
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
@@ -386,8 +420,8 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line)
     memset(&req, 0, sizeof(gpiohandle_request));
     req.lines = 1;
     req.lineoffsets[0] = line->GetOffset();
-    req.default_values[0] = config->InitialState;
-    req.flags = GetFlagsFromConfig(*config, line->IsOutput());
+    req.default_values[0] = value;
+    req.flags = GetFlagsFromConfig(*config);
     strcpy(req.consumer_label, CONSUMER);
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
@@ -475,7 +509,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 
     const auto& line = lines.front();
     auto fd = line->GetFd();
-    auto data = line->ReadFd();
+    auto data = line->FdGet();
 
     auto now = chrono::steady_clock::now();
     for (uint32_t i = 0; i < lines.size(); ++i) {
@@ -499,7 +533,10 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             }
         } else { /* for output just set value to cache: it will publish it if
                     changed */
-            line->SetCachedValue(newValue);
+            if (line->DoesNeedReinit())
+                ReInitOutput(line);
+            if (!line->GetError())
+                line->SetCachedValue(newValue);
         }
     }
 }
@@ -512,7 +549,7 @@ void TGpioChipDriver::ReadLinesValues(const TGpioLines& lines)
     const auto& line = lines.front();
     auto fd = line->GetFd();
 
-    auto data = line->ReadFd();
+    auto data = line->FdGet();
 
     uint32_t i = 0;
     for (const auto& line: lines) {

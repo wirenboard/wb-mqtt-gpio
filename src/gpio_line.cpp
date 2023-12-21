@@ -22,6 +22,7 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       Fd(-1),
       TimerFd(-1),
       Error(0),
+      NeedReinit(false),
       Value(0),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
@@ -44,6 +45,7 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       TimerFd(-1),
       Error(0),
       Value(0),
+      NeedReinit(false),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
 {
@@ -151,6 +153,11 @@ bool TGpioLine::IsOutput() const
     return Flags & GPIOLINE_FLAG_IS_OUT;
 }
 
+bool TGpioLine::DoesNeedReinit() const
+{
+    return NeedReinit;
+}
+
 void TGpioLine::MakeOutput()
 {
     Flags |= GPIOLINE_FLAG_IS_OUT;
@@ -186,16 +193,34 @@ uint8_t TGpioLine::GetValueUnfiltered() const
     return ValueUnfiltered.Get();
 }
 
-struct gpiohandle_data TGpioLine::ReadFd()
+struct gpiohandle_data TGpioLine::FdGet()
 {
     gpiohandle_data data;
     if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         SetError(errno);
     } else {
-        ClearError();
+        if (GetError() != 0) {
+            LOG(Debug) << "Clearing error on " << DescribeShort();
+            ClearError();
+        }
     }
     return data;
+}
+
+void TGpioLine::FdSet(uint8_t value)
+{
+    LOG(Debug) << "Set " << DescribeShort() << " = " << static_cast<int>(value);
+
+    gpiohandle_data data{};
+
+    data.values[0] = value;
+
+    if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
+        LOG(Error) "Set " << to_string((int)value) << " to: " << DescribeShort()
+                    << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        SetError(errno);
+    }
 }
 
 void TGpioLine::SetValue(uint8_t value)
@@ -203,22 +228,14 @@ void TGpioLine::SetValue(uint8_t value)
     assert(IsOutput());
     assert(IsHandled());
 
-    LOG(Debug) << DescribeShort() << " = " << static_cast<int>(value);
-
-    gpiohandle_data data{};
-
-    data.values[0] = value;
-
-    if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) "Set " << to_string((int)value) << "to line: " << DescribeShort()
-                    << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        SetError(errno);
-        return;
+    auto error = GetError();
+    if (!error) {
+        FdSet(value);
+        SetCachedValue(value);
     } else {
-        ClearError();
+        LOG(Error) << DescribeShort() << " has error: " << strerror(error)
+                << "; Will not set value " << to_string(value);
     }
-
-    SetCachedValue(value);
 }
 
 void TGpioLine::SetCachedValue(uint8_t value)
@@ -261,8 +278,17 @@ int TGpioLine::GetError() const
     return Error;
 }
 
+void TGpioLine::SetDoesNeedReinit(bool needReinit)
+{
+    NeedReinit = needReinit;
+}
+
 void TGpioLine::ClearError()
 {
+    if (IsOutput() && (AccessChip()->GetLabel() == "mcp23017")) {
+        LOG(Warn) << DescribeShort() << " needs to be re-initialized";
+        SetDoesNeedReinit(true);
+    }
     SetError(0);
 }
 

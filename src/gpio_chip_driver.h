@@ -41,7 +41,8 @@ public:
 private:
     bool ReleaseLineIfUsed(const PGpioLine&);
     bool TryListenLine(const PGpioLine&);
-    bool InitOutput(const PGpioLine&);
+    bool InitOutput(const PGpioLine&, bool value);
+    void ReInitOutput(const PGpioLine&);
     void AddDisconnectedLine(const PGpioLine&);
     bool InitInputInterrupts(const PGpioLine&);
     bool InitLinesPolling(uint32_t flags, const TGpioLines& lines);
