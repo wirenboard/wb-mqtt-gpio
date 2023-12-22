@@ -531,11 +531,13 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             } else { /* in other case let line do idle actions */
                 line->Update();
             }
-        } else { /* for output just set value to cache: it will publish it if
+        } else { /* for output just set value to cache (if no error on gpioline): it will publish it if
                     changed */
-            if (line->DoesNeedReinit())
+            if (line->DoesNeedReinit()) {
                 ReInitOutput(line);
-            if (!line->GetError())
+                continue;
+            }
+            if (line->GetError() == 0)
                 line->SetCachedValue(newValue);
         }
     }

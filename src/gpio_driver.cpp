@@ -182,8 +182,15 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
             line->GetCounter()->SetInitialValues(value);
             valueForPublishing = line->GetCounter()->GetRoundedTotal();
         }
-        event.Control->GetDevice()->GetDriver()->AccessAsync(
-            [=](const PDriverTx& tx) { event.Control->SetRawValue(tx, valueForPublishing); });
+
+        auto lineError = line->GetError();
+        if (lineError) {
+            event.Control->GetDevice()->GetDriver()->AccessAsync(
+                [=](const PDriverTx& tx) { event.Control->UpdateValueAndError(tx, valueForPublishing, strerror(lineError)); });
+        } else {
+            event.Control->GetDevice()->GetDriver()->AccessAsync(
+                [=](const PDriverTx& tx) { event.Control->SetRawValue(tx, valueForPublishing); });
+        }
     });
 }
 

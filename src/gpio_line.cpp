@@ -201,7 +201,8 @@ struct gpiohandle_data TGpioLine::FdGet()
         SetError(errno);
     } else {
         if (GetError() != 0) {
-            LOG(Debug) << "Clearing error on " << DescribeShort();
+            LOG(Warn) << DescribeShort() << " is connected again. Clearing error '"
+                        << strerror(GetError()) << "' on it";
             ClearError();
         }
     }
@@ -229,11 +230,11 @@ void TGpioLine::SetValue(uint8_t value)
     assert(IsHandled());
 
     auto error = GetError();
-    if (!error) {
+    if (error == 0) {
         FdSet(value);
         SetCachedValue(value);
     } else {
-        LOG(Error) << DescribeShort() << " has error: " << strerror(error)
+        LOG(Warn) << DescribeShort() << " has error: " << strerror(error)
                 << "; Will not set value " << to_string(value);
     }
 }
