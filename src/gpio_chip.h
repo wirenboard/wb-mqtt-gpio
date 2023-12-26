@@ -20,6 +20,7 @@ public:
 
     const std::string& GetName() const;
     const std::string& GetLabel() const;
+    void SetLabel(const std::string&);
     const std::string& GetPath() const;
     std::string Describe() const;
     uint32_t GetLineCount() const;

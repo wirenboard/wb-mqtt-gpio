@@ -34,3 +34,24 @@ TEST_F(TLineErrorTest, set_clear_error)
     fakeGpioLine->ClearError();
     ASSERT_EQ(fakeGpioLine->GetError(), 0);
 }
+
+TEST_F(TLineErrorTest, treat_as_output)
+{
+    const auto fakeGpioLine = std::make_shared<TGpioLine>(fakeGpioLineConfig);
+    ASSERT_FALSE(fakeGpioLine->IsOutput());
+    fakeGpioLine->TreatAsOutput();
+    ASSERT_TRUE(fakeGpioLine->IsOutput());
+}
+
+TEST_F(TLineErrorTest, does_need_reinit)
+{
+    const auto chip = std::make_shared<TGpioChip>("disconnected_1");
+    const auto fakeGpioLine = std::make_shared<TGpioLine>(chip, fakeGpioLineConfig);
+
+    fakeGpioLine->TreatAsOutput();
+    fakeGpioLine->AccessChip()->SetLabel("mcp23017");
+
+    ASSERT_FALSE(fakeGpioLine->DoesNeedReinit());
+    fakeGpioLine->ClearError();
+    ASSERT_TRUE(fakeGpioLine->DoesNeedReinit());
+}

@@ -43,7 +43,7 @@ public:
     bool IsOutput() const;
     bool DoesNeedReinit() const;
     void SetDoesNeedReinit(bool);
-    void MakeOutput();
+    void TreatAsOutput();
     bool IsActiveLow() const;
     bool IsUsed() const;
     bool IsOpenDrain() const;

@@ -23,7 +23,8 @@ TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
         Name = Path;
         Label = "disconnected";
         LineCount = 0;
-        LOG(Error) << "Unable to open device path '" << Path << "'";
+        LOG(Error) << "Unable to open device path '" << Path << "'"
+                << ". Will treat all lines on it as disconnected";
         return;
     }
 
@@ -84,6 +85,11 @@ const string& TGpioChip::GetName() const
 const string& TGpioChip::GetLabel() const
 {
     return Label;
+}
+
+void TGpioChip::SetLabel(const string& label)
+{
+    Label = label;
 }
 
 const string& TGpioChip::GetPath() const

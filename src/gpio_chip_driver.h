@@ -17,7 +17,7 @@ class TGpioChipDriver
     TGpioTimersMap Timers;
     PGpioChip Chip;
     bool AddedToEpoll;
-    int FakeLineFd;
+    int DisconnectedLineFd;
 
 public:
     using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
@@ -38,12 +38,13 @@ public:
 
     void ForEachLine(const TGpioLineHandler&) const;
 
+    void AddDisconnectedLine(const PGpioLine&);
+
 private:
     bool ReleaseLineIfUsed(const PGpioLine&);
     bool TryListenLine(const PGpioLine&);
     bool InitOutput(const PGpioLine&, bool value);
     void ReInitOutput(const PGpioLine&);
-    void AddDisconnectedLine(const PGpioLine&);
     bool InitInputInterrupts(const PGpioLine&);
     bool InitLinesPolling(uint32_t flags, const TGpioLines& lines);
 

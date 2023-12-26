@@ -47,7 +47,7 @@ namespace
     }
 } // namespace
 
-TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(false), FakeLineFd(-1)
+TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(false), DisconnectedLineFd(-1)
 {
     Chip = make_shared<TGpioChip>(config.Path);
 
@@ -372,10 +372,10 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
 void TGpioChipDriver::AddDisconnectedLine(const PGpioLine& line)
 {
     LOG(Warn) << "Add line " << line->DescribeShort() << " to poll as disconnected one";
-    Lines[FakeLineFd].push_back(line);
-    assert(Lines[FakeLineFd].size() == 1);
-    line->SetFd(FakeLineFd);
-    --FakeLineFd;
+    Lines[DisconnectedLineFd].push_back(line);
+    assert(Lines[DisconnectedLineFd].size() == 1);
+    line->SetFd(DisconnectedLineFd);
+    --DisconnectedLineFd;
 }
 
 void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
@@ -426,7 +426,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
         LOG(Error) << "GPIO_GET_LINEHANDLE_IOCTL failed: " << strerror(errno) << " at " << line->DescribeShort();
-        line->MakeOutput();
+        line->TreatAsOutput();
         AddDisconnectedLine(line);
         return false;
     }

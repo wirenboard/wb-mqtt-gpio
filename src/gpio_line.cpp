@@ -158,7 +158,7 @@ bool TGpioLine::DoesNeedReinit() const
     return NeedReinit;
 }
 
-void TGpioLine::MakeOutput()
+void TGpioLine::TreatAsOutput()
 {
     Flags |= GPIOLINE_FLAG_IS_OUT;
 }
