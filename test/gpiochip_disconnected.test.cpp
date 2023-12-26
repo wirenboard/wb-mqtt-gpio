@@ -14,6 +14,7 @@ TEST_F(TDisconnectedChipTest, init_disconnected_chip)
     ASSERT_EQ(chip->GetName(), dummyPath);
     ASSERT_EQ(chip->GetLabel(), "disconnected");
     ASSERT_EQ(chip->GetLineCount(), 0);
+    EXPECT_THROW(chip->GetNumber(), TGpioDriverException)
 }
 
 class TGpioChipDisconnectedTest: public testing::Test

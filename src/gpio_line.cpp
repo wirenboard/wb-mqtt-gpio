@@ -82,8 +82,16 @@ void TGpioLine::UpdateInfo()
 
 std::string TGpioLine::DescribeShort() const
 {
+    std::string chipNum;
+    try {
+        chipNum = to_string(AccessChip()->GetNumber());
+    }
+    catch (const TGpioDriverException& e) {
+        chipNum = "disconnected";
+    }
+
     ostringstream ss;
-    ss << "GPIO line " << AccessChip()->GetNumber() << ":" << Offset;
+    ss << "GPIO line " << chipNum << ":" << Offset;
     if (Config) {
         ss << " (" << Config->Name << ")";
     }
