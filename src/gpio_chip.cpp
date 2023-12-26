@@ -24,7 +24,7 @@ TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
         Label = "disconnected";
         LineCount = 0;
         LOG(Error) << "Unable to open device path '" << Path << "'"
-                << ". Will treat all lines on it as disconnected";
+                   << ". Will treat all lines on it as disconnected";
         return;
     }
 

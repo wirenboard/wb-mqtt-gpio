@@ -380,7 +380,14 @@ void TGpioChipDriver::AddDisconnectedLine(const PGpioLine& line)
 
 void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
 {
+    /*
+        MCP's POR state is input => we need to init gpio-extender module as output on physicall reconnect.
+
+        "pinctrl_mcp23s08" kernel driver has internal cache => once init module as input
+        and then init as output to trigger needed i2c communication with mcp.
+    */
     assert(config->Direction == EGpioDirection::Output);
+    assert(line->AccessChip()->GetLabel() == "mcp23017");
 
     LOG(Warn) << "Reinit (request as input -> output) " << line->DescribeShort() << " to bring it back to life";
 

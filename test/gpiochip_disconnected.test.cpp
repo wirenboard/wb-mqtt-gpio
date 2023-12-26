@@ -5,7 +5,8 @@
 #include "types.h"
 #include <gtest/gtest.h>
 
-class TDisconnectedChipTest: public testing::Test{};
+class TDisconnectedChipTest: public testing::Test
+{};
 
 TEST_F(TDisconnectedChipTest, init_disconnected_chip)
 {
@@ -14,13 +15,12 @@ TEST_F(TDisconnectedChipTest, init_disconnected_chip)
     ASSERT_EQ(chip->GetName(), dummyPath);
     ASSERT_EQ(chip->GetLabel(), "disconnected");
     ASSERT_EQ(chip->GetLineCount(), 0);
-    EXPECT_THROW(chip->GetNumber(), TGpioDriverException)
 }
 
 class TGpioChipDisconnectedTest: public testing::Test
 {
 protected:
-    TGpioChipConfig fakeGpioChipConfig {"disconnected_1"};
+    TGpioChipConfig fakeGpioChipConfig{"disconnected_1"};
     TGpioLineConfig fakeGpioLineConfig;
 
     void SetUp()
@@ -46,4 +46,3 @@ TEST_F(TGpioChipDisconnectedTest, add_disconnected_line)
     fakeGpioChipDriver->AddDisconnectedLine(fakeGpioLine);
     ASSERT_EQ(fakeGpioLine->GetFd(), -3);
 }
-

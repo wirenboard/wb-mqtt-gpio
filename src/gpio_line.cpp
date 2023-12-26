@@ -85,8 +85,7 @@ std::string TGpioLine::DescribeShort() const
     std::string chipNum;
     try {
         chipNum = to_string(AccessChip()->GetNumber());
-    }
-    catch (const TGpioDriverException& e) {
+    } catch (const TGpioDriverException& e) {
         chipNum = "disconnected";
     }
 
@@ -209,8 +208,8 @@ struct gpiohandle_data TGpioLine::FdGet()
         SetError(errno);
     } else {
         if (GetError() != 0) {
-            LOG(Warn) << DescribeShort() << " is connected again. Clearing error '"
-                        << strerror(GetError()) << "' on it";
+            LOG(Warn) << DescribeShort() << " is connected again. Clearing error '" << strerror(GetError())
+                      << "' on it";
             ClearError();
         }
     }
@@ -226,8 +225,9 @@ void TGpioLine::FdSet(uint8_t value)
     data.values[0] = value;
 
     if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) "Set " << to_string((int)value) << " to: " << DescribeShort()
-                    << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        LOG(Error)
+        "Set " << to_string((int)value) << " to: " << DescribeShort()
+               << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         SetError(errno);
     }
 }
@@ -242,8 +242,8 @@ void TGpioLine::SetValue(uint8_t value)
         FdSet(value);
         SetCachedValue(value);
     } else {
-        LOG(Warn) << DescribeShort() << " has error: " << strerror(error)
-                << "; Will not set value " << to_string(value);
+        LOG(Warn) << DescribeShort() << " has error: " << strerror(error) << "; Will not set value "
+                  << to_string(value);
     }
 }
 
