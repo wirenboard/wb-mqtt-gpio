@@ -183,7 +183,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
             valueForPublishing = line->GetCounter()->GetRoundedTotal();
         }
 
-        auto lineError = line->GetError();
+        auto lineError = line->GetIoctlErrno();
         if (lineError) {
             event.Control->GetDevice()->GetDriver()->AccessAsync([=](const PDriverTx& tx) {
                 event.Control->UpdateValueAndError(tx, valueForPublishing, strerror(lineError));
@@ -250,7 +250,7 @@ void TGpioDriver::Start()
                                    for (const auto& chipDriver: ChipDrivers) {
                                        FOR_EACH_LINE(chipDriver, line)
                                        {
-                                           const auto err = line->GetError();
+                                           const auto err = line->GetIoctlErrno();
                                            if (err) {
                                                device->GetControl(line->GetConfig()->Name)->SetError(tx, strerror(err));
                                            } else {

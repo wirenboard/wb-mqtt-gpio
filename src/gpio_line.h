@@ -15,8 +15,8 @@ class TGpioLine
     uint32_t Flags;
     int Fd;
     int TimerFd;
-    int Error;
-    bool NeedReinit;
+    int IoctlErrno;
+    bool NeedsReinit;
     std::string Name;
     std::string Consumer;
 
@@ -41,22 +41,21 @@ public:
     uint32_t GetOffset() const;
     uint32_t GetFlags() const;
     bool IsOutput() const;
-    bool DoesNeedReinit() const;
-    void SetDoesNeedReinit(bool);
-    void TreatAsOutput();
+    bool GetNeedsReinit() const;
+    void SetNeedsReinit(bool);
+    void TreatAsOutput();  // sets gpio_output flag to Flags
     bool IsActiveLow() const;
     bool IsUsed() const;
     bool IsOpenDrain() const;
     bool IsOpenSource() const;
     uint8_t GetValue() const;
     uint8_t GetValueUnfiltered() const;
-    struct gpiohandle_data FdGet();
-    void FdSet(uint8_t);
+    struct gpiohandle_data IoctlGetGpiohandleData();
+    void IoctlSetValue(uint8_t);
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
-    void SetError(int);
-    int GetError() const;
+    int GetIoctlErrno() const;
     void ClearError();
     PGpioChip AccessChip() const;
     bool IsHandled() const;
@@ -74,4 +73,7 @@ public:
     std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint& interruptTimePoint) const;
     bool UpdateIfStable(const TTimePoint& checkTimePoint);
     const TTimePoint& GetInterruptionTimepoint() const;
+
+private:
+    void SetIoctlErrno(int);
 };

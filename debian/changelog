@@ -1,6 +1,6 @@
-wb-mqtt-gpio (2.12.7) stable; urgency=medium
+wb-mqtt-gpio (2.13.6) stable; urgency=medium
 
-  * publish meta/error on gpiohandle_get_values ioctl
+  * Add detection of disconnected EXT* modules
 
  -- Vladimir Romanov <v.romanov@wirenboard.ru>  Tue, 26 Dec 2023 17:52:29 +0300
 

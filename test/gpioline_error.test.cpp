@@ -22,17 +22,17 @@ protected:
 TEST_F(TLineErrorTest, initial_error)
 {
     const auto fakeGpioLine = std::make_shared<TGpioLine>(fakeGpioLineConfig);
-    ASSERT_EQ(fakeGpioLine->GetError(), 0);
+    ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
 }
 
 TEST_F(TLineErrorTest, set_clear_error)
 {
-    int err = -10;
     const auto fakeGpioLine = std::make_shared<TGpioLine>(fakeGpioLineConfig);
-    fakeGpioLine->SetError(err);
-    ASSERT_EQ(fakeGpioLine->GetError(), err);
+    ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
+    fakeGpioLine->IoctlGetGpiohandleData();
+    ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), -1);
     fakeGpioLine->ClearError();
-    ASSERT_EQ(fakeGpioLine->GetError(), 0);
+    ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
 }
 
 TEST_F(TLineErrorTest, treat_as_output)
@@ -51,7 +51,7 @@ TEST_F(TLineErrorTest, does_need_reinit)
     fakeGpioLine->TreatAsOutput();
     fakeGpioLine->AccessChip()->SetLabel("mcp23017");
 
-    ASSERT_FALSE(fakeGpioLine->DoesNeedReinit());
+    ASSERT_FALSE(fakeGpioLine->GetNeedsReinit());
     fakeGpioLine->ClearError();
-    ASSERT_TRUE(fakeGpioLine->DoesNeedReinit());
+    ASSERT_TRUE(fakeGpioLine->GetNeedsReinit());
 }

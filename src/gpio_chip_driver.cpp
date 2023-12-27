@@ -224,7 +224,7 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
         auto time = ctx.ToSteadyClock(data.timestamp);
 
         if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) { // update gpioline's last interruption ts
-            auto data = line->FdGet();
+            auto data = line->IoctlGetGpiohandleData();
             line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
             SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
             isHandled = true;
@@ -414,7 +414,7 @@ void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
     if (!InitOutput(copiedLine, copiedLine->GetValue())) {
         wb_throw(TGpioDriverException, "Failed to init " + copiedLine->DescribeShort() + " as output");
     }
-    copiedLine->SetDoesNeedReinit(false);
+    copiedLine->SetNeedsReinit(false);
     LOG(Debug) << copiedLine->DescribeShort() << "is alive again";
 }
 
@@ -516,7 +516,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 
     const auto& line = lines.front();
     auto fd = line->GetFd();
-    auto data = line->FdGet();
+    auto data = line->IoctlGetGpiohandleData();
 
     auto now = chrono::steady_clock::now();
     for (uint32_t i = 0; i < lines.size(); ++i) {
@@ -540,11 +540,11 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             }
         } else { /* for output just set value to cache (if no error on gpioline): it will publish it if
                     changed */
-            if (line->DoesNeedReinit()) {
+            if (line->GetNeedsReinit()) {
                 ReInitOutput(line);
                 continue;
             }
-            if (line->GetError() == 0)
+            if (line->GetIoctlErrno() == 0)
                 line->SetCachedValue(newValue);
         }
     }
@@ -558,7 +558,7 @@ void TGpioChipDriver::ReadLinesValues(const TGpioLines& lines)
     const auto& line = lines.front();
     auto fd = line->GetFd();
 
-    auto data = line->FdGet();
+    auto data = line->IoctlGetGpiohandleData();
 
     uint32_t i = 0;
     for (const auto& line: lines) {
