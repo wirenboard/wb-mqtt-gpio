@@ -373,7 +373,6 @@ void TGpioChipDriver::AddDisconnectedLine(const PGpioLine& line)
 {
     LOG(Warn) << "Add line " << line->DescribeShort() << " to poll as disconnected one";
     Lines[DisconnectedLineFd].push_back(line);
-    assert(Lines[DisconnectedLineFd].size() == 1);
     line->SetFd(DisconnectedLineFd);
     --DisconnectedLineFd;
 }
@@ -386,14 +385,14 @@ void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
         "pinctrl_mcp23s08" kernel driver has internal cache => once init module as input
         and then init as output to trigger needed i2c communication with mcp.
     */
-    assert(config->Direction == EGpioDirection::Output);
-    assert(line->AccessChip()->GetLabel() == "mcp23017");
+    if (config->Direction != EGpioDirection::Output) {
+        wb_throw(TGpioDriverException, "Only output line needs re-init magic after reconnecting");
+    }
 
     LOG(Warn) << "Reinit (request as input -> output) " << line->DescribeShort() << " to bring it back to life";
 
     auto oldFd = line->GetFd();
     auto it = Lines.find(oldFd);
-    assert(it != Lines.end());
     const auto copiedLine = std::move(it->second.front());
     Lines.erase(it);
     if (oldFd > 0)

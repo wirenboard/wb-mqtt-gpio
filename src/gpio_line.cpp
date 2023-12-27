@@ -244,9 +244,6 @@ void TGpioLine::IoctlSetValue(uint8_t value)
 
 void TGpioLine::SetValue(uint8_t value)
 {
-    assert(IsOutput());
-    assert(IsHandled());
-
     auto error = GetIoctlErrno();
     if (error == 0) {
         IoctlSetValue(value);
