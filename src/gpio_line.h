@@ -43,7 +43,6 @@ public:
     bool IsOutput() const;
     bool GetNeedsReinit() const;
     void SetNeedsReinit(bool);
-    void TreatAsOutput();  // sets gpio_output flag to Flags
     bool IsActiveLow() const;
     bool IsUsed() const;
     bool IsOpenDrain() const;

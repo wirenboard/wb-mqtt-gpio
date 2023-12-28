@@ -47,7 +47,7 @@ namespace
     }
 } // namespace
 
-TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(false), DisconnectedLineFd(-1)
+TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(false)
 {
     Chip = make_shared<TGpioChip>(config.Path);
 
@@ -61,6 +61,15 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
 
         lineBulks.back().push_back(line);
     };
+
+    if (! Chip->IsValid()) {
+        for (const auto& lineConfig: config.Lines) {
+            auto line = make_shared<TGpioLine>(Chip, lineConfig);
+            LOG(Warn) << "Add " << line->DescribeShort() << " as initially disconnected";
+            InitiallyDisconnectedLines[line->GetOffset()] = line;
+        }
+        return;
+    }
 
     for (const auto& line: Chip->LoadLines(config.Lines)) {
         if (!ReleaseLineIfUsed(line)) {
@@ -160,6 +169,11 @@ TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
     });
 
     return linesByOffset;
+}
+
+TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapInitiallyDisconnectedLinesByOffset() const
+{
+    return InitiallyDisconnectedLines;
 }
 
 void TGpioChipDriver::AddToEpoll(int epfd)
@@ -369,14 +383,6 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
     return true;
 }
 
-void TGpioChipDriver::AddDisconnectedLine(const PGpioLine& line)
-{
-    LOG(Warn) << "Add line " << line->DescribeShort() << " to poll as disconnected one";
-    Lines[DisconnectedLineFd].push_back(line);
-    line->SetFd(DisconnectedLineFd);
-    --DisconnectedLineFd;
-}
-
 void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
 {
     /*
@@ -385,7 +391,7 @@ void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
         "pinctrl_mcp23s08" kernel driver has internal cache => once init module as input
         and then init as output to trigger needed i2c communication with mcp.
     */
-    if (config->Direction != EGpioDirection::Output) {
+    if (line->GetConfig()->Direction != EGpioDirection::Output) {
         wb_throw(TGpioDriverException, "Only output line needs re-init magic after reconnecting");
     }
 
@@ -432,8 +438,6 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
         LOG(Error) << "GPIO_GET_LINEHANDLE_IOCTL failed: " << strerror(errno) << " at " << line->DescribeShort();
-        line->TreatAsOutput();
-        AddDisconnectedLine(line);
         return false;
     }
 
@@ -490,9 +494,6 @@ bool TGpioChipDriver::InitLinesPolling(uint32_t flags, const vector<PGpioLine>& 
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
         LOG(Error) << "GPIO_GET_LINEHANDLE_IOCTL failed: " << strerror(errno);
-        for (const auto& line: lines) {
-            AddDisconnectedLine(line);
-        }
         return false;
     }
 

@@ -177,12 +177,7 @@ namespace Utils
 
     uint32_t GpioPathToChipNumber(const string& path)
     {
-        try {
-            return stoul(path.substr(13));
-        } catch (const std::invalid_argument& ex) {
-        } catch (const std::out_of_range& ex) {
-        }
-        wb_throw(TGpioDriverException, "unable to get gpiochip number from '" + path + "'");
+        return stoul(path.substr(13));
     }
 
     uint32_t GpioChipLabelToNumber(const string& label)

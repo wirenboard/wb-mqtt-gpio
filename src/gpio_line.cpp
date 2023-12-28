@@ -35,7 +35,8 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
     }
 
-    UpdateInfo();
+    if (chip->IsValid())
+        UpdateInfo();
 }
 
 TGpioLine::TGpioLine(const TGpioLineConfig& config)
@@ -83,11 +84,10 @@ void TGpioLine::UpdateInfo()
 std::string TGpioLine::DescribeShort() const
 {
     std::string chipNum;
-    try {
+    if (AccessChip()->IsValid())
         chipNum = to_string(AccessChip()->GetNumber());
-    } catch (const TGpioDriverException& e) {
+    else
         chipNum = "disconnected";
-    }
 
     ostringstream ss;
     ss << "GPIO line " << chipNum << ":" << Offset;
@@ -163,11 +163,6 @@ bool TGpioLine::IsOutput() const
 bool TGpioLine::GetNeedsReinit() const
 {
     return NeedsReinit;
-}
-
-void TGpioLine::TreatAsOutput()
-{
-    Flags |= GPIOLINE_FLAG_IS_OUT;
 }
 
 bool TGpioLine::IsActiveLow() const

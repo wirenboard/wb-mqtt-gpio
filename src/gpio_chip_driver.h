@@ -7,26 +7,29 @@
 #include <unordered_map>
 #include <vector>
 
+using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
+
 class TGpioChipDriver
 {
     using TGpioLines = std::vector<PGpioLine>;
     using TGpioLinesMap = std::unordered_map<int, TGpioLines>;
     using TGpioTimersMap = std::unordered_map<int, TGpioLines>;
+    using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
 
     TGpioLinesMap Lines;
+    TGpioLinesByOffsetMap InitiallyDisconnectedLines;
     TGpioTimersMap Timers;
     PGpioChip Chip;
     bool AddedToEpoll;
-    int DisconnectedLineFd;
 
 public:
-    using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
     using TGpioLineHandler = std::function<void(const PGpioLine&)>;
 
     explicit TGpioChipDriver(const TGpioChipConfig&);
     ~TGpioChipDriver();
 
     TGpioLinesByOffsetMap MapLinesByOffset() const;
+    TGpioLinesByOffsetMap MapInitiallyDisconnectedLinesByOffset() const;
 
     void AddToEpoll(int epfd);
     bool HandleInterrupt(const TInterruptionContext&);
@@ -37,8 +40,6 @@ public:
     bool PollLines();
 
     void ForEachLine(const TGpioLineHandler&) const;
-
-    void AddDisconnectedLine(const PGpioLine&);
 
 private:
     bool ReleaseLineIfUsed(const PGpioLine&);

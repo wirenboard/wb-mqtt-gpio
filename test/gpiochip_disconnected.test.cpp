@@ -12,9 +12,8 @@ TEST_F(TDisconnectedChipTest, init_disconnected_chip)
 {
     auto dummyPath = "/dev/DUMMY_PATH";
     auto chip = std::make_shared<TGpioChip>(dummyPath);
-    ASSERT_EQ(chip->GetName(), dummyPath);
-    ASSERT_EQ(chip->GetLabel(), "disconnected");
-    ASSERT_EQ(chip->GetLineCount(), 0);
+    ASSERT_EQ(chip->GetPath(), dummyPath);
+    ASSERT_FALSE(chip->IsValid());
 }
 
 class TGpioChipDisconnectedTest: public testing::Test
