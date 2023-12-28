@@ -46,7 +46,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                       PGpioLine line,
                                       const TGpioLineConfig& lineConfig,
                                       std::function<void(uint8_t)> setLineValueFn,
-                                      const std::string error)
+                                      const std::string error = "")
 {
     auto futureControl = device->CreateControl(tx,
                                                TControlArgs{}
@@ -55,7 +55,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                                    .SetReadonly(false)
                                                    .SetUserData(line)
                                                    .SetRawValue(lineConfig.InitialState ? "1" : "0")
-                                                    .SetError(error)
+                                                   .SetError(error)
                                                    .SetDoLoadPrevious(lineConfig.LoadPreviousState));
     setLineValueFn(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
     return futureControl;
@@ -109,7 +109,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                     if (itDisconnectedLine != mappedDisconnectedLines.end()) {
                         line = itDisconnectedLine->second;
                         lineError = "disconnected";
-                    } else 
+                    } else
                         continue; // happens if chip driver was unable to initialize line
                 }
 
@@ -150,9 +150,13 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                                                   .SetError(lineError)
                                                                   .SetRawValue(line->GetValue() == 1 ? "1" : "0"));
                     } else {
-                        futureControl = CreateOutputControl(device, tx, line, lineConfig, [&](uint8_t value) {
-                            line->SetValue(value);
-                        }, lineError);
+                        futureControl = CreateOutputControl(
+                            device,
+                            tx,
+                            line,
+                            lineConfig,
+                            [&](uint8_t value) { line->SetValue(value); },
+                            lineError);
                     }
                 }
 

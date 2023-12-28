@@ -34,4 +34,5 @@ WBMQTT::TFuture<WBMQTT::PControl> CreateOutputControl(WBMQTT::PLocalDevice devic
                                                       const WBMQTT::PDriverTx& tx,
                                                       PGpioLine line,
                                                       const TGpioLineConfig& lineConfig,
-                                                      std::function<void(uint8_t)> setLineValueFn);
+                                                      std::function<void(uint8_t)> setLineValueFn,
+                                                      const std::string error);

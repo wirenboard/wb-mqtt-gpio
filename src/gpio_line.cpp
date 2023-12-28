@@ -37,6 +37,8 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
 
     if (chip->IsValid())
         UpdateInfo();
+    else if (Config->Direction == EGpioDirection::Output)
+        Flags = GPIOLINE_FLAG_IS_OUT;
 }
 
 TGpioLine::TGpioLine(const TGpioLineConfig& config)
@@ -51,7 +53,7 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     Name = "Dummy gpio line";
-    Flags = 0;
+    Flags = GPIOLINE_FLAG_IS_OUT;
     Consumer = "null";
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 }

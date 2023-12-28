@@ -80,7 +80,7 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.LoadPreviousState = false;
 
         EXPECT_CALL(mockSetValue, Call(1));
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction(), "");
         future.Wait();
     }
 
@@ -90,7 +90,7 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.LoadPreviousState = false;
 
         EXPECT_CALL(mockSetValue, Call(0));
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction(), "");
         future.Wait();
     }
 
@@ -100,7 +100,7 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.LoadPreviousState = true;
 
         EXPECT_CALL(mockSetValue, Call(1));
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction(), "");
         future.Wait();
     }
 
@@ -110,7 +110,7 @@ TEST_F(TInitialStateTest, InitialStateTest)
         lineConfig.LoadPreviousState = true;
 
         EXPECT_CALL(mockSetValue, Call(0));
-        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction());
+        auto future = CreateOutputControl(device, tx, nullptr, lineConfig, mockSetValue.AsStdFunction(), "");
         future.Wait();
     }
 }

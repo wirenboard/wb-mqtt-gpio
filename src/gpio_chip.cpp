@@ -80,7 +80,7 @@ vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig& linesConfigs)
 
 void TGpioChip::ThrowErrIfNotValid() const
 {
-    if (! Valid)
+    if (!Valid)
         wb_throw(TGpioDriverException, "Gpiochip at " + Path + " seems to be not valid");
 }
 

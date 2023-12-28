@@ -25,7 +25,7 @@ protected:
     void SetUp()
     {
         fakeGpioLineConfig.DebounceTimeout = std::chrono::microseconds(0);
-        fakeGpioLineConfig.Offset = 0;
+        fakeGpioLineConfig.Offset = 12;
         fakeGpioLineConfig.Name = "testline";
         fakeGpioLineConfig.Direction = EGpioDirection::Input;
 
@@ -38,10 +38,8 @@ TEST_F(TGpioChipDisconnectedTest, add_disconnected_line)
     const auto chip = std::make_shared<TGpioChip>("disconnected_1");
     auto fakeGpioChipDriver = std::make_shared<TGpioChipDriver>(fakeGpioChipConfig);
     auto fakeGpioLine = std::make_shared<TGpioLine>(chip, fakeGpioLineConfig);
-    fakeGpioLine->SetFd(0);
-    ASSERT_EQ(fakeGpioLine->GetFd(), 0);
-    fakeGpioChipDriver->AddDisconnectedLine(fakeGpioLine);
-    ASSERT_EQ(fakeGpioLine->GetFd(), -2);
-    fakeGpioChipDriver->AddDisconnectedLine(fakeGpioLine);
-    ASSERT_EQ(fakeGpioLine->GetFd(), -3);
+
+    const auto& mappedDisconnectedLines = fakeGpioChipDriver->MapInitiallyDisconnectedLinesByOffset();
+    const auto& itDisconnectedLine = mappedDisconnectedLines.find(fakeGpioLine->GetOffset());
+    ASSERT_TRUE(itDisconnectedLine != mappedDisconnectedLines.end());
 }

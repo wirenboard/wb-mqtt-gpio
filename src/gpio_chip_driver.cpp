@@ -62,7 +62,7 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
         lineBulks.back().push_back(line);
     };
 
-    if (! Chip->IsValid()) {
+    if (!Chip->IsValid()) {
         for (const auto& lineConfig: config.Lines) {
             auto line = make_shared<TGpioLine>(Chip, lineConfig);
             LOG(Warn) << "Add " << line->DescribeShort() << " as initially disconnected";
