@@ -31,7 +31,7 @@ TEST_F(TLineErrorTest, set_clear_error)
     const auto fakeGpioLine = std::make_shared<TGpioLine>(chip, fakeGpioLineConfig);
     ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
     fakeGpioLine->IoctlGetGpiohandleData();
-    ASSERT_FALSE(fakeGpioLine->GetIoctlErrno() == 0);
+    ASSERT_NE(fakeGpioLine->GetIoctlErrno(), 0);
     fakeGpioLine->ClearError();
     ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
 }

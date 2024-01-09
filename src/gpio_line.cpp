@@ -205,7 +205,7 @@ struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
     Successful ioctl on disconnected line means, gpioline is back alive => doing re-init magic (if needed)
 */
 {
-    gpiohandle_data data;
+    gpiohandle_data data{};
     if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         SetIoctlErrno(errno);
