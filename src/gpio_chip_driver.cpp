@@ -171,7 +171,7 @@ TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapLinesByOffset() const
     return linesByOffset;
 }
 
-TGpioChipDriver::TGpioLinesByOffsetMap TGpioChipDriver::MapInitiallyDisconnectedLinesByOffset() const
+const TGpioChipDriver::TGpioLinesByOffsetMap& TGpioChipDriver::MapInitiallyDisconnectedLinesByOffset() const
 {
     return InitiallyDisconnectedLines;
 }

@@ -50,12 +50,11 @@ public:
     uint8_t GetValue() const;
     uint8_t GetValueUnfiltered() const;
     struct gpiohandle_data IoctlGetGpiohandleData();
-    void IoctlSetValue(uint8_t);
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
     int GetIoctlErrno() const;
-    void ClearError();
+    void ClearIoctlErrno();
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);
@@ -74,5 +73,6 @@ public:
     const TTimePoint& GetInterruptionTimepoint() const;
 
 private:
+    void IoctlSetValue(uint8_t);
     void SetIoctlErrno(int);
 };

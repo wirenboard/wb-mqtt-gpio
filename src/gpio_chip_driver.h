@@ -29,7 +29,7 @@ public:
     ~TGpioChipDriver();
 
     TGpioLinesByOffsetMap MapLinesByOffset() const;
-    TGpioLinesByOffsetMap MapInitiallyDisconnectedLinesByOffset() const;
+    const TGpioLinesByOffsetMap& MapInitiallyDisconnectedLinesByOffset() const;
 
     void AddToEpoll(int epfd);
     bool HandleInterrupt(const TInterruptionContext&);

@@ -46,7 +46,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                       PGpioLine line,
                                       const TGpioLineConfig& lineConfig,
                                       std::function<void(uint8_t)> setLineValueFn,
-                                      const std::string error = "")
+                                      std::string error)
 {
     auto futureControl = device->CreateControl(tx,
                                                TControlArgs{}

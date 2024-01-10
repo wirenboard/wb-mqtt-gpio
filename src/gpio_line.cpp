@@ -213,7 +213,7 @@ struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
         if (GetIoctlErrno() != 0) {
             LOG(Warn) << DescribeShort() << " is connected again. Clearing error '" << strerror(GetIoctlErrno())
                       << "' on it";
-            ClearError();
+            ClearIoctlErrno();
         }
     }
     return data;
@@ -296,7 +296,7 @@ void TGpioLine::SetNeedsReinit(bool needReinit)
     NeedsReinit = needReinit;
 }
 
-void TGpioLine::ClearError()
+void TGpioLine::ClearIoctlErrno()
 {
     if (IsOutput() && (AccessChip()->GetLabel() == "mcp23017")) {
         LOG(Warn) << DescribeShort() << " needs to be re-initialized";

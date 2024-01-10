@@ -28,5 +28,7 @@ public:
     uint32_t GetNumber() const;
     int GetFd() const;
     bool IsValid() const;
+
+private:
     void ThrowErrIfNotValid() const;
 };

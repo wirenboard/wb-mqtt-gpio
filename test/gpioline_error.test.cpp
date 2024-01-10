@@ -32,7 +32,7 @@ TEST_F(TLineErrorTest, set_clear_error)
     ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
     fakeGpioLine->IoctlGetGpiohandleData();
     ASSERT_NE(fakeGpioLine->GetIoctlErrno(), 0);
-    fakeGpioLine->ClearError();
+    fakeGpioLine->ClearIoctlErrno();
     ASSERT_EQ(fakeGpioLine->GetIoctlErrno(), 0);
 }
 
@@ -44,6 +44,6 @@ TEST_F(TLineErrorTest, does_need_reinit)
     fakeGpioLine->AccessChip()->SetLabel("mcp23017");
 
     ASSERT_FALSE(fakeGpioLine->GetNeedsReinit());
-    fakeGpioLine->ClearError();
+    fakeGpioLine->ClearIoctlErrno();
     ASSERT_TRUE(fakeGpioLine->GetNeedsReinit());
 }
