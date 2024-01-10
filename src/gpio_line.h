@@ -16,7 +16,6 @@ class TGpioLine
     int Fd;
     int TimerFd;
     std::string Error;
-    bool NeedsReinit;
     std::string Name;
     std::string Consumer;
 
@@ -41,8 +40,6 @@ public:
     uint32_t GetOffset() const;
     uint32_t GetFlags() const;
     bool IsOutput() const;
-    bool GetNeedsReinit() const;
-    void SetNeedsReinit(bool);
     bool IsActiveLow() const;
     bool IsUsed() const;
     bool IsOpenDrain() const;
@@ -54,7 +51,6 @@ public:
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
     std::string GetError() const;
-    void ClearError();
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);

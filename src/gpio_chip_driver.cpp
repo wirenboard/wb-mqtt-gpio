@@ -383,46 +383,6 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
     return true;
 }
 
-void TGpioChipDriver::ReInitOutput(const PGpioLine& line)
-{
-    /*
-        MCP's POR state is input => we need to init gpio-extender module as output on physicall reconnect.
-
-        "pinctrl_mcp23s08" kernel driver has internal cache => once init module as input
-        and then init as output to trigger needed i2c communication with mcp.
-    */
-    if (line->GetConfig()->Direction != EGpioDirection::Output) {
-        wb_throw(TGpioDriverException, "Only output line needs re-init magic after reconnecting");
-    }
-
-    LOG(Warn) << "Reinit (request as input -> output) " << line->DescribeShort() << " to bring it back to life";
-
-    auto oldFd = line->GetFd();
-    auto it = Lines.find(oldFd);
-    const auto copiedLine = std::move(it->second.front());
-    Lines.erase(it);
-    if (oldFd > 0)
-        close(oldFd);
-
-    gpioevent_request req{};
-    req.lineoffset = copiedLine->GetOffset();
-    req.handleflags |= GPIOHANDLE_REQUEST_INPUT;
-    req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
-    strcpy(req.consumer_label, CONSUMER);
-
-    if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {
-        LOG(Error) << "Re-init " << copiedLine->DescribeShort() << " as input failed";
-        wb_throw(TGpioDriverException, "GPIO_GET_LINEEVENT_IOCTL: " + string(strerror(errno)));
-    }
-    close(req.fd);
-
-    if (!InitOutput(copiedLine, copiedLine->GetValue())) {
-        wb_throw(TGpioDriverException, "Failed to init " + copiedLine->DescribeShort() + " as output");
-    }
-    copiedLine->SetNeedsReinit(false);
-    LOG(Debug) << copiedLine->DescribeShort() << "is alive again";
-}
-
 bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
 {
     const auto& config = line->GetConfig();
@@ -540,11 +500,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             }
         } else { /* for output just set value to cache (if no error on gpioline): it will publish it if
                     changed */
-            if (line->GetNeedsReinit()) {
-                ReInitOutput(line);
-                continue;
-            }
-            if (line->GetError() == "")
+            if (line->GetError().empty())
                 line->SetCachedValue(newValue);
         }
     }

@@ -22,7 +22,6 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       Fd(-1),
       TimerFd(-1),
       Error(""),
-      NeedsReinit(false),
       Value(0),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
@@ -48,7 +47,6 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       TimerFd(-1),
       Error(""),
       Value(0),
-      NeedsReinit(false),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
 {
@@ -162,11 +160,6 @@ bool TGpioLine::IsOutput() const
     return Flags & GPIOLINE_FLAG_IS_OUT;
 }
 
-bool TGpioLine::GetNeedsReinit() const
-{
-    return NeedsReinit;
-}
-
 bool TGpioLine::IsActiveLow() const
 {
     return Flags & GPIOLINE_FLAG_ACTIVE_LOW;
@@ -201,19 +194,12 @@ struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
 /*
     Unsuccessful GPIOHANDLE_GET_LINE_VALUES_IOCTL means, gpioline is disconnected
     => set Error and treat gpioline as disconnected
-
-    Successful ioctl on disconnected line means, gpioline is back alive => doing re-init magic (if needed)
 */
 {
     gpiohandle_data data{};
     if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         SetError("r");
-    } else {
-        if (!GetError().empty()) {
-            LOG(Warn) << DescribeShort() << " is connected again. Clearing error '" << GetError() << "' on it";
-            ClearError();
-        }
     }
     return data;
 }
@@ -287,20 +273,6 @@ void TGpioLine::SetError(std::string err)
 std::string TGpioLine::GetError() const
 {
     return Error;
-}
-
-void TGpioLine::SetNeedsReinit(bool needReinit)
-{
-    NeedsReinit = needReinit;
-}
-
-void TGpioLine::ClearError()
-{
-    if (IsOutput() && (AccessChip()->GetLabel() == "mcp23017")) {
-        LOG(Warn) << DescribeShort() << " needs to be re-initialized";
-        SetNeedsReinit(true);
-    }
-    SetError("");
 }
 
 int TGpioLine::GetFd() const
