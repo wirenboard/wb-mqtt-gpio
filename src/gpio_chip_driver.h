@@ -45,10 +45,10 @@ private:
     bool ReleaseLineIfUsed(const PGpioLine&);
     bool TryListenLine(const PGpioLine&);
     bool InitOutput(const PGpioLine&, bool value);
+    bool FlushMcp23xState(const PGpioLine&);
     bool InitInputInterrupts(const PGpioLine&);
     bool InitLinesPolling(uint32_t flags, const TGpioLines& lines);
 
-    void FlushMcp23xState(const PGpioLine&);
     void PollLinesValues(const TGpioLines&);
     void ReadLinesValues(const TGpioLines&);
 

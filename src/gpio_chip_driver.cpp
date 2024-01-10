@@ -84,7 +84,8 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
             }
             case EGpioDirection::Output: {
                 if (!InitOutput(line, line->GetConfig()->InitialState)) {
-                    LOG(Error) << "Skipping output" << line->DescribeShort();
+                    LOG(Error) << "Treating " << line->DescribeShort() << "as disconnected";
+                    InitiallyDisconnectedLines[line->GetOffset()] = line;
                 }
                 break;
             }
@@ -101,12 +102,13 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
                 auto logError = move(LOG(Error) << "Failed to initialize polling of lines (treating as disconnected):");
                 for (const auto& line: lines) {
                     logError << "\n\t" << line->DescribeShort();
+                    InitiallyDisconnectedLines[line->GetOffset()] = line;
                 }
             }
         }
     }
 
-    if (Lines.empty()) {
+    if (Lines.empty() && InitiallyDisconnectedLines.empty()) {
         wb_throw(TGpioDriverException, "Failed to initialize any line");
     }
 
@@ -383,7 +385,7 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
     return true;
 }
 
-void TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
+bool TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
 {
     /*
         MCP's POR state is input => we need to init gpio-extender module as output on physicall reconnect.
@@ -404,10 +406,12 @@ void TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
     strcpy(req.consumer_label, CONSUMER);
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {
-        LOG(Error) << "Temporary init " << line->DescribeShort() << " as input failed";
-        wb_throw(TGpioDriverException, "GPIO_GET_LINEEVENT_IOCTL: " + string(strerror(errno)));
+        LOG(Error) << "Temporary init " << line->DescribeShort()
+                   << " as input failed. GPIO_GET_LINEEVENT_IOCTL: " << strerror(errno);
+        return false;
     }
     close(req.fd);
+    return true;
 }
 
 bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
@@ -416,7 +420,8 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
     assert(config->Direction == EGpioDirection::Output);
 
     if (Chip->GetLabel() == "mcp23017")
-        FlushMcp23xState(line);
+        if (!FlushMcp23xState(line))
+            return false;
 
     gpiohandle_request req;
     memset(&req, 0, sizeof(gpiohandle_request));
@@ -505,6 +510,10 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
     assert(!lines.empty());
 
     const auto& line = lines.front();
+
+    if (!line->GetError().empty())
+        return;
+
     auto fd = line->GetFd();
     auto data = line->IoctlGetGpiohandleData();
 
@@ -528,10 +537,9 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             } else { /* in other case let line do idle actions */
                 line->Update();
             }
-        } else { /* for output just set value to cache (if no error on gpioline): it will publish it if
+        } else { /* for output just set value to cache: it will publish it if
                     changed */
-            if (line->GetError().empty())
-                line->SetCachedValue(newValue);
+            line->SetCachedValue(newValue);
         }
     }
 }

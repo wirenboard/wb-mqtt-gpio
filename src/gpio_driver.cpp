@@ -108,7 +108,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                     const auto& itDisconnectedLine = mappedDisconnectedLines.find(lineConfig.Offset);
                     if (itDisconnectedLine != mappedDisconnectedLines.end()) {
                         line = itDisconnectedLine->second;
-                        lineError = "disconnected";
+                        lineError = "r";
                     } else
                         continue; // happens if chip driver was unable to initialize line
                 }
