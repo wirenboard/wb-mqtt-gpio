@@ -383,10 +383,40 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
     return true;
 }
 
+void TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
+{
+    /*
+        MCP's POR state is input => we need to init gpio-extender module as output on physicall reconnect.
+
+        "pinctrl_mcp23s08" kernel driver has internal cache => once init module as input
+        and then init as output to trigger needed i2c communication with mcp.
+    */
+    if (line->GetConfig()->Direction != EGpioDirection::Output) {
+        wb_throw(TGpioDriverException, "Only output lines need flushing-state magic after physical reconnect");
+    }
+
+    LOG(Debug) << "Flush state of " << line->DescribeShort() << " to guarantee, it is alive after any disconnects";
+
+    gpioevent_request req{};
+    req.lineoffset = line->GetOffset();
+    req.handleflags |= GPIOHANDLE_REQUEST_INPUT;
+    req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
+    strcpy(req.consumer_label, CONSUMER);
+
+    if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {
+        LOG(Error) << "Temporary init " << line->DescribeShort() << " as input failed";
+        wb_throw(TGpioDriverException, "GPIO_GET_LINEEVENT_IOCTL: " + string(strerror(errno)));
+    }
+    close(req.fd);
+}
+
 bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
 {
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
+
+    if (Chip->GetLabel() == "mcp23017")
+        FlushMcp23xState(line);
 
     gpiohandle_request req;
     memset(&req, 0, sizeof(gpiohandle_request));
