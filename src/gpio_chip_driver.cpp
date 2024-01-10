@@ -544,7 +544,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
                 ReInitOutput(line);
                 continue;
             }
-            if (line->GetIoctlErrno() == 0)
+            if (line->GetError() == "")
                 line->SetCachedValue(newValue);
         }
     }

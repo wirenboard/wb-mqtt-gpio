@@ -205,11 +205,10 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
             }
         }
 
-        auto lineError = line->GetIoctlErrno();
-        if (lineError) {
-            event.Control->GetDevice()->GetDriver()->AccessAsync([=](const PDriverTx& tx) {
-                event.Control->UpdateValueAndError(tx, valueForPublishing, strerror(lineError));
-            });
+        auto lineError = line->GetError();
+        if (!lineError.empty()) {
+            event.Control->GetDevice()->GetDriver()->AccessAsync(
+                [=](const PDriverTx& tx) { event.Control->UpdateValueAndError(tx, valueForPublishing, lineError); });
         } else {
             event.Control->GetDevice()->GetDriver()->AccessAsync(
                 [=](const PDriverTx& tx) { event.Control->SetRawValue(tx, valueForPublishing); });
@@ -235,66 +234,65 @@ void TGpioDriver::Start()
         Active = true;
     }
 
-    Worker =
-        WBMQTT::MakeThread("GPIO worker", {[this] {
-                               LOG(Info) << "Started";
+    Worker = WBMQTT::MakeThread("GPIO worker", {[this] {
+                                    LOG(Info) << "Started";
 
-                               int epfd = epoll_create(1); // creating epoll for Interrupts
-                               struct epoll_event events[EPOLL_EVENT_COUNT]
-                               {};
+                                    int epfd = epoll_create(1); // creating epoll for Interrupts
+                                    struct epoll_event events[EPOLL_EVENT_COUNT]
+                                    {};
 
-                               WB_SCOPE_EXIT(close(epfd);)
+                                    WB_SCOPE_EXIT(close(epfd);)
 
-                               for (const auto& chipDriver: ChipDrivers) {
-                                   chipDriver->AddToEpoll(epfd);
-                               }
+                                    for (const auto& chipDriver: ChipDrivers) {
+                                        chipDriver->AddToEpoll(epfd);
+                                    }
 
-                               while (Active) {
-                                   bool isHandled = false;
-                                   if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
-                                       TInterruptionContext ctx{count, events};
-                                       for (const auto& chipDriver: ChipDrivers) {
-                                           isHandled |= chipDriver->HandleInterrupt(ctx);
-                                       }
-                                   } else {
-                                       for (const auto& chipDriver: ChipDrivers) {
-                                           isHandled |= chipDriver->PollLines();
-                                       }
-                                   }
+                                    while (Active) {
+                                        bool isHandled = false;
+                                        if (int count = epoll_wait(epfd, events, EPOLL_EVENT_COUNT, EPOLL_TIMEOUT_MS)) {
+                                            TInterruptionContext ctx{count, events};
+                                            for (const auto& chipDriver: ChipDrivers) {
+                                                isHandled |= chipDriver->HandleInterrupt(ctx);
+                                            }
+                                        } else {
+                                            for (const auto& chipDriver: ChipDrivers) {
+                                                isHandled |= chipDriver->PollLines();
+                                            }
+                                        }
 
-                                   if (!isHandled) {
-                                       continue;
-                                   }
+                                        if (!isHandled) {
+                                            continue;
+                                        }
 
-                                   auto tx = MqttDriver->BeginTx();
-                                   auto device = tx->GetDevice(Name);
+                                        auto tx = MqttDriver->BeginTx();
+                                        auto device = tx->GetDevice(Name);
 
-                                   for (const auto& chipDriver: ChipDrivers) {
-                                       FOR_EACH_LINE(chipDriver, line)
-                                       {
-                                           const auto err = line->GetIoctlErrno();
-                                           if (err) {
-                                               device->GetControl(line->GetConfig()->Name)->SetError(tx, strerror(err));
-                                           } else {
-                                               if (const auto& counter = line->GetCounter()) {
-                                                   for (const auto& idValue:
-                                                        counter->GetIdsAndValues(line->GetConfig()->Name)) {
-                                                       const auto& id = idValue.first;
-                                                       const auto value = idValue.second;
+                                        for (const auto& chipDriver: ChipDrivers) {
+                                            FOR_EACH_LINE(chipDriver, line)
+                                            {
+                                                const auto err = line->GetError();
+                                                if (!err.empty()) {
+                                                    device->GetControl(line->GetConfig()->Name)->SetError(tx, err);
+                                                } else {
+                                                    if (const auto& counter = line->GetCounter()) {
+                                                        for (const auto& idValue:
+                                                             counter->GetIdsAndValues(line->GetConfig()->Name)) {
+                                                            const auto& id = idValue.first;
+                                                            const auto value = idValue.second;
 
-                                                       device->GetControl(id)->SetRawValue(tx, value);
-                                                   }
-                                               } else {
-                                                   device->GetControl(line->GetConfig()->Name)
-                                                       ->SetValue(tx, static_cast<bool>(line->GetValue()));
-                                               }
-                                           }
-                                       });
-                                   }
-                               }
+                                                            device->GetControl(id)->SetRawValue(tx, value);
+                                                        }
+                                                    } else {
+                                                        device->GetControl(line->GetConfig()->Name)
+                                                            ->SetValue(tx, static_cast<bool>(line->GetValue()));
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
 
-                               LOG(Info) << "Stopped";
-                           }});
+                                    LOG(Info) << "Stopped";
+                                }});
 }
 
 void TGpioDriver::Stop()

@@ -21,7 +21,7 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       Offset(config.Offset),
       Fd(-1),
       TimerFd(-1),
-      IoctlErrno(0),
+      Error(""),
       NeedsReinit(false),
       Value(0),
       ValueUnfiltered(0),
@@ -46,7 +46,7 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       Offset(config.Offset),
       Fd(-1),
       TimerFd(-1),
-      IoctlErrno(0),
+      Error(""),
       Value(0),
       NeedsReinit(false),
       ValueUnfiltered(0),
@@ -73,8 +73,8 @@ void TGpioLine::UpdateInfo()
 
     int retVal = ioctl(AccessChip()->GetFd(), GPIO_GET_LINEINFO_IOCTL, &info);
     if (retVal < 0) {
-        LOG(Error) << "Unable to load " << Describe();
-        SetIoctlErrno(errno);
+        LOG(Error) << "Unable to load " << Describe() << ": GPIO_GET_LINEINFO_IOCTL failed: " << strerror(errno);
+        SetError("r");
         return;
     }
 
@@ -200,7 +200,7 @@ uint8_t TGpioLine::GetValueUnfiltered() const
 struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
 /*
     Unsuccessful GPIOHANDLE_GET_LINE_VALUES_IOCTL means, gpioline is disconnected
-    => set IoctlErrno and treat gpioline as disconnected
+    => set Error and treat gpioline as disconnected
 
     Successful ioctl on disconnected line means, gpioline is back alive => doing re-init magic (if needed)
 */
@@ -208,12 +208,11 @@ struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
     gpiohandle_data data{};
     if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        SetIoctlErrno(errno);
+        SetError("r");
     } else {
-        if (GetIoctlErrno() != 0) {
-            LOG(Warn) << DescribeShort() << " is connected again. Clearing error '" << strerror(GetIoctlErrno())
-                      << "' on it";
-            ClearIoctlErrno();
+        if (!GetError().empty()) {
+            LOG(Warn) << DescribeShort() << " is connected again. Clearing error '" << GetError() << "' on it";
+            ClearError();
         }
     }
     return data;
@@ -222,7 +221,7 @@ struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
 void TGpioLine::IoctlSetValue(uint8_t value)
 /*
     Unsuccessful GPIOHANDLE_SET_LINE_VALUES_IOCTL means, gpioline is disconnected
-    => set IoctlErrno and treat gpioline as disconnected
+    => set Error and treat gpioline as disconnected
 */
 {
     LOG(Debug) << "Set " << DescribeShort() << " = " << static_cast<int>(value);
@@ -235,19 +234,18 @@ void TGpioLine::IoctlSetValue(uint8_t value)
         LOG(Error)
         "Set " << to_string((int)value) << " to: " << DescribeShort()
                << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        SetIoctlErrno(errno);
+        SetError("w");
     }
 }
 
 void TGpioLine::SetValue(uint8_t value)
 {
-    auto error = GetIoctlErrno();
-    if (error == 0) {
+    auto error = GetError();
+    if (error.empty()) {
         IoctlSetValue(value);
         SetCachedValue(value);
     } else {
-        LOG(Warn) << DescribeShort() << " has error: " << strerror(error) << "; Will not set value "
-                  << to_string(value);
+        LOG(Warn) << DescribeShort() << " has error: " << error << "; Will not set value " << to_string(value);
     }
 }
 
@@ -281,14 +279,14 @@ void TGpioLine::SetFd(int fd)
     UpdateInfo();
 }
 
-void TGpioLine::SetIoctlErrno(int err)
+void TGpioLine::SetError(std::string err)
 {
-    IoctlErrno = err;
+    Error = err;
 }
 
-int TGpioLine::GetIoctlErrno() const
+std::string TGpioLine::GetError() const
 {
-    return IoctlErrno;
+    return Error;
 }
 
 void TGpioLine::SetNeedsReinit(bool needReinit)
@@ -296,13 +294,13 @@ void TGpioLine::SetNeedsReinit(bool needReinit)
     NeedsReinit = needReinit;
 }
 
-void TGpioLine::ClearIoctlErrno()
+void TGpioLine::ClearError()
 {
     if (IsOutput() && (AccessChip()->GetLabel() == "mcp23017")) {
         LOG(Warn) << DescribeShort() << " needs to be re-initialized";
         SetNeedsReinit(true);
     }
-    SetIoctlErrno(0);
+    SetError("");
 }
 
 int TGpioLine::GetFd() const
