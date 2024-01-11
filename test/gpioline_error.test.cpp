@@ -25,11 +25,15 @@ TEST_F(TLineErrorTest, initial_error)
     ASSERT_TRUE(fakeGpioLine->GetError().empty());
 }
 
-TEST_F(TLineErrorTest, set_error)
+TEST_F(TLineErrorTest, set_clear_error)
 {
     const auto chip = std::make_shared<TGpioChip>("disconnected_1");
     const auto fakeGpioLine = std::make_shared<TGpioLine>(chip, fakeGpioLineConfig);
     ASSERT_TRUE(fakeGpioLine->GetError().empty());
-    fakeGpioLine->IoctlGetGpiohandleData();
-    ASSERT_FALSE(fakeGpioLine->GetError().empty());
+    fakeGpioLine->SetError("w");
+    fakeGpioLine->SetError("r");
+    fakeGpioLine->SetError("r");
+    fakeGpioLine->SetError("p");
+    fakeGpioLine->SetError("p");
+    ASSERT_EQ(fakeGpioLine->GetError(), "wrp");
 }

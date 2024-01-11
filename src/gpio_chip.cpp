@@ -94,11 +94,6 @@ const string& TGpioChip::GetLabel() const
     return Label;
 }
 
-void TGpioChip::SetLabel(const string& label)
-{
-    Label = label;
-}
-
 const string& TGpioChip::GetPath() const
 {
     return Path;

@@ -46,7 +46,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                       PGpioLine line,
                                       const TGpioLineConfig& lineConfig,
                                       std::function<void(uint8_t)> setLineValueFn,
-                                      std::string error)
+                                      const std::string& error)
 {
     auto futureControl = device->CreateControl(tx,
                                                TControlArgs{}
@@ -99,18 +99,19 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
             for (const auto& lineConfig: chipConfig.Lines) {
 
                 PGpioLine line;
-                std::string lineError = "";
+                std::string lineError;
 
                 const auto& itOffsetLine = mappedLines.find(lineConfig.Offset);
                 if (itOffsetLine != mappedLines.end()) {
                     line = itOffsetLine->second;
                 } else {
                     const auto& itDisconnectedLine = mappedDisconnectedLines.find(lineConfig.Offset);
-                    if (itDisconnectedLine != mappedDisconnectedLines.end()) {
-                        line = itDisconnectedLine->second;
-                        lineError = "r";
-                    } else
+
+                    if (itDisconnectedLine == mappedDisconnectedLines.end()) {
                         continue; // happens if chip driver was unable to initialize line
+                    }
+                    line = itDisconnectedLine->second;
+                    lineError = "r";
                 }
 
                 auto futureControl = TPromise<PControl>::GetValueFuture(nullptr);

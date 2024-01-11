@@ -190,28 +190,14 @@ uint8_t TGpioLine::GetValueUnfiltered() const
     return ValueUnfiltered.Get();
 }
 
-struct gpiohandle_data TGpioLine::IoctlGetGpiohandleData()
-/*
-    Unsuccessful GPIOHANDLE_GET_LINE_VALUES_IOCTL means, gpioline is disconnected
-    => set Error and treat gpioline as disconnected
-*/
+void TGpioLine::SetValue(uint8_t value)
 {
-    gpiohandle_data data{};
-    if (ioctl(GetFd(), GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << DescribeShort() << " GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        SetError("r");
+    if (!GetError().empty()) {
+        LOG(Warn) << DescribeShort() << " has error; Will not set value " << to_string(value);
+        return;
     }
-    return data;
-}
 
-void TGpioLine::IoctlSetValue(uint8_t value)
-/*
-    Unsuccessful GPIOHANDLE_SET_LINE_VALUES_IOCTL means, gpioline is disconnected
-    => set Error and treat gpioline as disconnected
-*/
-{
-    LOG(Debug) << "Set " << DescribeShort() << " = " << static_cast<int>(value);
-
+    LOG(Debug) << DescribeShort() << " = " << static_cast<int>(value);
     gpiohandle_data data{};
 
     data.values[0] = value;
@@ -220,18 +206,10 @@ void TGpioLine::IoctlSetValue(uint8_t value)
         LOG(Error) << "Set " << to_string((int)value) << " to: " << DescribeShort()
                    << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         SetError("w");
+        return;
     }
-}
 
-void TGpioLine::SetValue(uint8_t value)
-{
-    auto error = GetError();
-    if (error.empty()) {
-        IoctlSetValue(value);
-        SetCachedValue(value);
-    } else {
-        LOG(Warn) << DescribeShort() << " has error: " << error << "; Will not set value " << to_string(value);
-    }
+    SetCachedValue(value);
 }
 
 void TGpioLine::SetCachedValue(uint8_t value)
@@ -264,12 +242,13 @@ void TGpioLine::SetFd(int fd)
     UpdateInfo();
 }
 
-void TGpioLine::SetError(std::string err)
+void TGpioLine::SetError(const std::string& err)
 {
-    Error = err;
+    if (Error.empty() || (Error.substr(Error.size() - 1) != err))
+        Error += err;
 }
 
-std::string TGpioLine::GetError() const
+const std::string& TGpioLine::GetError() const
 {
     return Error;
 }

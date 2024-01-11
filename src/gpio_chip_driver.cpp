@@ -83,8 +83,9 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
                 break;
             }
             case EGpioDirection::Output: {
-                if (!InitOutput(line, line->GetConfig()->InitialState)) {
-                    LOG(Error) << "Treating " << line->DescribeShort() << "as disconnected";
+                if (!InitOutput(line)) {
+                    LOG(Error) << "Failed to init output " << line->DescribeShort()
+                               << ". Treating as initially disconnected";
                     InitiallyDisconnectedLines[line->GetOffset()] = line;
                 }
                 break;
@@ -99,9 +100,9 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
 
         for (const auto& lines: lineBulks) {
             if (!InitLinesPolling(flags, lines)) {
-                auto logError = move(LOG(Error) << "Failed to initialize polling of lines (treating as disconnected):");
                 for (const auto& line: lines) {
-                    logError << "\n\t" << line->DescribeShort();
+                    LOG(Error) << "Failed to init polling " << line->DescribeShort()
+                               << ". Treating as initially disconnected";
                     InitiallyDisconnectedLines[line->GetOffset()] = line;
                 }
             }
@@ -240,7 +241,12 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
         auto time = ctx.ToSteadyClock(data.timestamp);
 
         if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) { // update gpioline's last interruption ts
-            auto data = line->IoctlGetGpiohandleData();
+            gpiohandle_data data;
+            if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+                LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+                line->SetError("r");
+                return false;
+            }
             line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
             SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
             isHandled = true;
@@ -414,7 +420,7 @@ bool TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
     return true;
 }
 
-bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
+bool TGpioChipDriver::InitOutput(const PGpioLine& line)
 {
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
@@ -427,8 +433,8 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line, bool value)
     memset(&req, 0, sizeof(gpiohandle_request));
     req.lines = 1;
     req.lineoffsets[0] = line->GetOffset();
-    req.default_values[0] = value;
-    req.flags = GetFlagsFromConfig(*config);
+    req.default_values[0] = config->InitialState;
+    req.flags = GetFlagsFromConfig(*config, line->IsOutput());
     strcpy(req.consumer_label, CONSUMER);
 
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEHANDLE_IOCTL, &req) < 0) {
@@ -509,13 +515,19 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 {
     assert(!lines.empty());
 
-    const auto& line = lines.front();
-
-    if (!line->GetError().empty())
+    if (!lines.front()->GetError().empty())
         return;
 
-    auto fd = line->GetFd();
-    auto data = line->IoctlGetGpiohandleData();
+    auto fd = lines.front()->GetFd();
+    gpiohandle_data data;
+    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        for (const auto& line: lines) {
+            LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected (and excluding from poll)";
+            line->SetError("r");
+        }
+        return;
+    }
 
     auto now = chrono::steady_clock::now();
     for (uint32_t i = 0; i < lines.size(); ++i) {
@@ -549,10 +561,16 @@ void TGpioChipDriver::ReadLinesValues(const TGpioLines& lines)
     if (lines.empty()) {
         return;
     }
-    const auto& line = lines.front();
-    auto fd = line->GetFd();
+    auto fd = lines.front()->GetFd();
 
-    auto data = line->IoctlGetGpiohandleData();
+    gpiohandle_data data;
+    if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
+        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        for (const auto& line: lines) {
+            line->SetError("r");
+        }
+        return;
+    }
 
     uint32_t i = 0;
     for (const auto& line: lines) {

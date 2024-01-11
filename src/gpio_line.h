@@ -46,11 +46,11 @@ public:
     bool IsOpenSource() const;
     uint8_t GetValue() const;
     uint8_t GetValueUnfiltered() const;
-    struct gpiohandle_data IoctlGetGpiohandleData();
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
-    std::string GetError() const;
+    const std::string& GetError() const;
+    void SetError(const std::string&);
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);
@@ -67,8 +67,4 @@ public:
     std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint& interruptTimePoint) const;
     bool UpdateIfStable(const TTimePoint& checkTimePoint);
     const TTimePoint& GetInterruptionTimepoint() const;
-
-private:
-    void IoctlSetValue(uint8_t);
-    void SetError(std::string);
 };
