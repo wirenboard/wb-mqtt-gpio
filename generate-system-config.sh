@@ -42,12 +42,14 @@ if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
     item_names=""
     input_names=""
     output_names=""
+    disconnected_chip_counter=0
     for gpioname in  $(of_node_children "$node" | sort); do
         gpio="$(of_get_prop_gpio "$node/$gpioname" "io-gpios")"
         item_phandle=$(of_get_prop_ulong "$node/$gpioname" "io-gpios" | awk '{print $1}')
         item_chip_num=${PHANDLE_MAP[$item_phandle]}
         if [[ -z $item_chip_num ]]; then
-            gpiochip_path="disconnected_gpiochip"
+            disconnected_chip_counter=$((disconnected_chip_counter + 1))
+            gpiochip_path="disconnected_gpiochip_$disconnected_chip_counter"
         else
             gpiochip_path="/dev/gpiochip$item_chip_num"
         fi

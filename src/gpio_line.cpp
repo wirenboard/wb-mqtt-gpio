@@ -217,9 +217,8 @@ void TGpioLine::IoctlSetValue(uint8_t value)
     data.values[0] = value;
 
     if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error)
-        "Set " << to_string((int)value) << " to: " << DescribeShort()
-               << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        LOG(Error) << "Set " << to_string((int)value) << " to: " << DescribeShort()
+                   << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         SetError("w");
     }
 }
