@@ -21,7 +21,6 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       Offset(config.Offset),
       Fd(-1),
       TimerFd(-1),
-      Error(""),
       Value(0),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
@@ -45,7 +44,6 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       Offset(config.Offset),
       Fd(-1),
       TimerFd(-1),
-      Error(""),
       Value(0),
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
@@ -194,6 +192,7 @@ void TGpioLine::SetValue(uint8_t value)
 {
     if (!GetError().empty()) {
         LOG(Warn) << DescribeShort() << " has error; Will not set value " << to_string(value);
+        SetError("w");
         return;
     }
 
@@ -244,7 +243,7 @@ void TGpioLine::SetFd(int fd)
 
 void TGpioLine::SetError(const std::string& err)
 {
-    if (Error.empty() || (Error.substr(Error.size() - 1) != err))
+    if (Error.find(err) == std::string::npos)
         Error += err;
 }
 
