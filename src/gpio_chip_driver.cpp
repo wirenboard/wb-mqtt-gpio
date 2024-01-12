@@ -416,6 +416,7 @@ bool TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
                    << " as input failed. GPIO_GET_LINEEVENT_IOCTL: " << strerror(errno);
         return false;
     }
+    line->UpdateInfo();
     close(req.fd);
     return true;
 }
@@ -425,7 +426,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line)
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
 
-    if (Chip->GetLabel() == "mcp23017")
+    if (Chip->GetLabel() == "mcp23017" || Chip->GetLabel() == "mcp23008")
         if (!FlushMcp23xState(line))
             return false;
 
