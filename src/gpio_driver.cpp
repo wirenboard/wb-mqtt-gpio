@@ -99,7 +99,6 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
             for (const auto& lineConfig: chipConfig.Lines) {
 
                 PGpioLine line;
-                std::string lineError;
 
                 const auto& itOffsetLine = mappedLines.find(lineConfig.Offset);
                 if (itOffsetLine != mappedLines.end()) {
@@ -111,7 +110,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                         continue; // happens if chip driver was unable to initialize line
                     }
                     line = itDisconnectedLine->second;
-                    lineError = "r";
+                    line->SetError("r");
                 }
 
                 auto futureControl = TPromise<PControl>::GetValueFuture(nullptr);
@@ -130,7 +129,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                 .SetType(move(type))
                                 .SetReadonly(lineConfig.Direction == EGpioDirection::Input && !isTotal)
                                 .SetUserData(line)
-                                .SetError(lineError)
+                                .SetError(line->GetError())
                                 .SetDoLoadPrevious(isTotal));
 
                         if (isTotal) {
@@ -148,7 +147,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                                                   .SetType("switch")
                                                                   .SetReadonly(true)
                                                                   .SetUserData(line)
-                                                                  .SetError(lineError)
+                                                                  .SetError(line->GetError())
                                                                   .SetRawValue(line->GetValue() == 1 ? "1" : "0"));
                     } else {
                         futureControl = CreateOutputControl(
@@ -157,7 +156,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                             line,
                             lineConfig,
                             [&](uint8_t value) { line->SetValue(value); },
-                            lineError);
+                            line->GetError());
                     }
                 }
 
@@ -209,7 +208,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
         auto lineError = line->GetError();
         if (!lineError.empty()) {
             event.Control->GetDevice()->GetDriver()->AccessAsync(
-                [=](const PDriverTx& tx) { event.Control->UpdateValueAndError(tx, valueForPublishing, lineError); });
+                [=](const PDriverTx& tx) { event.Control->SetError(tx, lineError); });
         } else {
             event.Control->GetDevice()->GetDriver()->AccessAsync(
                 [=](const PDriverTx& tx) { event.Control->SetRawValue(tx, valueForPublishing); });

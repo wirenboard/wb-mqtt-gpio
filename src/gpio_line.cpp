@@ -191,7 +191,7 @@ uint8_t TGpioLine::GetValueUnfiltered() const
 void TGpioLine::SetValue(uint8_t value)
 {
     if (!GetError().empty()) {
-        LOG(Warn) << DescribeShort() << " has error; Will not set value " << to_string(value);
+        LOG(Warn) << DescribeShort() << " has error " << GetError() << "; Will not set value " << to_string(value);
         SetError("w");
         return;
     }
