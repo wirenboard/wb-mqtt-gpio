@@ -16,11 +16,16 @@
 
 using namespace std;
 
-TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
+TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path), Valid(false)
 {
     Fd = open(Path.c_str(), O_RDWR | O_CLOEXEC);
     if (Fd < 0) {
-        wb_throw(TGpioDriverException, "unable to open device path '" + Path + "'");
+        Name = Path;
+        Label = "disconnected";
+        LineCount = 0;
+        LOG(Error) << "Unable to open device path '" << Path << "'"
+                   << ". Will treat all lines on it as disconnected";
+        return;
     }
 
     LOG(Debug) << "Open chip at " << Path;
@@ -33,6 +38,7 @@ TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
         wb_throw(TGpioDriverException, "unable to get GPIO chip info from '" + Path + "'");
     }
 
+    Valid = true;
     LineCount = info.lines;
 
     Name = info.name;
@@ -43,7 +49,7 @@ TGpioChip::TGpioChip(const string& path): Fd(-1), Path(path)
     }
 }
 
-TGpioChip::TGpioChip(): Fd(-1), Path("/dev/null")
+TGpioChip::TGpioChip(): Fd(-1), Path("/dev/null"), Valid(false)
 {
     LineCount = 0;
     Name = "Dummy gpiochip";
@@ -72,6 +78,12 @@ vector<PGpioLine> TGpioChip::LoadLines(const TLinesConfig& linesConfigs)
     return lines;
 }
 
+void TGpioChip::ThrowErrIfNotValid() const
+{
+    if (!Valid)
+        wb_throw(TGpioDriverException, "Gpiochip at " + Path + " seems to be not valid");
+}
+
 const string& TGpioChip::GetName() const
 {
     return Name;
@@ -89,6 +101,7 @@ const string& TGpioChip::GetPath() const
 
 uint32_t TGpioChip::GetLineCount() const
 {
+    ThrowErrIfNotValid();
     return LineCount;
 }
 
@@ -104,5 +117,11 @@ string TGpioChip::Describe() const
 
 int TGpioChip::GetFd() const
 {
+    ThrowErrIfNotValid();
     return Fd;
+}
+
+bool TGpioChip::IsValid() const
+{
+    return Valid;
 }

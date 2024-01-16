@@ -45,7 +45,8 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                       const WBMQTT::PDriverTx& tx,
                                       PGpioLine line,
                                       const TGpioLineConfig& lineConfig,
-                                      std::function<void(uint8_t)> setLineValueFn)
+                                      std::function<void(uint8_t)> setLineValueFn,
+                                      const std::string& error)
 {
     auto futureControl = device->CreateControl(tx,
                                                TControlArgs{}
@@ -54,6 +55,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                                    .SetReadonly(false)
                                                    .SetUserData(line)
                                                    .SetRawValue(lineConfig.InitialState ? "1" : "0")
+                                                   .SetError(error)
                                                    .SetDoLoadPrevious(lineConfig.LoadPreviousState));
     setLineValueFn(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
     return futureControl;
@@ -91,14 +93,26 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
 
             const auto& chipDriver = ChipDrivers.back();
             const auto& mappedLines = chipDriver->MapLinesByOffset();
+            const auto& mappedDisconnectedLines = chipDriver->MapInitiallyDisconnectedLinesByOffset();
 
             size_t lineNumber = 0;
             for (const auto& lineConfig: chipConfig.Lines) {
-                const auto& itOffsetLine = mappedLines.find(lineConfig.Offset);
-                if (itOffsetLine == mappedLines.end())
-                    continue; // happens if chip driver was unable to initialize line
 
-                const auto& line = itOffsetLine->second;
+                PGpioLine line;
+
+                const auto& itOffsetLine = mappedLines.find(lineConfig.Offset);
+                if (itOffsetLine != mappedLines.end()) {
+                    line = itOffsetLine->second;
+                } else {
+                    const auto& itDisconnectedLine = mappedDisconnectedLines.find(lineConfig.Offset);
+
+                    if (itDisconnectedLine == mappedDisconnectedLines.end()) {
+                        continue; // happens if chip driver was unable to initialize line
+                    }
+                    line = itDisconnectedLine->second;
+                    line->SetError("r");
+                }
+
                 auto futureControl = TPromise<PControl>::GetValueFuture(nullptr);
 
                 if (const auto& counter = line->GetCounter()) {
@@ -115,6 +129,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                 .SetType(move(type))
                                 .SetReadonly(lineConfig.Direction == EGpioDirection::Input && !isTotal)
                                 .SetUserData(line)
+                                .SetError(line->GetError())
                                 .SetDoLoadPrevious(isTotal));
 
                         if (isTotal) {
@@ -132,11 +147,16 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                                                   .SetType("switch")
                                                                   .SetReadonly(true)
                                                                   .SetUserData(line)
+                                                                  .SetError(line->GetError())
                                                                   .SetRawValue(line->GetValue() == 1 ? "1" : "0"));
                     } else {
-                        futureControl = CreateOutputControl(device, tx, line, lineConfig, [&](uint8_t value) {
-                            line->SetValue(value);
-                        });
+                        futureControl = CreateOutputControl(
+                            device,
+                            tx,
+                            line,
+                            lineConfig,
+                            [&](uint8_t value) { line->SetValue(value); },
+                            line->GetError());
                     }
                 }
 
@@ -179,11 +199,20 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                 LOG(Warn) << "Invalid value: " << event.RawValue;
                 return;
             }
-            line->GetCounter()->SetInitialValues(value);
-            valueForPublishing = line->GetCounter()->GetRoundedTotal();
+            if (line->GetCounter()) {
+                line->GetCounter()->SetInitialValues(value);
+                valueForPublishing = line->GetCounter()->GetRoundedTotal();
+            }
         }
-        event.Control->GetDevice()->GetDriver()->AccessAsync(
-            [=](const PDriverTx& tx) { event.Control->SetRawValue(tx, valueForPublishing); });
+
+        auto lineError = line->GetError();
+        if (!lineError.empty()) {
+            event.Control->GetDevice()->GetDriver()->AccessAsync(
+                [=](const PDriverTx& tx) { event.Control->SetError(tx, lineError); });
+        } else {
+            event.Control->GetDevice()->GetDriver()->AccessAsync(
+                [=](const PDriverTx& tx) { event.Control->SetRawValue(tx, valueForPublishing); });
+        }
     });
 }
 
@@ -241,17 +270,22 @@ void TGpioDriver::Start()
                                         for (const auto& chipDriver: ChipDrivers) {
                                             FOR_EACH_LINE(chipDriver, line)
                                             {
-                                                if (const auto& counter = line->GetCounter()) {
-                                                    for (const auto& idValue:
-                                                         counter->GetIdsAndValues(line->GetConfig()->Name)) {
-                                                        const auto& id = idValue.first;
-                                                        const auto value = idValue.second;
-
-                                                        device->GetControl(id)->SetRawValue(tx, value);
-                                                    }
+                                                const auto err = line->GetError();
+                                                if (!err.empty()) {
+                                                    device->GetControl(line->GetConfig()->Name)->SetError(tx, err);
                                                 } else {
-                                                    device->GetControl(line->GetConfig()->Name)
-                                                        ->SetValue(tx, static_cast<bool>(line->GetValue()));
+                                                    if (const auto& counter = line->GetCounter()) {
+                                                        for (const auto& idValue:
+                                                             counter->GetIdsAndValues(line->GetConfig()->Name)) {
+                                                            const auto& id = idValue.first;
+                                                            const auto value = idValue.second;
+
+                                                            device->GetControl(id)->SetRawValue(tx, value);
+                                                        }
+                                                    } else {
+                                                        device->GetControl(line->GetConfig()->Name)
+                                                            ->SetValue(tx, static_cast<bool>(line->GetValue()));
+                                                    }
                                                 }
                                             });
                                         }

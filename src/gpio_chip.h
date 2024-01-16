@@ -10,6 +10,7 @@ class TGpioChip: public std::enable_shared_from_this<TGpioChip>
     int Fd;
     std::string Name, Label, Path;
     uint32_t LineCount;
+    bool Valid;
 
 public:
     TGpioChip(); // dummy gpiochip for tests
@@ -25,4 +26,8 @@ public:
     uint32_t GetLineCount() const;
     uint32_t GetNumber() const;
     int GetFd() const;
+    bool IsValid() const;
+
+private:
+    void ThrowErrIfNotValid() const;
 };

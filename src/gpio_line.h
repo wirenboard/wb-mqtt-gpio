@@ -15,6 +15,7 @@ class TGpioLine
     uint32_t Flags;
     int Fd;
     int TimerFd;
+    std::string Error;
     std::string Name;
     std::string Consumer;
 
@@ -48,6 +49,8 @@ public:
     void SetValue(uint8_t);
     void SetCachedValue(uint8_t);
     void SetCachedValueUnfiltered(uint8_t);
+    const std::string& GetError() const;
+    void SetError(const std::string&);
     PGpioChip AccessChip() const;
     bool IsHandled() const;
     void SetFd(int);

@@ -42,17 +42,24 @@ if [[ -d /sys/firmware/devicetree/base/wirenboard/gpios ]]; then
     item_names=""
     input_names=""
     output_names=""
+    disconnected_chip_counter=0
     for gpioname in  $(of_node_children "$node" | sort); do
         gpio="$(of_get_prop_gpio "$node/$gpioname" "io-gpios")"
         item_phandle=$(of_get_prop_ulong "$node/$gpioname" "io-gpios" | awk '{print $1}')
         item_chip_num=${PHANDLE_MAP[$item_phandle]}
+        if [[ -z $item_chip_num ]]; then
+            disconnected_chip_counter=$((disconnected_chip_counter + 1))
+            gpiochip_path="disconnected_gpiochip_$disconnected_chip_counter"
+        else
+            gpiochip_path="/dev/gpiochip$item_chip_num"
+        fi
         base=0
         pin=0
         of_gpio_unpack "$gpio" base pin
         direction=$(of_has_prop "$node/$gpioname" "input" && echo -n "input" || echo -n "output")
         ITEM="{ \
             \"name\" : \"$gpioname\", \
-            \"gpio\" : {\"chip\" : \"/dev/gpiochip$item_chip_num\", \"offset\" : $pin}, \
+            \"gpio\" : {\"chip\" : \"$gpiochip_path\", \"offset\" : $pin}, \
             \"direction\" : \"$direction\", \
             \"inverted\" : $(of_gpio_is_inverted "$gpio" && echo -n "true" || echo -n "false"), \
             \"initial_state\": $(of_has_prop "$node/$gpioname" "output-high" && echo -n "true" || echo -n "false") ,\

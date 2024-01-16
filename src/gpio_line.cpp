@@ -33,7 +33,10 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
     }
 
-    UpdateInfo();
+    if (chip->IsValid())
+        UpdateInfo();
+    else if (Config->Direction == EGpioDirection::Output)
+        Flags = GPIOLINE_FLAG_IS_OUT;
 }
 
 TGpioLine::TGpioLine(const TGpioLineConfig& config)
@@ -46,7 +49,7 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
       InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     Name = "Dummy gpio line";
-    Flags = 0;
+    Flags = GPIOLINE_FLAG_IS_OUT;
     Consumer = "null";
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 }
@@ -66,7 +69,9 @@ void TGpioLine::UpdateInfo()
 
     int retVal = ioctl(AccessChip()->GetFd(), GPIO_GET_LINEINFO_IOCTL, &info);
     if (retVal < 0) {
-        wb_throw(TGpioDriverException, "unable to load " + Describe());
+        LOG(Error) << "Unable to load " << Describe() << ": GPIO_GET_LINEINFO_IOCTL failed: " << strerror(errno);
+        SetError("r");
+        return;
     }
 
     Name = info.name;
@@ -76,8 +81,14 @@ void TGpioLine::UpdateInfo()
 
 std::string TGpioLine::DescribeShort() const
 {
+    std::string chipNum;
+    if (AccessChip()->IsValid())
+        chipNum = to_string(AccessChip()->GetNumber());
+    else
+        chipNum = "disconnected";
+
     ostringstream ss;
-    ss << "GPIO line " << AccessChip()->GetNumber() << ":" << Offset;
+    ss << "GPIO line " << chipNum << ":" << Offset;
     if (Config) {
         ss << " (" << Config->Name << ")";
     }
@@ -179,19 +190,22 @@ uint8_t TGpioLine::GetValueUnfiltered() const
 
 void TGpioLine::SetValue(uint8_t value)
 {
-    assert(IsOutput());
-    assert(IsHandled());
+    if (!GetError().empty()) {
+        LOG(Warn) << DescribeShort() << " has error " << GetError() << "; Will not set value " << to_string(value);
+        SetError("w");
+        return;
+    }
 
     LOG(Debug) << DescribeShort() << " = " << static_cast<int>(value);
-
     gpiohandle_data data{};
 
     data.values[0] = value;
 
     if (ioctl(Fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << "GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        wb_throw(TGpioDriverException,
-                 "unable to set value '" + to_string((int)value) + "' to line " + DescribeShort());
+        LOG(Error) << "Set " << to_string((int)value) << " to: " << DescribeShort()
+                   << " GPIOHANDLE_SET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+        SetError("w");
+        return;
     }
 
     SetCachedValue(value);
@@ -225,6 +239,17 @@ void TGpioLine::SetFd(int fd)
 {
     Fd = fd;
     UpdateInfo();
+}
+
+void TGpioLine::SetError(const std::string& err)
+{
+    if (Error.find(err) == std::string::npos)
+        Error += err;
+}
+
+const std::string& TGpioLine::GetError() const
+{
+    return Error;
 }
 
 int TGpioLine::GetFd() const
