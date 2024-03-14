@@ -66,7 +66,7 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs& interv
         UpdateCurrent(interval);
     }
 
-    LOG(Error) << "HandleInterrupt interval: " << interval;
+    LOG(Error) << "HandleInterrupt interval";
 
     std::unique_lock<std::mutex> lk(AccessMutex);
     ++Counts;
