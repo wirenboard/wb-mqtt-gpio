@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.13.1) stable; urgency=medium
+
+  * Fix gpiocounter current
+
+ -- Vladimir Romanov <v.romanov@wirenboard.ru>  Thu, 14 Mar 2024 18:31:54 +0300
+
 wb-mqtt-gpio (2.13.0) stable; urgency=medium
 
   * Add detection of disconnected EXT* modules

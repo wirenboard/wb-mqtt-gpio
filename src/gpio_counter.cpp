@@ -66,6 +66,8 @@ void TGpioCounter::HandleInterrupt(EGpioEdge edge, const TTimeIntervalUs& interv
         UpdateCurrent(interval);
     }
 
+    LOG(Error) << "HandleInterrupt interval: " << interval;
+
     std::unique_lock<std::mutex> lk(AccessMutex);
     ++Counts;
     UpdateTotal();
@@ -137,8 +139,11 @@ void TGpioCounter::SetInitialValues(float total)
 
 void TGpioCounter::UpdateCurrent(const TTimeIntervalUs& interval)
 {
-    Current.Set(3600.0 * 1000000 * ConvertingMultiplier /
-                (interval.count() * Multiplier)); // convert microseconds to seconds, hours to seconds
+    auto currentVal = 3600.0 * 1000000 * ConvertingMultiplier / (interval.count() * Multiplier);
+    // Current.Set(3600.0 * 1000000 * ConvertingMultiplier /
+    //             (interval.count() * Multiplier)); // convert microseconds to seconds, hours to seconds
+    LOG(Error) << "UpdateCurrent current val: " << currentVal;
+    Current.Set(currentVal);
 }
 
 void TGpioCounter::UpdateTotal()
