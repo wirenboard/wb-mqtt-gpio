@@ -20,6 +20,7 @@ class TGpioLine
     std::string Consumer;
 
     TTimePoint PreviousInterruptionTimePoint;
+    TTimePoint PreviousStableValAcquiredTimePoint;
 
     TValue<uint8_t> Value;
     TValue<uint8_t> ValueUnfiltered;
