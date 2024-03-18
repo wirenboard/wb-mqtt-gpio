@@ -20,6 +20,8 @@ protected:
         fakeGpioLineConfig.DebounceTimeout = std::chrono::microseconds(debounceTimeoutUs);
         fakeGpioLineConfig.Offset = 0;
         fakeGpioLineConfig.Name = "testline";
+        fakeGpioLineConfig.Type = "water_meter";
+        fakeGpioLineConfig.InterruptEdge = EGpioEdge::BOTH;
     }
 };
 

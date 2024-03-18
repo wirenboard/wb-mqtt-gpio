@@ -365,12 +365,22 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
 
     req.eventflags = 0;
 
-    if (config->InterruptEdge == EGpioEdge::RISING)
-        req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
-    else if (config->InterruptEdge == EGpioEdge::FALLING)
-        req.eventflags |= GPIOEVENT_REQUEST_FALLING_EDGE;
-    else if (config->InterruptEdge == EGpioEdge::BOTH)
-        req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
+    switch (config->InterruptEdge) {
+        case EGpioEdge::RISING:
+            req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
+            break;
+        case EGpioEdge::FALLING:
+            req.eventflags |= GPIOEVENT_REQUEST_FALLING_EDGE;
+            break;
+        case EGpioEdge::BOTH:
+            req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
+            break;
+        case EGpioEdge::AUTO:
+            req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
+            break;
+        default:
+            wb_throw(TGpioDriverException, "Unknown interrupt edge in config");
+    }
 
     errno = 0;
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {
@@ -606,7 +616,7 @@ void TGpioChipDriver::AutoDetectInterruptEdges()
     static auto doesNeedAutoDetect = [](const PGpioLine& line) {
         if (line->IsHandled() && !line->IsOutput()) {
             if (const auto& counter = line->GetCounter()) {
-                return counter->GetInterruptEdge() == EGpioEdge::BOTH;
+                return counter->GetInterruptEdge() == EGpioEdge::AUTO;
             }
         }
 
