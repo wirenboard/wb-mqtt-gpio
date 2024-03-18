@@ -80,8 +80,7 @@ TEST_F(TDebounceTest, count_debounce_not_firing)
     HandleGpioEvent(fakeGpioLine, 1, now);
     ASSERT_TRUE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(debounceTimeoutUs + 1)));
     HandleGpioEvent(fakeGpioLine, 0, (now + std::chrono::microseconds(betweenEventsUs)));
-    ASSERT_TRUE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(betweenEventsUs) +
-                                             std::chrono::microseconds(debounceTimeoutUs + 1)));
+    ASSERT_TRUE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(betweenEventsUs + debounceTimeoutUs + 1)));
 
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), 3600);
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetTotal(), 2);
@@ -100,8 +99,8 @@ TEST_F(TDebounceTest, count_debounce_is_firing)
     HandleGpioEvent(fakeGpioLine, 1, now);
     ASSERT_FALSE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(debounceTimeoutUs - 1)));
     HandleGpioEvent(fakeGpioLine, 0, now + std::chrono::microseconds(betweenEventsUs));
-    ASSERT_FALSE(fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(betweenEventsUs) +
-                                              std::chrono::microseconds(debounceTimeoutUs - 1)));
+    ASSERT_FALSE(
+        fakeGpioLine->UpdateIfStable(now + std::chrono::microseconds(betweenEventsUs + debounceTimeoutUs - 1)));
 
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetTotal(), 0);
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), 0);
