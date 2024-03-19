@@ -57,14 +57,14 @@
                 "edge": {
                     "type": "string",
                     "title": "Pulse counter interrupt edge",
-                    "enum": [ "rising", "falling", "both" ],
-                    "default": "both",
+                    "enum": [ "rising", "falling", "both", "auto" ],
+                    "default": "auto",
                     "propertyOrder": 9,
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
                         },
-                        "enum_titles": ["rising", "falling", "both"]
+                        "enum_titles": ["rising", "falling", "both", "autodetect"]
                     }
                 },
                 "multiplier": {
@@ -230,7 +230,7 @@
             "default": {
                 "inverted": false,
                 "type": "",
-                "edge": "both",
+                "edge": "auto",
                 "multiplier": 1,
                 "decimal_points_current": 2,
                 "decimal_points_total":2

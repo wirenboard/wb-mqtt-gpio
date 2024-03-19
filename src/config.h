@@ -19,7 +19,7 @@ struct TGpioLineConfig
     bool IsActiveLow = false;
     std::string Name;
     EGpioDirection Direction = EGpioDirection::Output;
-    EGpioEdge InterruptEdge = EGpioEdge::BOTH;
+    EGpioEdge InterruptEdge = EGpioEdge::AUTO;
     std::string Type;
     float Multiplier = 1.0;
     int DecimalPlacesTotal = -1;

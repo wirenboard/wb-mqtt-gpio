@@ -6,7 +6,8 @@ enum class EGpioEdge : uint8_t
 {
     RISING,
     FALLING,
-    BOTH
+    BOTH,
+    AUTO
 };
 
 void EnumerateGpioEdge(const std::string&, EGpioEdge&);

@@ -21,6 +21,7 @@ protected:
         fakeGpioLineConfig.Offset = 0;
         fakeGpioLineConfig.Name = "testline";
         fakeGpioLineConfig.Type = "water_meter";
+        fakeGpioLineConfig.InterruptEdge = EGpioEdge::BOTH;
     }
 };
 
