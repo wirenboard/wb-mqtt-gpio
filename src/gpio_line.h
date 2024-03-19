@@ -32,14 +32,14 @@ public:
     ~TGpioLine();
 
     void UpdateInfo();
-    std::string DescribeShort() const;
+    virtual std::string DescribeShort() const;
     std::string Describe() const;
     std::string DescribeVerbose() const;
     const std::string& GetName() const;
     const std::string& GetConsumer() const;
     uint32_t GetOffset() const;
     uint32_t GetFlags() const;
-    bool IsOutput() const;
+    virtual bool IsOutput() const;
     bool IsActiveLow() const;
     bool IsUsed() const;
     bool IsOpenDrain() const;
@@ -52,7 +52,7 @@ public:
     const std::string& GetError() const;
     void SetError(const std::string&);
     PGpioChip AccessChip() const;
-    bool IsHandled() const;
+    virtual bool IsHandled() const;
     void SetFd(int);
     int GetFd() const;
     void SetTimerFd(int);

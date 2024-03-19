@@ -117,6 +117,9 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
     ReadInputValues();
 }
 
+TGpioChipDriver::TGpioChipDriver(): AddedToEpoll(false)
+{}
+
 TGpioChipDriver::~TGpioChipDriver()
 {
     for (const auto& fdLines: Lines) {
