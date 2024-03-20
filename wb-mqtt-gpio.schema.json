@@ -56,15 +56,20 @@
                 },
                 "edge": {
                     "type": "string",
+                    "_format": "slWb",
                     "title": "Pulse counter interrupt edge",
-                    "enum": [ "rising", "falling", "both", "auto" ],
-                    "default": "auto",
+                    "enum": [ "rising", "falling", "both" ],
+                    "default": "both",
                     "propertyOrder": 9,
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
                         },
-                        "enum_titles": ["rising", "falling", "both", "autodetect"]
+                        "enum_titles": ["rising", "falling", "both"],
+                        "show_opt_in": true,
+                        "wb": {
+                            "disabledEditorText": "autodetect"
+                        }
                     }
                 },
                 "multiplier": {
@@ -230,7 +235,6 @@
             "default": {
                 "inverted": false,
                 "type": "",
-                "edge": "auto",
                 "multiplier": 1,
                 "decimal_points_current": 2,
                 "decimal_points_total":2
@@ -404,6 +408,7 @@
             "rising": "Передний фронт",
             "falling": "Задний фронт",
             "both": "Передний и задний фронт",
+            "autodetect": "Автоматически определить фронт",
             "Number of pulses per unit (kWh or m^3)": "Количество импульсов на единицу измерения (кВт*ч или м^3)",
             "Number of decimal places in _current topic": "Число десятичных знаков канала с текущим показанием",
             "Number of decimal places in _total topic": "Число десятичных знаков канала с суммарным показанием",
