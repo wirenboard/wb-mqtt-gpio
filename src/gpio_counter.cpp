@@ -39,7 +39,7 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig& config)
     } else if (config.Type == WATER_METER) {
         TotalType = "water_consumption";
         CurrentType = "water_flow";
-        ConvertingMultiplier = 1.0 / 3600; // convert 1/h to 1/s
+        ConvertingMultiplier = 1.0; // 1/h
         DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 3 : DecimalPlacesCurrent;
         DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 2 : DecimalPlacesTotal;
     } else {

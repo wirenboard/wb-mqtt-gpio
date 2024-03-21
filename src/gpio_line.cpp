@@ -52,6 +52,10 @@ TGpioLine::TGpioLine(const TGpioLineConfig& config)
     Flags = GPIOLINE_FLAG_IS_OUT;
     Consumer = "null";
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
+
+    if (!config.Type.empty()) {
+        Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
+    }
 }
 
 TGpioLine::~TGpioLine()
@@ -347,9 +351,12 @@ bool TGpioLine::UpdateIfStable(const TTimePoint& checkTimePoint)
 
         const auto& gpioCounter = GetCounter();
         if (gpioCounter) {
-            gpioCounter->HandleInterrupt(GetInterruptEdge(), fromLastTs);
+            auto fromLastStableValTs =
+                chrono::duration_cast<chrono::microseconds>(checkTimePoint - PreviousStableValAcquiredTimePoint);
+            gpioCounter->HandleInterrupt(GetInterruptEdge(), fromLastStableValTs);
         }
 
+        PreviousStableValAcquiredTimePoint = checkTimePoint;
         return true;
     } else {
         return false;

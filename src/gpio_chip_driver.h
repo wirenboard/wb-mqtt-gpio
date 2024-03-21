@@ -16,7 +16,6 @@ class TGpioChipDriver
     using TGpioTimersMap = std::unordered_map<int, TGpioLines>;
     using TGpioLinesByOffsetMap = std::unordered_map<uint32_t, PGpioLine>;
 
-    TGpioLinesMap Lines;
     TGpioLinesByOffsetMap InitiallyDisconnectedLines;
     TGpioTimersMap Timers;
     PGpioChip Chip;
@@ -26,6 +25,7 @@ public:
     using TGpioLineHandler = std::function<void(const PGpioLine&)>;
 
     explicit TGpioChipDriver(const TGpioChipConfig&);
+    explicit TGpioChipDriver();
     ~TGpioChipDriver();
 
     TGpioLinesByOffsetMap MapLinesByOffset() const;
@@ -50,14 +50,17 @@ private:
     bool InitLinesPolling(uint32_t flags, const TGpioLines& lines);
 
     void PollLinesValues(const TGpioLines&);
-    void ReadLinesValues(const TGpioLines&);
+    virtual void ReadLinesValues(const TGpioLines&);
 
-    void ReListenLine(PGpioLine);
-    void AutoDetectInterruptEdges();
+    virtual void ReListenLine(PGpioLine);
     void ReadInputValues();
 
     bool HandleTimerInterrupt(const PGpioLine&);
     bool HandleGpioInterrupt(const PGpioLine& line, const TInterruptionContext& ctx);
+
+protected:
+    TGpioLinesMap Lines;
+    void AutoDetectInterruptEdges();
 };
 
 #define FOR_EACH_LINE(driver, line) driver->ForEachLine([&](const PGpioLine & line)

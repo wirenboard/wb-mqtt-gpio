@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.13.1) stable; urgency=medium
+
+  * gpio_counter: fix "current" counting
+  * gpio_counter: fix "both" edge option, add "autodetect" option
+
+ -- Vladimir Romanov <v.romanov@wirenboard.ru>  Mon, 17 Mar 2024 09:12:45 +0300
+
 wb-mqtt-gpio (2.13.0) stable; urgency=medium
 
   * Add detection of disconnected EXT* modules

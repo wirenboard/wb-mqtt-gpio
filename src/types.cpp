@@ -28,6 +28,8 @@ string GpioEdgeToString(EGpioEdge edge)
             return "falling";
         case EGpioEdge::BOTH:
             return "both";
+        case EGpioEdge::AUTO:
+            return "auto";
         default:
             return "<unknown (" + to_string((int)edge) + ")>";
     }
