@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.13.2) stable; urgency=medium
+
+  * Change name of wattmeter to electric energy meter.
+
+ -- Roman Matveev <roman.matveev@wirenboard.com>  Tue, 04 Apr 2024 11:56:40 +0300
+
 wb-mqtt-gpio (2.13.1) stable; urgency=medium
 
   * gpio_counter: fix "current" counting
