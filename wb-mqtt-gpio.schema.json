@@ -402,7 +402,7 @@
             "Output initial state": "Начальное состояние выхода",
             "Load output previous state after restart": "Восстанавливать состояние выхода после перезапуска",
             "without pulse counting": "Без счета импульсов",
-            "watt meter": "Ваттметр",
+            "watt meter": "Счетчик электрической энергии",
             "water meter": "Счетчик расхода воды",
             "Pulse counter interrupt edge": "Фронт срабатывания счетчика импульсов",
             "rising": "Передний фронт",
