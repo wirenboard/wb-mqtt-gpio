@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import sys
 
 SYS_CONFFILE = "/var/lib/wb-mqtt-gpio/conf.d/system.conf"
 SCHEMA_FILE = "/usr/share/wb-mqtt-gpio/wb-mqtt-gpio.schema.json"
@@ -17,7 +18,6 @@ def __of_node_path(node):
 
 def of_find_gpiochips():
     of_gpiochips = {}
-    of_gpiochips_ncells = {}
     for entry in os.listdir("/sys/class/gpio"):
         if not entry.startswith("gpiochip"):
             continue
@@ -25,12 +25,10 @@ def of_find_gpiochips():
         if not os.path.isfile(os.path.join(gpiochip, "device/of_node/phandle")):
             continue
         phandle = bin2ulong(os.path.join(gpiochip, "device/of_node/phandle"), single_value=True)
-        base = int(open(os.path.join(gpiochip, "base")).read())
+        with open(os.path.join(gpiochip, "base")) as f:
+            base = int(f.read())
         of_gpiochips[phandle] = base
-        if os.path.isfile(os.path.join(gpiochip, "device/of_node/#gpio-cells")):
-            ncells = bin2ulong(os.path.join(gpiochip, "device/of_node/#gpio-cells"), single_value=True)
-            of_gpiochips_ncells[phandle] = ncells
-    return of_gpiochips, of_gpiochips_ncells
+    return of_gpiochips
 
 
 def of_has_prop(node, prop):
@@ -77,20 +75,20 @@ def of_get_prop_gpio(of_gpiochips, node, prop="gpios"):
             attr = arg1
             pin = arg0
         else:
-            raise Exception(f"Unknown xlate type {xlate_type}")
+            raise RuntimeError(f"Unknown xlate type {xlate_type}")
         if phandle not in of_gpiochips:
-            raise Exception(f"Unknown phandle {phandle} (known phandles: {of_gpiochips.keys()})")
+            raise RuntimeError(f"Unknown phandle {phandle} (known phandles: {of_gpiochips.keys()})")
         return f"{of_gpiochips[phandle]}:{pin}:{attr}"
 
 
 def bin2ulong(filename, single_value=False):
     with open(filename, "rb") as f:
         content = f.read()
-    bytes = []
+    _bytes = []
     for chunk in split_each(content, 4):
-        bytes.append(chunk)
+        _bytes.append(chunk)
     ulongs = []
-    for b in bytes:
+    for b in _bytes:
         ulongs.append(int.from_bytes(b, "big"))
     results = [str(u) for u in ulongs]
     if single_value:
@@ -118,7 +116,7 @@ def main():
         print("/sys/firmware/devicetree/base/wirenboard/gpios is missing")
         return 0
 
-    of_gpiochips, of_gpiochips_ncells = of_find_gpiochips()
+    of_gpiochips = of_find_gpiochips()
     phandle_map = get_phandle_map()
 
     node = f"{WB_OF_ROOT}/gpios"
@@ -137,7 +135,7 @@ def main():
             gpiochip_path = f"disconnected_gpiochip_{disconnected_chip_counter}"
         else:
             gpiochip_path = f"/dev/gpiochip{item_chip_num}"
-        base, pin, inverted = gpio.split(":")
+        _, pin, inverted = gpio.split(":")
         direction = "input" if of_has_prop(f"{node}/{gpioname}", "input") else "output"
         inverted = inverted == "1"
         initial_state = of_has_prop(f"{node}/{gpioname}", "output-high")
@@ -174,7 +172,8 @@ def main():
         json.dump(gpiosysconf, f, indent=2)
 
     # generate confed schema by filtering schema file
-    schema = json.load(open(SCHEMA_FILE))
+    with open(SCHEMA_FILE) as f:
+        schema = json.load(f)
 
     # custom_channels_filter
     schema.get("definitions", {}).get("gpio_channel", {}).get("not", {}).get("properties", {}).get(
@@ -196,6 +195,8 @@ def main():
     with open(CONFED_SCHEMA_FILE, "w", encoding="utf-8") as f:
         json.dump(schema, f, indent=2, ensure_ascii=False)
 
+    return 0
+
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())
