@@ -8,6 +8,7 @@ CONFED_SCHEMA_FILE = "/var/lib/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json"
 
 WB_OF_ROOT = "/wirenboard"
 
+
 def __of_node_path(node):
     if node.startswith("/sys/firmware"):
         return str(os.path.realpath(node))
@@ -17,17 +18,17 @@ def __of_node_path(node):
 def of_find_gpiochips():
     of_gpiochips = {}
     of_gpiochips_ncells = {}
-    for entry in os.listdir('/sys/class/gpio'):
-        if not entry.startswith('gpiochip'):
+    for entry in os.listdir("/sys/class/gpio"):
+        if not entry.startswith("gpiochip"):
             continue
-        gpiochip = os.path.join('/sys/class/gpio', entry)
-        if not os.path.isfile(os.path.join(gpiochip, 'device/of_node/phandle')):
+        gpiochip = os.path.join("/sys/class/gpio", entry)
+        if not os.path.isfile(os.path.join(gpiochip, "device/of_node/phandle")):
             continue
-        phandle = bin2ulong(os.path.join(gpiochip, 'device/of_node/phandle'), single_value=True)
-        base = int(open(os.path.join(gpiochip, 'base')).read())
+        phandle = bin2ulong(os.path.join(gpiochip, "device/of_node/phandle"), single_value=True)
+        base = int(open(os.path.join(gpiochip, "base")).read())
         of_gpiochips[phandle] = base
-        if os.path.isfile(os.path.join(gpiochip, 'device/of_node/#gpio-cells')):
-            ncells = bin2ulong(os.path.join(gpiochip, 'device/of_node/#gpio-cells'), single_value=True)
+        if os.path.isfile(os.path.join(gpiochip, "device/of_node/#gpio-cells")):
+            ncells = bin2ulong(os.path.join(gpiochip, "device/of_node/#gpio-cells"), single_value=True)
             of_gpiochips_ncells[phandle] = ncells
     return of_gpiochips, of_gpiochips_ncells
 
@@ -38,8 +39,8 @@ def of_has_prop(node, prop):
 
 def of_get_prop_str(node, prop):
     filename = os.path.join(__of_node_path(node), prop)
-    with open(filename, 'r') as f:
-        return f.read().strip('\x00')
+    with open(filename, "r") as f:
+        return f.read().strip("\x00")
 
 
 def of_get_prop_ulong(node, prop):
@@ -83,14 +84,14 @@ def of_get_prop_gpio(of_gpiochips, node, prop="gpios"):
 
 
 def bin2ulong(filename, single_value=False):
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         content = f.read()
     bytes = []
     for chunk in split_each(content, 4):
         bytes.append(chunk)
     ulongs = []
     for b in bytes:
-        ulongs.append(int.from_bytes(b, 'big'))
+        ulongs.append(int.from_bytes(b, "big"))
     results = [str(u) for u in ulongs]
     if single_value:
         assert len(results) == 1, "Expected single value, got multiple"
@@ -107,13 +108,13 @@ def get_phandle_map():
         if not os.path.isfile(os.path.join(gpiochip, "of_node/phandle")):
             continue
         phandle = bin2ulong(os.path.join(gpiochip, "of_node/phandle"), single_value=True)
-        chip_num = int(entry[len("gpiochip"):])
+        chip_num = int(entry[len("gpiochip") :])
         phandle_map[phandle] = chip_num
     return phandle_map
 
 
 def main():
-    if not os.path.isdir('/sys/firmware/devicetree/base/wirenboard/gpios'):
+    if not os.path.isdir("/sys/firmware/devicetree/base/wirenboard/gpios"):
         print("/sys/firmware/devicetree/base/wirenboard/gpios is missing")
         return 0
 
@@ -140,16 +141,21 @@ def main():
         direction = "input" if of_has_prop(f"{node}/{gpioname}", "input") else "output"
         inverted = inverted == "1"
         initial_state = of_has_prop(f"{node}/{gpioname}", "output-high")
-        order = int(of_get_prop_ulong(f"{node}/{gpioname}", "sort-order")[0]) if of_has_prop(f"{node}/{gpioname}",
-                                                                                             "sort-order") else 0
-        channels.append({
-            "name": gpioname,
-            "gpio": {"chip": gpiochip_path, "offset": int(pin)},
-            "direction": direction,
-            "inverted": inverted,
-            "initial_state": initial_state,
-            "order": order
-        })
+        order = (
+            int(of_get_prop_ulong(f"{node}/{gpioname}", "sort-order")[0])
+            if of_has_prop(f"{node}/{gpioname}", "sort-order")
+            else 0
+        )
+        channels.append(
+            {
+                "name": gpioname,
+                "gpio": {"chip": gpiochip_path, "offset": int(pin)},
+                "direction": direction,
+                "inverted": inverted,
+                "initial_state": initial_state,
+                "order": order,
+            }
+        )
         if direction == "input":
             input_names.append(gpioname)
         else:
@@ -161,28 +167,33 @@ def main():
         del item["order"]
 
     gpiosysconf = {
-        'channels': channels,
+        "channels": channels,
     }
 
-    with open(SYS_CONFFILE, 'w') as f:
+    with open(SYS_CONFFILE, "w") as f:
         json.dump(gpiosysconf, f, indent=2)
 
     # generate confed schema by filtering schema file
     schema = json.load(open(SCHEMA_FILE))
 
     # custom_channels_filter
-    schema.get('definitions', {}).get('gpio_channel', {}).get('not', {}).get('properties', {}).get('name',{})['enum'] = item_names
+    schema.get("definitions", {}).get("gpio_channel", {}).get("not", {}).get("properties", {}).get(
+        "name", {}
+    )["enum"] = item_names
     # undefined_channels_filter
-    schema.get('definitions', {}).get('undefined_channel', {}).get('not', {}).get('properties', {}).get('name', {})[
-        'enum'] = item_names
+    schema.get("definitions", {}).get("undefined_channel", {}).get("not", {}).get("properties", {}).get(
+        "name", {}
+    )["enum"] = item_names
     # system_inputs_filter
-    schema.get('definitions', {}).get('system_input', {}).get('properties', {}).get('name', {})[
-        'enum'] = input_names
+    schema.get("definitions", {}).get("system_input", {}).get("properties", {}).get("name", {})[
+        "enum"
+    ] = input_names
     # system_outputs_filter
-    schema.get('definitions', {}).get('system_output', {}).get('properties', {}).get('name', {})[
-        'enum'] = output_names
+    schema.get("definitions", {}).get("system_output", {}).get("properties", {}).get("name", {})[
+        "enum"
+    ] = output_names
 
-    with open(CONFED_SCHEMA_FILE, 'w') as f:
+    with open(CONFED_SCHEMA_FILE, "w") as f:
         json.dump(schema, f, indent=2, ensure_ascii=False)
 
 
