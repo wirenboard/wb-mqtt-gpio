@@ -193,7 +193,7 @@ def main():
         "enum"
     ] = output_names
 
-    with open(CONFED_SCHEMA_FILE, "w") as f:
+    with open(CONFED_SCHEMA_FILE, "w", encoding="utf-8") as f:
         json.dump(schema, f, indent=2, ensure_ascii=False)
 
 
