@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.14.0) stable; urgency=medium
+
+  * Rewrite some internals to speed things up, no functional changes
+
+ -- Aleksandr Kazadaev <aleksandr.kazadaev@wirenboard.com>  Fri, 12 Apr 2024 12:41:40 +0500
+
 wb-mqtt-gpio (2.13.2) stable; urgency=medium
 
   * Change name of wattmeter to electric energy meter.

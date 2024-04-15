@@ -95,7 +95,7 @@ install: all
 	install -Dm0644 config.json.cqc10 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.cqc10
 
 	install -Dm0755 $(BUILD_DIR)/$(GPIO_BIN) -t $(DESTDIR)$(PREFIX)/bin
-	install -Dm0755 generate-system-config.sh -t $(DESTDIR)$(PREFIX)/lib/wb-mqtt-gpio
+	install -Dm0755 generate-system-config.py -t $(DESTDIR)$(PREFIX)/lib/wb-mqtt-gpio
 
 	install -Dm0644 wb-mqtt-gpio.schema.json -t $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio
 	install -Dm0644 wb-mqtt-gpio.wbconfigs $(DESTDIR)/etc/wb-configs.d/13wb-mqtt-gpio
