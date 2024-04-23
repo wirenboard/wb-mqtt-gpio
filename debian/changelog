@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.14.1) stable; urgency=medium
+
+  * Fix bug when missing WBIO modules are configured in the config
+
+ -- Aleksandr Kazadaev <aleksandr.kazadaev@wirenboard.com>  Tue, 23 Apr 2024 20:21:40 +0500
+
 wb-mqtt-gpio (2.14.0) stable; urgency=medium
 
   * Rewrite some internals to speed things up, no functional changes
