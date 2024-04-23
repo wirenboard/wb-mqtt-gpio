@@ -77,7 +77,7 @@ def of_get_prop_gpio(of_gpiochips, node, prop="gpios"):
         else:
             raise RuntimeError(f"Unknown xlate type {xlate_type}")
         if phandle not in of_gpiochips:
-            raise RuntimeError(f"Unknown phandle {phandle} (known phandles: {of_gpiochips.keys()})")
+            return f":{pin}:{attr}"  # checked, previous .sh script has exactly the same behavior
         return f"{of_gpiochips[phandle]}:{pin}:{attr}"
 
 
