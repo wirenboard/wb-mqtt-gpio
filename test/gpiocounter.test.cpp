@@ -121,3 +121,21 @@ TEST_F(TGpioCounterGetEdgeTest, counter_edge_auto_rising)
     ASSERT_EQ(fakeGpioLine->GetInterruptEdge(), EGpioEdge::RISING);
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetInterruptEdge(), EGpioEdge::RISING);
 }
+
+TEST_F(TGpioCounterGetEdgeTest, counter_update_current)
+{
+    fakeGpioLineConfig.InterruptEdge = EGpioEdge::RISING;
+    const auto fakeGpioLine = std::make_shared<TFakeGpioLine>(fakeGpioLineConfig);
+    auto interval = std::chrono::microseconds(100000);
+    auto assumedCurrent = (3600.0 * 1000000 * 1.0 / (interval.count() * fakeGpioLineConfig.Multiplier));
+
+    fakeGpioLine->GetCounter()->HandleInterrupt(EGpioEdge::RISING, interval);
+    ASSERT_EQ(fakeGpioLine->GetCounter()->GetTotal(), 1);
+    ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), assumedCurrent);
+
+    fakeGpioLine->GetCounter()->Update(std::chrono::microseconds(200000));
+    ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), assumedCurrent / 2);
+
+    fakeGpioLine->GetCounter()->Update(std::chrono::microseconds(200000));
+    ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), assumedCurrent / 4);
+}
