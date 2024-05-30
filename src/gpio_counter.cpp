@@ -7,6 +7,7 @@
 #include <wblib/utils.h>
 
 #include <cassert>
+#include <cmath>
 
 #define LOG(logger) ::logger.Log() << "[gpio counter] "
 
@@ -18,6 +19,7 @@ const auto ID_POSTFIX_TOTAL = "_total";
 const auto ID_POSTFIX_CURRENT = "_current";
 const auto CURRENT_TIME_INTERVAL = 1;
 const auto NULL_TIME_INTERVAL = 100;
+const auto COUNTER_UPDATE_INTERVAL_US = 200000;
 
 TGpioCounter::TGpioCounter(const TGpioLineConfig& config)
     : Multiplier(config.Multiplier),
@@ -76,7 +78,9 @@ void TGpioCounter::Update(const TTimeIntervalUs& interval)
     if (interval > NULL_TIME_INTERVAL * PreviousInterval) {
         Current.Set(0);
     } else if (interval > CURRENT_TIME_INTERVAL * PreviousInterval) {
-        UpdateCurrent(interval);
+        // more info at https://wirenboard.com/wiki/Frequency_registers
+        auto divider = std::pow(2, (interval.count() / COUNTER_UPDATE_INTERVAL_US));
+        Current.Set(Current.Get() / divider);
     }
 }
 
