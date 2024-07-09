@@ -56,7 +56,8 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                                    .SetUserData(line)
                                                    .SetRawValue(lineConfig.InitialState ? "1" : "0")
                                                    .SetError(error)
-                                                   .SetDoLoadPrevious(lineConfig.LoadPreviousState));
+                                                   .SetDoLoadPrevious(lineConfig.LoadPreviousState)
+                                                   .SetDurable());
     setLineValueFn(futureControl.GetValue()->GetValue().As<bool>() ? 1 : 0);
     return futureControl;
 }
