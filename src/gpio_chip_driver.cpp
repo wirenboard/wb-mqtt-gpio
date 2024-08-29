@@ -529,16 +529,15 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 {
     assert(!lines.empty());
 
-    if (!lines.front()->GetError().empty())
-        return;
-
     auto fd = lines.front()->GetFd();
     gpiohandle_data data;
     if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        for (const auto& line: lines) {
-            LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected (and excluding from poll)";
-            line->SetError("r");
+        if (lines.front()->GetError().empty()) {
+            LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+            for (const auto& line: lines) {
+                LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected";
+                line->SetError("r");
+            }
         }
         return;
     }
@@ -551,11 +550,17 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
         bool oldValue = line->GetValue();
         bool newValue = data.values[i];
 
+        bool recovery = !line->GetError().empty();
+        if (recovery) {
+            line->ClearError();
+            LOG(Info) << "Treating " << line->DescribeShort() << " as alive again";
+        }
+
         LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
 
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
-            if (oldValue != newValue) {
+            if (recovery || oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
                 if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
                     line->SetCachedValue(newValue);

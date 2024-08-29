@@ -249,6 +249,11 @@ void TGpioLine::SetError(const std::string& err)
         Error += err;
 }
 
+void TGpioLine::ClearError()
+{
+    Error.clear();
+}
+
 const std::string& TGpioLine::GetError() const
 {
     return Error;

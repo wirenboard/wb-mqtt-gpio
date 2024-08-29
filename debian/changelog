@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.16.0) stable; urgency=medium
+
+  * Clear error on successful gpio ioclt
+
+ -- Vladimir Romanov <v.romanov@wirenboard.ru>  Thu, 29 Aug 2024 04:12:45 +0300
+
 wb-mqtt-gpio (2.15.2) stable; urgency=medium
 
   * Fix tests, no functional changes
