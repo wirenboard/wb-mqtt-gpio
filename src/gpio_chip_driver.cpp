@@ -529,15 +529,12 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 {
     assert(!lines.empty());
 
-    if (!lines.front()->GetError().empty())
-        return;
-
     auto fd = lines.front()->GetFd();
     gpiohandle_data data;
     if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
         LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
         for (const auto& line: lines) {
-            LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected (and excluding from poll)";
+            LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected";
             line->SetError("r");
         }
         return;
@@ -550,6 +547,8 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 
         bool oldValue = line->GetValue();
         bool newValue = data.values[i];
+        line->ClearError();
+        LOG(Info) << "Treating " << line->DescribeShort() << " as alive again";
 
         LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
 
