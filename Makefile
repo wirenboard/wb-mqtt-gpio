@@ -20,26 +20,34 @@ PREFIX = /usr
 GPIO_BIN = wb-mqtt-gpio
 SRC_DIR = src
 
-COMMON_SRCS := $(shell find $(SRC_DIR) -name *.cpp -and -not -name main.cpp)
+COMMON_SRCS := $(shell find $(SRC_DIR) -name "*.cpp" -and -not -name main.cpp)
 COMMON_OBJS := $(COMMON_SRCS:%=$(BUILD_DIR)/%.o)
 
 CXXFLAGS = -Wall -std=c++17 -I$(SRC_DIR)
 LDFLAGS = -lwbmqtt1 -lpthread
 
-ifeq ($(DEBUG), 1)
-	CXXFLAGS += -O0 -ggdb -rdynamic -fprofile-arcs -ftest-coverage
-	LDFLAGS += -lgcov
-else
+ifeq ($(DEBUG),)
 	CXXFLAGS += -Os -DNDEBUG
+else
+	CXXFLAGS += -O0 -ggdb -rdynamic --coverage
+	LDFLAGS += --coverage
 endif
 
 TEST_DIR = test
-TEST_SRCS := $(shell find $(TEST_DIR) -name *.cpp)
+TEST_SRCS := $(shell find $(TEST_DIR) -name "*.cpp")
 TEST_OBJS := $(TEST_SRCS:%=$(BUILD_DIR)/%.o)
 TEST_BIN = test
 TEST_LIBS = -lgtest -lwbmqtt_test_utils -lgmock
 
 export TEST_DIR_ABS = $(shell pwd)/$(TEST_DIR)
+
+VALGRIND_FLAGS = --error-exitcode=180 -q
+
+COV_REPORT ?= $(BUILD_DIR)/cov.html
+GCOVR_FLAGS := --html $(COV_REPORT)
+ifneq ($(COV_FAIL_UNDER),)
+	GCOVR_FLAGS += --fail-under-line $(COV_FAIL_UNDER)
+endif
 
 all : $(GPIO_BIN)
 
@@ -51,16 +59,13 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 $(GPIO_BIN) : $(COMMON_OBJS) $(BUILD_DIR)/src/main.cpp.o
 	$(CXX) $^ $(LDFLAGS) -o $(BUILD_DIR)/$@
 
-$(BUILD_DIR)/$(TEST_DIR)/%.o: $(TEST_DIR)/%.cpp
-	$(CXX) -c $(CXXFLAGS) -o $@ $^
-
 $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN): $(COMMON_OBJS) $(TEST_OBJS)
 	$(CXX) $^ $(LDFLAGS) $(TEST_LIBS) -o $@
 
 test: $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN)
 	rm -f $(TEST_DIR)/*.dat.out
 	if [ "$(shell arch)" != "armv7l" ] && [ "$(CROSS_COMPILE)" = "" ] || [ "$(CROSS_COMPILE)" = "x86_64-linux-gnu-" ]; then \
-		valgrind --error-exitcode=180 -q $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || \
+		valgrind $(VALGRIND_FLAGS) $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || \
 		if [ $$? = 180 ]; then \
 			echo "*** VALGRIND DETECTED ERRORS ***" 1>& 2; \
 			exit 1; \
@@ -68,11 +73,8 @@ test: $(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN)
 	else \
 		$(BUILD_DIR)/$(TEST_DIR)/$(TEST_BIN) $(TEST_ARGS) || { $(TEST_DIR)/abt.sh show; exit 1; } \
 	fi
-
-lcov: test
-ifeq ($(DEBUG), 1)
-	geninfo --no-external -b . -o $(BUILD_DIR)/coverage.info $(BUILD_DIR)/src
-	genhtml $(BUILD_DIR)/coverage.info -o $(BUILD_DIR)/cov_html
+ifneq ($(DEBUG),)
+	gcovr $(GCOVR_FLAGS) $(BUILD_DIR)/$(SRC_DIR) $(BUILD_DIR)/$(TEST_DIR)
 endif
 
 clean :
@@ -81,18 +83,10 @@ clean :
 install: all
 	install -d $(DESTDIR)/var/lib/wb-mqtt-gpio/conf.d
 
-	install -Dm0644 config.json.devicetree $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.devicetree
-	install -Dm0644 config.json.wb52 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb52
-	install -Dm0644 config.json.wb55 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb55
-	install -Dm0644 config.json.wb58 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb58
-	install -Dm0644 config.json.wb60 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb60
-	install -Dm0644 config.json.wb61 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wb61
-	install -Dm0644 config.json.wbsh5 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh5
-	install -Dm0644 config.json.wbsh4 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh4
-	install -Dm0644 config.json.wbsh3 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.wbsh3
-	install -Dm0644 config.json.default $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.default
-	install -Dm0644 config.json.mka3 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.mka3
-	install -Dm0644 config.json.cqc10 $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.cqc10
+	for cfg in config.json.*; do \
+		board=$${cfg##*.}; \
+		install -Dm0644 $$cfg $(DESTDIR)$(PREFIX)/share/wb-mqtt-gpio/wb-mqtt-gpio.conf.$$board; \
+	done
 
 	install -Dm0755 $(BUILD_DIR)/$(GPIO_BIN) -t $(DESTDIR)$(PREFIX)/bin
 	install -Dm0755 generate-system-config.py -t $(DESTDIR)$(PREFIX)/lib/wb-mqtt-gpio
