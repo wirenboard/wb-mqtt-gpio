@@ -25,7 +25,7 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       ValueUnfiltered(0),
       InterruptSupport(EInterruptSupport::UNKNOWN)
 {
-    //assert(Offset < AccessChip()->GetLineCount());
+    // assert(Offset < AccessChip()->GetLineCount());
 
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 
@@ -258,7 +258,7 @@ const std::string& TGpioLine::GetError() const
 
 int TGpioLine::GetFd() const
 {
-    //assert(Fd > -1);
+    // assert(Fd > -1);
 
     return Fd;
 }
