@@ -1,6 +1,7 @@
 Subscribe: /devices/+/meta/driver (QoS 0)
 Publish: /devices/wb-gpio/meta: '{"driver":"test","title":{"en":"test"}}' (QoS 1, retained)
 Publish: /devices/wb-gpio/meta/driver: 'test' (QoS 1, retained)
+Publish: /devices/wb-gpio/meta/error: '' (QoS 1, retained)
 Publish: /devices/wb-gpio/meta/name: 'test' (QoS 1, retained)
 Publish: /devices/wb-gpio/controls/test/meta: '{"order":1,"readonly":false,"type":"switch"}' (QoS 1, retained)
 Publish: /devices/wb-gpio/controls/test/meta/error: '' (QoS 1, retained)
