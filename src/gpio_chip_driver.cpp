@@ -555,7 +555,11 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             line->ClearError();
             LOG(Info) << "Treating " << line->DescribeShort() << " as alive again";
             if (line->GetConfig()->Direction == EGpioDirection::Output) {
-                FlushMcp23xState(line);
+                if (!InitOutput(line)) {
+                    LOG(Error) << "Failed to recover output " << line->DescribeShort() << ". Treating as errored";
+                    line->SetError("r");
+                }
+                // FlushMcp23xState(line);
             }
         }
 
