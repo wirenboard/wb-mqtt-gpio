@@ -53,6 +53,7 @@ private:
     virtual void ReadLinesValues(const TGpioLines&);
 
     virtual void ReListenLine(PGpioLine);
+    virtual void ReInitOutput(PGpioLine);
     void ReadInputValues();
 
     bool HandleTimerInterrupt(const PGpioLine&);

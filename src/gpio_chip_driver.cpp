@@ -439,10 +439,6 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line)
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
 
-    if (Chip->GetLabel() == "mcp23017" || Chip->GetLabel() == "mcp23008")
-        if (!FlushMcp23xState(line))
-            return false;
-
     gpiohandle_request req;
     memset(&req, 0, sizeof(gpiohandle_request));
     req.lines = 1;
@@ -555,7 +551,7 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
             line->ClearError();
             LOG(Info) << "Treating " << line->DescribeShort() << " as alive again";
             if (line->GetConfig()->Direction == EGpioDirection::Output) {
-                FlushMcp23xState(line);
+                ReInitOutput(line);
             }
         }
 
@@ -619,6 +615,22 @@ void TGpioChipDriver::ReListenLine(PGpioLine line)
     assert(ok);
     if (!ok) {
         LOG(Error) << "Unable to re-listen to " << line->DescribeShort();
+    }
+}
+
+void TGpioChipDriver::ReInitOutput(PGpioLine line)
+{
+    auto oldfd = line->GetFd();
+    Lines.erase(oldfd);
+    close(oldfd);
+
+    if (Chip->GetLabel() == "mcp23017" || Chip->GetLabel() == "mcp23008")
+        if (!FlushMcp23xState(line))
+            LOG(Error) << "Unable to re-init output " << line->DescribeShort();
+
+    bool ok = InitOutput(line);
+    if (!ok) {
+        LOG(Error) << "Unable to re-init output " << line->DescribeShort();
     }
 }
 
