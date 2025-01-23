@@ -628,10 +628,14 @@ void TGpioChipDriver::ReInitOutput(PGpioLine line)
         if (!FlushMcp23xState(line))
             LOG(Error) << "Unable to re-init output " << line->DescribeShort();
 
+    const auto& config = line->GetConfig();
+    auto oldstate = config->InitialState;
+    config->InitialState = line->GetValue();
     bool ok = InitOutput(line);
     if (!ok) {
         LOG(Error) << "Unable to re-init output " << line->DescribeShort();
     }
+    config->InitialState = oldstate;
 }
 
 void TGpioChipDriver::AutoDetectInterruptEdges()
