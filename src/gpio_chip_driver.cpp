@@ -83,7 +83,7 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
                 break;
             }
             case EGpioDirection::Output: {
-                if (!InitOutput(line)) {
+                if (!InitOutput(line, line->GetConfig()->InitialState)) {
                     LOG(Error) << "Failed to init output " << line->DescribeShort()
                                << ". Treating as initially disconnected";
                     InitiallyDisconnectedLines[line->GetOffset()] = line;
@@ -434,7 +434,7 @@ bool TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
     return true;
 }
 
-bool TGpioChipDriver::InitOutput(const PGpioLine& line)
+bool TGpioChipDriver::InitOutput(const PGpioLine& line, uint8_t val)
 {
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
@@ -443,7 +443,7 @@ bool TGpioChipDriver::InitOutput(const PGpioLine& line)
     memset(&req, 0, sizeof(gpiohandle_request));
     req.lines = 1;
     req.lineoffsets[0] = line->GetOffset();
-    req.default_values[0] = config->InitialState;
+    req.default_values[0] = val;
     req.flags = GetFlagsFromConfig(*config, line->IsOutput());
     strcpy(req.consumer_label, CONSUMER);
 
@@ -625,17 +625,15 @@ void TGpioChipDriver::ReInitOutput(PGpioLine line)
     close(oldfd);
 
     if (Chip->GetLabel() == "mcp23017" || Chip->GetLabel() == "mcp23008")
-        if (!FlushMcp23xState(line))
+        if (!FlushMcp23xState(line)) {
             LOG(Error) << "Unable to re-init output " << line->DescribeShort();
+            return;
+        }
 
-    const auto& config = line->GetConfig();
-    auto oldstate = config->InitialState;
-    config->InitialState = line->GetValue();
-    bool ok = InitOutput(line);
-    if (!ok) {
+    auto lastSuccessfulVal = line->GetValue();
+    if (!InitOutput(line, lastSuccessfulVal)) {
         LOG(Error) << "Unable to re-init output " << line->DescribeShort();
     }
-    config->InitialState = oldstate;
 }
 
 void TGpioChipDriver::AutoDetectInterruptEdges()

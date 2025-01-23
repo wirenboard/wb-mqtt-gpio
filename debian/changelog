@@ -1,8 +1,9 @@
 wb-mqtt-gpio (2.16.0) stable; urgency=medium
 
-  * Clear error on successful gpio ioclt
+  * Auto recover error on successful gpio ioclt
+  * Behavior on recover: input -> as is on gpio; output -> set last successful val
 
- -- Vladimir Romanov <v.romanov@wirenboard.ru>  Thu, 29 Aug 2024 04:12:45 +0300
+ -- Vladimir Romanov <v.romanov@wirenboard.ru>  Thu, 23 jan 2025 19:02:18 +0300
 
 wb-mqtt-gpio (2.15.2) stable; urgency=medium
 
