@@ -83,7 +83,7 @@ TGpioChipDriver::TGpioChipDriver(const TGpioChipConfig& config): AddedToEpoll(fa
                 break;
             }
             case EGpioDirection::Output: {
-                if (!InitOutput(line)) {
+                if (!InitOutput(line, line->GetConfig()->InitialState)) {
                     LOG(Error) << "Failed to init output " << line->DescribeShort()
                                << ". Treating as initially disconnected";
                     InitiallyDisconnectedLines[line->GetOffset()] = line;
@@ -434,20 +434,16 @@ bool TGpioChipDriver::FlushMcp23xState(const PGpioLine& line)
     return true;
 }
 
-bool TGpioChipDriver::InitOutput(const PGpioLine& line)
+bool TGpioChipDriver::InitOutput(const PGpioLine& line, uint8_t val)
 {
     const auto& config = line->GetConfig();
     assert(config->Direction == EGpioDirection::Output);
-
-    if (Chip->GetLabel() == "mcp23017" || Chip->GetLabel() == "mcp23008")
-        if (!FlushMcp23xState(line))
-            return false;
 
     gpiohandle_request req;
     memset(&req, 0, sizeof(gpiohandle_request));
     req.lines = 1;
     req.lineoffsets[0] = line->GetOffset();
-    req.default_values[0] = config->InitialState;
+    req.default_values[0] = val;
     req.flags = GetFlagsFromConfig(*config, line->IsOutput());
     strcpy(req.consumer_label, CONSUMER);
 
@@ -529,16 +525,15 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
 {
     assert(!lines.empty());
 
-    if (!lines.front()->GetError().empty())
-        return;
-
     auto fd = lines.front()->GetFd();
     gpiohandle_data data;
     if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-        LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-        for (const auto& line: lines) {
-            LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected (and excluding from poll)";
-            line->SetError("r");
+        if (lines.front()->GetError().empty()) {
+            LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+            for (const auto& line: lines) {
+                LOG(Error) << "Treating " << line->DescribeShort() << " as disconnected";
+                line->SetError("r");
+            }
         }
         return;
     }
@@ -551,11 +546,20 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
         bool oldValue = line->GetValue();
         bool newValue = data.values[i];
 
+        bool recovery = !line->GetError().empty();
+        if (recovery) {
+            line->ClearError();
+            LOG(Info) << "Treating " << line->DescribeShort() << " as alive again";
+            if (line->GetConfig()->Direction == EGpioDirection::Output) {
+                ReInitOutput(line);
+            }
+        }
+
         LOG(Debug) << "Poll " << line->DescribeShort() << " old value: " << oldValue << " new value: " << newValue;
 
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
-            if (oldValue != newValue) {
+            if (recovery || oldValue != newValue) {
                 auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
                 if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
                     line->SetCachedValue(newValue);
@@ -611,6 +615,24 @@ void TGpioChipDriver::ReListenLine(PGpioLine line)
     assert(ok);
     if (!ok) {
         LOG(Error) << "Unable to re-listen to " << line->DescribeShort();
+    }
+}
+
+void TGpioChipDriver::ReInitOutput(PGpioLine line)
+{
+    auto oldfd = line->GetFd();
+    Lines.erase(oldfd);
+    close(oldfd);
+
+    if (Chip->GetLabel() == "mcp23017" || Chip->GetLabel() == "mcp23008")
+        if (!FlushMcp23xState(line)) {
+            LOG(Error) << "Unable to re-init output " << line->DescribeShort();
+            return;
+        }
+
+    auto lastSuccessfulVal = line->GetValue();
+    if (!InitOutput(line, lastSuccessfulVal)) {
+        LOG(Error) << "Unable to re-init output " << line->DescribeShort();
     }
 }
 

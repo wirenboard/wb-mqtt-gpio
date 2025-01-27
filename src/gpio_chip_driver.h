@@ -44,7 +44,7 @@ public:
 private:
     bool ReleaseLineIfUsed(const PGpioLine&);
     bool TryListenLine(const PGpioLine&);
-    bool InitOutput(const PGpioLine&);
+    bool InitOutput(const PGpioLine&, uint8_t);
     bool FlushMcp23xState(const PGpioLine&);
     bool InitInputInterrupts(const PGpioLine&);
     bool InitLinesPolling(uint32_t flags, const TGpioLines& lines);
@@ -53,6 +53,7 @@ private:
     virtual void ReadLinesValues(const TGpioLines&);
 
     virtual void ReListenLine(PGpioLine);
+    virtual void ReInitOutput(PGpioLine);
     void ReadInputValues();
 
     bool HandleTimerInterrupt(const PGpioLine&);

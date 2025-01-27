@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.16.0) stable; urgency=medium
+
+  * Auto recover error on successful gpio ioclt
+  * Behavior on recover: input -> as is on gpio; output -> set last successful val
+
+ -- Vladimir Romanov <v.romanov@wirenboard.ru>  Thu, 23 jan 2025 19:02:18 +0300
+
 wb-mqtt-gpio (2.15.2) stable; urgency=medium
 
   * Fix tests, no functional changes
@@ -307,13 +314,13 @@ wb-mqtt-gpio (2.0.2) unstable; urgency=medium
 
  -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Tue, 07 Jul 2020 11:57:01 +0500
 
-wb-mqtt-gpio (2.0.1) UNRELEASED; urgency=medium
+wb-mqtt-gpio (2.0.1) unstable; urgency=medium
 
   * rename to wb-mqtt-gpio
 
  -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.ru>  Thu, 02 Jul 2020 15:17:01 +0500
 
-wb-homa-gpio (2.0.0) UNRELEASED; urgency=medium
+wb-homa-gpio (2.0.0) unstable; urgency=medium
 
   * reimplemented driver on new character device GPIO API
   * new libwbmqtt

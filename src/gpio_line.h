@@ -52,6 +52,7 @@ public:
     void SetCachedValueUnfiltered(uint8_t);
     const std::string& GetError() const;
     void SetError(const std::string&);
+    void ClearError();
     PGpioChip AccessChip() const;
     virtual bool IsHandled() const;
     void SetFd(int);
