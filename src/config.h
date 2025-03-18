@@ -5,6 +5,8 @@
 #include <vector>
 #include <wblib/driver_args.h>
 
+const int DEFAULT_DECIMAL_PLACES = 3;
+
 enum class EGpioDirection
 {
     Input,
@@ -22,8 +24,8 @@ struct TGpioLineConfig
     EGpioEdge InterruptEdge = EGpioEdge::AUTO;
     std::string Type;
     float Multiplier = 1.0;
-    int DecimalPlacesTotal = -1;
-    int DecimalPlacesCurrent = -1;
+    int DecimalPlacesTotal = DEFAULT_DECIMAL_PLACES;
+    int DecimalPlacesCurrent = DEFAULT_DECIMAL_PLACES;
     bool InitialState = false;
     bool LoadPreviousState = true;
     std::chrono::microseconds DebounceTimeout = std::chrono::microseconds(10000);

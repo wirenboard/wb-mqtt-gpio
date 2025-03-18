@@ -36,14 +36,10 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig& config)
         TotalType = "power_consumption";
         CurrentType = "power";
         ConvertingMultiplier = 1000; // convert kW to W (1/h)
-        DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 2 : DecimalPlacesCurrent;
-        DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 3 : DecimalPlacesTotal;
     } else if (config.Type == WATER_METER) {
         TotalType = "water_consumption";
         CurrentType = "water_flow";
         ConvertingMultiplier = 1.0; // 1/h
-        DecimalPlacesCurrent = (DecimalPlacesCurrent == -1) ? 3 : DecimalPlacesCurrent;
-        DecimalPlacesTotal = (DecimalPlacesTotal == -1) ? 2 : DecimalPlacesTotal;
     } else {
         LOG(Error) << "Unknown gpio type";
         wb_throw(TGpioDriverException, "unknown GPIO type: '" + config.Type + "'");
