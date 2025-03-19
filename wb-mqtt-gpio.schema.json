@@ -236,8 +236,8 @@
                 "inverted": false,
                 "type": "",
                 "multiplier": 1,
-                "decimal_points_current": 2,
-                "decimal_points_total":2
+                "decimal_points_current": 3,
+                "decimal_points_total": 3
             },
             "options": {
                 "disable_properties": true

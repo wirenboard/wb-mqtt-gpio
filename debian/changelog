@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.16.1) stable; urgency=medium
+
+  * Fix reading of decimal_points_current and decimal_points_total config options
+  * Set default values for decimal_points_current and decimal_points_total to 3
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.com>  Tue, 18 Mar 2025 15:55:02 +0500
+
 wb-mqtt-gpio (2.16.0) stable; urgency=medium
 
   * Auto recover error on successful gpio ioclt
