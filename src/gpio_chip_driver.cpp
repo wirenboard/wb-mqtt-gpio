@@ -486,8 +486,7 @@ bool TGpioChipDriver::InitInputInterrupts(const PGpioLine& line)
             line->SetInterruptSupport(EInterruptSupport::NO);
             return false;
         }
-
-        case EInterruptSupport::NO: {
+        default: {
             return false;
         }
     }
