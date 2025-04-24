@@ -271,6 +271,8 @@ void TGpioDriver::Start()
                                         for (const auto& chipDriver: ChipDrivers) {
                                             FOR_EACH_LINE(chipDriver, line)
                                             {
+                                                line->Update();
+
                                                 const auto err = line->GetError();
                                                 if (!err.empty()) {
                                                     device->GetControl(line->GetConfig()->Name)->SetError(tx, err);

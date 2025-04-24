@@ -564,8 +564,6 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
                 if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
                     line->SetCachedValue(newValue);
                 }
-            } else { /* in other case let line do idle actions */
-                line->Update();
             }
         } else { /* for output just set value to cache: it will publish it if
                     changed */
