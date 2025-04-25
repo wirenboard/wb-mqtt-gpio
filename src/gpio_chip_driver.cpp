@@ -250,9 +250,14 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
                 line->SetError("r");
                 return false;
             }
-            line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
-            SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
-            isHandled = true;
+
+            bool oldValue = line->GetValueUnfiltered();
+            bool newValue = data.values[0];
+            if (oldValue != newValue) {
+                line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
+                SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
+                isHandled = true;
+            }
         }
     }
     return isHandled;
