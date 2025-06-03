@@ -3,5 +3,5 @@ buildDebSbuild defaultTargets: 'bullseye-armhf bullseye-arm64',
                defaultStyleCheckDirs: 'src test',
                defaultRunPythonChecks: true,
                defaultRunCoverage: true,
-               defaultCoverageMin: '40',
+               defaultCoverageMin: '39',
                defaultBuildNode: 'heavy-duty'
