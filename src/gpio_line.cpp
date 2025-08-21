@@ -31,7 +31,7 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
     if (!config.Type.empty()) {
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
         // set skip interrupt flag to prevent false service startup interrupts when using gpiochip0
-        if (Counter->GetInterruptEdge() != EGpioEdge::BOTH && !AccessChip()->GetNumber()) {
+        if (Counter->GetInterruptEdge() != EGpioEdge::BOTH && AccessChip()->GetNumber() == 0) {
             SkipInterrupt = true;
         }
     }
