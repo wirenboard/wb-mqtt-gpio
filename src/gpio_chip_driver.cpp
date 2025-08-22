@@ -251,13 +251,20 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
                 return false;
             }
 
+            // false interrupt generated on every service startup
+            // ignore it to prevent incorrect counter updates
             bool oldValue = line->GetValueUnfiltered();
             bool newValue = data.values[0];
-            if (oldValue != newValue) {
-                line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
-                SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
-                isHandled = true;
+            if ((line->GetInterruptEdge() == EGpioEdge::BOTH && oldValue == newValue) ||
+                (line->GetSkipInterrupt() && !newValue))
+            {
+                line->ClearSkipInterrupt();
+                return false;
             }
+
+            line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
+            SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
+            isHandled = true;
         }
     }
     return isHandled;

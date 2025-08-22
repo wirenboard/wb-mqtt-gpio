@@ -23,12 +23,17 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       TimerFd(-1),
       Value(0),
       ValueUnfiltered(0),
-      InterruptSupport(EInterruptSupport::UNKNOWN)
+      InterruptSupport(EInterruptSupport::UNKNOWN),
+      SkipInterrupt(false)
 {
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 
     if (!config.Type.empty()) {
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
+        // set skip interrupt flag to prevent false service startup interrupts when using gpiochip0
+        if (Counter->GetInterruptEdge() != EGpioEdge::BOTH && AccessChip()->GetNumber() == 0) {
+            SkipInterrupt = true;
+        }
     }
 
     if (chip->IsValid())
@@ -340,6 +345,16 @@ void TGpioLine::SetInterruptSupport(EInterruptSupport interruptSupport)
 EInterruptSupport TGpioLine::GetInterruptSupport() const
 {
     return InterruptSupport;
+}
+
+bool TGpioLine::GetSkipInterrupt() const
+{
+    return SkipInterrupt;
+}
+
+void TGpioLine::ClearSkipInterrupt()
+{
+    SkipInterrupt = false;
 }
 
 bool TGpioLine::UpdateIfStable(const TTimePoint& checkTimePoint)
