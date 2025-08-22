@@ -1,6 +1,7 @@
 wb-mqtt-gpio (2.16.3) stable; urgency=medium
 
   * Fix counters rising and falling edge interrupt bug
+  * Cleanup deb packaging
 
  -- Ilya Titov <ilya.titov@wirenboard.com>  Thu, 21 Aug 2025 17:10:02 +0300
 
