@@ -694,7 +694,15 @@ void TGpioChipDriver::AutoDetectInterruptEdges()
         line->GetCounter()->SetInterruptEdge(edge);
         line->GetConfig()->InterruptEdge = edge;
 
-        ReListenLine(line);
+        // Re-listen only for lines that are actually handled via interrupts.
+        // A counter line on a chip without interrupt support (e.g. wbec-gpio
+        // MOD inputs) falls back to polling and shares a single fd with all the
+        // other polled lines. ReListenLine() would erase that shared fd, killing
+        // every line behind it, and then fail to re-establish the event request.
+        // Polling already resolves the now-concrete edge, so nothing to re-listen.
+        if (line->GetInterruptSupport() == EInterruptSupport::YES) {
+            ReListenLine(line);
+        }
     }
 }
 
