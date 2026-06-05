@@ -205,6 +205,7 @@ protected:
         config.Offset = offset;
         config.Name = "line" + std::to_string(offset);
         config.Type = type;
+        config.Direction = EGpioDirection::Input;
         config.InterruptEdge = EGpioEdge::AUTO;
         return config;
     }
@@ -214,7 +215,9 @@ protected:
 // must not trigger ReListenLine, and the shared fd must keep all its lines.
 TEST_F(TGpioCounterPollingTest, polled_counter_keeps_shared_fd)
 {
-    // Deliberately out-of-range fd: the base dtor close()s every fd in Lines.
+    // A fake, high-numbered fd, chosen to make a collision with a real open fd
+    // in this test process unlikely. The base dtor close()s every fd key in
+    // Lines; close() on a fd this process never opened just fails harmlessly.
     const int sharedFd = 100042;
 
     auto counterLine = std::make_shared<TFakeGpioLine>(MakeLineConfig(0, "water_meter"));
