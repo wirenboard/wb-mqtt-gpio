@@ -139,3 +139,115 @@ TEST_F(TGpioCounterGetEdgeTest, counter_update_current)
     fakeGpioLine->GetCounter()->Update(std::chrono::microseconds(200000));
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), assumedCurrent / 4);
 }
+
+// Regression harness for the "all inputs disappearing" bug. A counter line on a
+// chip without interrupt support shares a single polled fd with all the other
+// inputs. AutoDetectInterruptEdges() must NOT call ReListenLine() for such a
+// line, otherwise the shared fd is erased (and closed), killing every input
+// behind it.
+class TFakePolledChipDriver: public TGpioChipDriver
+{
+    using TGpioLines = std::vector<PGpioLine>;
+    uint8_t LineReadVal;
+
+public:
+    int ReListenCalls = 0;
+
+    explicit TFakePolledChipDriver(uint8_t fakeGpioLineVal): TGpioChipDriver()
+    {
+        LineReadVal = fakeGpioLineVal;
+    }
+
+    // Put the line onto a shared polling fd, mimicking InitLinesPolling().
+    void AddPolledLine(const PGpioLine& line, int sharedFd)
+    {
+        line->SetFd(sharedFd);
+        Lines[sharedFd].push_back(line);
+    }
+
+    void Detect()
+    {
+        AutoDetectInterruptEdges();
+    }
+
+    size_t LinesOnFd(int fd) const
+    {
+        const auto it = Lines.find(fd);
+        return it == Lines.end() ? 0 : it->second.size();
+    }
+
+private:
+    void ReadLinesValues(const TGpioLines&) override
+    {
+        for (const auto& fdLines: Lines) {
+            for (const auto& line: fdLines.second) {
+                line->SetCachedValue(LineReadVal);
+            }
+        }
+    }
+    void ReListenLine(PGpioLine) override
+    {
+        ++ReListenCalls;
+    }
+};
+
+class TGpioCounterPollingTest: public testing::Test
+{
+protected:
+    TGpioLineConfig MakeLineConfig(uint32_t offset, const std::string& type)
+    {
+        TGpioLineConfig config;
+        config.DebounceTimeout = std::chrono::microseconds(0);
+        config.Offset = offset;
+        config.Name = "line" + std::to_string(offset);
+        config.Type = type;
+        config.InterruptEdge = EGpioEdge::AUTO;
+        return config;
+    }
+};
+
+// A polled counter line (no interrupt support) sharing an fd with a plain input
+// must not trigger ReListenLine, and the shared fd must keep all its lines.
+TEST_F(TGpioCounterPollingTest, polled_counter_keeps_shared_fd)
+{
+    // Deliberately out-of-range fd: the base dtor close()s every fd in Lines.
+    const int sharedFd = 100042;
+
+    auto counterLine = std::make_shared<TFakeGpioLine>(MakeLineConfig(0, "water_meter"));
+    counterLine->SetInterruptSupport(EInterruptSupport::NO);
+
+    auto plainInput = std::make_shared<TFakeGpioLine>(MakeLineConfig(1, ""));
+    plainInput->SetInterruptSupport(EInterruptSupport::NO);
+
+    auto driver = std::make_shared<TFakePolledChipDriver>(1);
+    driver->AddPolledLine(counterLine, sharedFd);
+    driver->AddPolledLine(plainInput, sharedFd);
+
+    driver->Detect();
+
+    // Edge must still be auto-detected via polling (read value 1 => falling).
+    ASSERT_EQ(counterLine->GetCounter()->GetInterruptEdge(), EGpioEdge::FALLING);
+    // But no re-listen must happen for a polled line ...
+    ASSERT_EQ(driver->ReListenCalls, 0);
+    // ... and the shared fd must keep both lines.
+    ASSERT_EQ(driver->LinesOnFd(sharedFd), 2u);
+}
+
+// A counter line that does support interrupts must still be re-listened so the
+// freshly detected edge takes effect.
+TEST_F(TGpioCounterPollingTest, interrupt_counter_is_relistened)
+{
+    const int ownFd = 100007;
+
+    auto counterLine = std::make_shared<TFakeGpioLine>(MakeLineConfig(0, "water_meter"));
+    counterLine->SetInterruptSupport(EInterruptSupport::YES);
+
+    auto driver = std::make_shared<TFakePolledChipDriver>(0);
+    driver->AddPolledLine(counterLine, ownFd);
+
+    driver->Detect();
+
+    // Read value 0 => rising.
+    ASSERT_EQ(counterLine->GetCounter()->GetInterruptEdge(), EGpioEdge::RISING);
+    ASSERT_EQ(driver->ReListenCalls, 1);
+}
