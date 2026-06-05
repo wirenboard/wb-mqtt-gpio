@@ -159,9 +159,13 @@ public:
     }
 
     // Put the line onto a shared polling fd, mimicking InitLinesPolling().
+    // NB: we set only the map key, NOT line->SetFd(): SetFd() calls UpdateInfo()
+    // which ioctl()s AccessChip(), and these fake lines have no chip — in a
+    // release (NDEBUG) build the assert in AccessChip() is a no-op, so it would
+    // dereference a null shared_ptr and segfault. TFakeGpioLine::IsHandled()
+    // already returns true unconditionally, so the fd on the line is not needed.
     void AddPolledLine(const PGpioLine& line, int sharedFd)
     {
-        line->SetFd(sharedFd);
         Lines[sharedFd].push_back(line);
     }
 
