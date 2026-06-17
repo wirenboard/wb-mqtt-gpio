@@ -21,12 +21,6 @@ enum class EInterruptSupport : uint8_t
     NO
 };
 
-enum class EInterruptStatus : uint8_t
-{
-    SKIP,
-    Handled
-};
-
 template<typename T> class TValue
 {
     T Value;

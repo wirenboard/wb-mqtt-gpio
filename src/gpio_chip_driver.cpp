@@ -240,32 +240,19 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
                      "unable to read line event data: gpioevent_data failed with " + string(strerror(errno)));
         }
 
-        auto edge = data.id == GPIOEVENT_EVENT_RISING_EDGE ? EGpioEdge::RISING : EGpioEdge::FALLING;
         auto time = ctx.ToSteadyClock(data.timestamp);
 
-        if (line->HandleInterrupt(edge, time) == EInterruptStatus::Handled) { // update gpioline's last interruption ts
-            gpiohandle_data data;
-            if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0) {
-                LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
-                line->SetError("r");
-                return false;
-            }
-
-            // false interrupt generated on every service startup
-            // ignore it to prevent incorrect counter updates
-            bool oldValue = line->GetValueUnfiltered();
-            bool newValue = data.values[0];
-            if ((line->GetInterruptEdge() == EGpioEdge::BOTH && oldValue == newValue) ||
-                (line->GetSkipInterrupt() && !newValue))
-            {
-                line->ClearSkipInterrupt();
-                return false;
-            }
-
-            line->SetCachedValueUnfiltered(data.values[0]); // all interrupt events
-            SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
-            isHandled = true;
+        gpiohandle_data values;
+        if (ioctl(fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &values) < 0) {
+            LOG(Error) << "GPIOHANDLE_GET_LINE_VALUES_IOCTL failed: " << strerror(errno);
+            line->SetError("r");
+            return false;
         }
+
+        line->SetCachedValueUnfiltered(values.values[0]);
+        line->HandleInterrupt(time); // record interrupt time, (re)arm debounce window
+        SetIntervalTimer(line->GetTimerFd(), line->GetConfig()->DebounceTimeout);
+        isHandled = true;
     }
     return isHandled;
 }
@@ -378,24 +365,7 @@ bool TGpioChipDriver::TryListenLine(const PGpioLine& line)
     req.lineoffset = line->GetOffset();
     req.handleflags = GetFlagsFromConfig(*config);
 
-    req.eventflags = 0;
-
-    switch (config->InterruptEdge) {
-        case EGpioEdge::RISING:
-            req.eventflags |= GPIOEVENT_REQUEST_RISING_EDGE;
-            break;
-        case EGpioEdge::FALLING:
-            req.eventflags |= GPIOEVENT_REQUEST_FALLING_EDGE;
-            break;
-        case EGpioEdge::BOTH:
-            req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
-            break;
-        case EGpioEdge::AUTO:
-            req.eventflags |= GPIOEVENT_REQUEST_BOTH_EDGES;
-            break;
-        default:
-            wb_throw(TGpioDriverException, "Unknown interrupt edge in config");
-    }
+    req.eventflags = GPIOEVENT_REQUEST_BOTH_EDGES;
 
     errno = 0;
     if (ioctl(Chip->GetFd(), GPIO_GET_LINEEVENT_IOCTL, &req) < 0) {
@@ -572,10 +542,8 @@ void TGpioChipDriver::PollLinesValues(const TGpioLines& lines)
         if (!line->IsOutput()) {
             /* if value changed for input we simulate interrupt */
             if (recovery || oldValue != newValue) {
-                auto edge = newValue ? EGpioEdge::RISING : EGpioEdge::FALLING;
-                if (line->HandleInterrupt(edge, now) == EInterruptStatus::Handled) {
-                    line->SetCachedValue(newValue);
-                }
+                line->HandleInterrupt(now);
+                line->SetCachedValue(newValue);
             }
         } else { /* for output just set value to cache: it will publish it if
                     changed */

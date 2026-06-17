@@ -23,17 +23,12 @@ TGpioLine::TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config)
       TimerFd(-1),
       Value(0),
       ValueUnfiltered(0),
-      InterruptSupport(EInterruptSupport::UNKNOWN),
-      SkipInterrupt(false)
+      InterruptSupport(EInterruptSupport::UNKNOWN)
 {
     Config = WBMQTT::MakeUnique<TGpioLineConfig>(config);
 
     if (!config.Type.empty()) {
         Counter = WBMQTT::MakeUnique<TGpioCounter>(config);
-        // set skip interrupt flag to prevent false service startup interrupts when using gpiochip0
-        if (Counter->GetInterruptEdge() != EGpioEdge::BOTH && AccessChip()->GetNumber() == 0) {
-            SkipInterrupt = true;
-        }
     }
 
     if (chip->IsValid())
@@ -300,21 +295,9 @@ std::chrono::microseconds TGpioLine::GetIntervalFromPreviousInterrupt(const TTim
     return chrono::duration_cast<chrono::microseconds>(interruptTimePoint - GetInterruptionTimepoint());
 }
 
-EInterruptStatus TGpioLine::HandleInterrupt(EGpioEdge edge, const TTimePoint& interruptTimePoint)
+void TGpioLine::HandleInterrupt(const TTimePoint& interruptTimePoint)
 {
-    assert(edge != EGpioEdge::BOTH);
-
-    auto interruptEdge = GetInterruptEdge();
-    if (interruptEdge != EGpioEdge::BOTH && interruptEdge != edge) {
-        if (Debug.IsEnabled()) {
-            LOG(Debug) << DescribeShort() << " handle interrupt. Edge: " << GpioEdgeToString(edge)
-                       << " interval: " << GetIntervalFromPreviousInterrupt(interruptTimePoint).count() << " us [skip]";
-        }
-        return EInterruptStatus::SKIP;
-    }
-
     PreviousInterruptionTimePoint = interruptTimePoint;
-    return EInterruptStatus::Handled;
 }
 
 void TGpioLine::Update()
@@ -347,34 +330,43 @@ EInterruptSupport TGpioLine::GetInterruptSupport() const
     return InterruptSupport;
 }
 
-bool TGpioLine::GetSkipInterrupt() const
-{
-    return SkipInterrupt;
-}
-
-void TGpioLine::ClearSkipInterrupt()
-{
-    SkipInterrupt = false;
-}
-
 bool TGpioLine::UpdateIfStable(const TTimePoint& checkTimePoint)
 {
     auto fromLastTs = GetIntervalFromPreviousInterrupt(checkTimePoint);
-    if (fromLastTs > GetConfig()->DebounceTimeout) {
-        SetCachedValue(GetValueUnfiltered());
-        LOG(Debug) << "Value (" << static_cast<bool>(GetValueUnfiltered()) << ") on (" << GetName() << " is stable for "
-                   << fromLastTs.count() << "us";
+    if (fromLastTs <= GetConfig()->DebounceTimeout) {
+        return false;
+    }
 
-        const auto& gpioCounter = GetCounter();
-        if (gpioCounter) {
+    // The line has held a steady level for the whole debounce window, so the
+    // settled level is real (not bounce/noise). Commit it as the filtered value.
+    bool previousStable = GetValue();
+    bool newStable = GetValueUnfiltered();
+    SetCachedValue(newStable);
+    LOG(Debug) << "Value (" << newStable << ") on (" << GetName() << " is stable for " << fromLastTs.count() << "us";
+
+    const auto& gpioCounter = GetCounter();
+    if (gpioCounter) {
+        // Count only when the held level is a real transition in the configured
+        // direction.
+        bool counted;
+        switch (GetInterruptEdge()) {
+            case EGpioEdge::RISING:
+                counted = (!previousStable && newStable);
+                break;
+            case EGpioEdge::FALLING:
+                counted = (previousStable && !newStable);
+                break;
+            default: // BOTH
+                counted = (previousStable != newStable);
+                break;
+        }
+
+        if (counted) {
             auto fromLastStableValTs =
                 chrono::duration_cast<chrono::microseconds>(checkTimePoint - PreviousStableValAcquiredTimePoint);
             gpioCounter->HandleInterrupt(GetInterruptEdge(), fromLastStableValTs);
+            PreviousStableValAcquiredTimePoint = checkTimePoint;
         }
-
-        PreviousStableValAcquiredTimePoint = checkTimePoint;
-        return true;
-    } else {
-        return false;
     }
+    return true;
 }

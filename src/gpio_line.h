@@ -26,7 +26,6 @@ class TGpioLine
     TValue<uint8_t> ValueUnfiltered;
 
     EInterruptSupport InterruptSupport;
-    bool SkipInterrupt;
 
 public:
     TGpioLine(const PGpioChip& chip, const TGpioLineConfig& config);
@@ -61,14 +60,12 @@ public:
     void SetTimerFd(int);
     int GetTimerFd() const;
     EGpioEdge GetInterruptEdge() const;
-    EInterruptStatus HandleInterrupt(EGpioEdge, const TTimePoint&);
+    void HandleInterrupt(const TTimePoint&);
     void Update();
     const PUGpioCounter& GetCounter() const;
     const PUGpioLineConfig& GetConfig() const;
     void SetInterruptSupport(EInterruptSupport interruptSupport);
     EInterruptSupport GetInterruptSupport() const;
-    bool GetSkipInterrupt() const;
-    void ClearSkipInterrupt();
     std::chrono::microseconds GetIntervalFromPreviousInterrupt(const TTimePoint& interruptTimePoint) const;
     bool UpdateIfStable(const TTimePoint& checkTimePoint);
     const TTimePoint& GetInterruptionTimepoint() const;
