@@ -1,7 +1,7 @@
 [Unit]
 Description=MQTT Driver for GPIO-controlled switches
 Wants=wb-hwconf-manager.service wb-modules.service
-After=network.target wb-hwconf-manager.service wb-modules.service
+After=network.target wb-hwconf-manager.service mosquitto.service
 
 [Service]
 Type=simple

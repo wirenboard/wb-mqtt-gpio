@@ -1,3 +1,10 @@
+wb-mqtt-gpio (2.18.1) stable; urgency=medium
+
+  * Remove obsolete wb-modules.service dependency
+  * Add mosquitto.service dependency to ensure that mosquitto is started before wb-mqtt-gpio
+
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.com>  Fri, 19 Jun 2026 11:06:00 +0500
+
 wb-mqtt-gpio (2.18.0) stable; urgency=medium
 
   * Fix phantom counter increments on idle inputs: a pulse is now counted only
