@@ -132,10 +132,10 @@ TEST_F(TDebounceEdgeTest, rising_counts_held_pulse)
     const auto line = std::make_shared<TGpioLine>(fakeGpioLineConfig);
     InitGpioLine(line, 0); // rest low
 
-    Settle(line, 1, now);                                          // rises and holds -> one count
+    Settle(line, 1, now); // rises and holds -> one count
     ASSERT_EQ(line->GetCounter()->GetTotal(), 1);
 
-    Settle(line, 0, now + std::chrono::microseconds(1000000));     // returns low: not a rising edge
+    Settle(line, 0, now + std::chrono::microseconds(1000000)); // returns low: not a rising edge
     ASSERT_EQ(line->GetCounter()->GetTotal(), 1);
 }
 
@@ -183,10 +183,10 @@ TEST_F(TDebounceEdgeTest, falling_counts_held_pulse)
     const auto line = std::make_shared<TGpioLine>(fakeGpioLineConfig);
     InitGpioLine(line, 1); // rest high
 
-    Settle(line, 0, now);                                         // drops and holds -> one count
+    Settle(line, 0, now); // drops and holds -> one count
     ASSERT_EQ(line->GetCounter()->GetTotal(), 1);
 
-    Settle(line, 1, now + std::chrono::microseconds(1000000));    // returns high: not a falling edge
+    Settle(line, 1, now + std::chrono::microseconds(1000000)); // returns high: not a falling edge
     ASSERT_EQ(line->GetCounter()->GetTotal(), 1);
 }
 

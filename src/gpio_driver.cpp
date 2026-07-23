@@ -239,8 +239,7 @@ void TGpioDriver::Start()
                                     LOG(Info) << "Started";
 
                                     int epfd = epoll_create(1); // creating epoll for Interrupts
-                                    struct epoll_event events[EPOLL_EVENT_COUNT]
-                                    {};
+                                    struct epoll_event events[EPOLL_EVENT_COUNT]{};
 
                                     WB_SCOPE_EXIT(close(epfd);)
 

@@ -192,8 +192,7 @@ void TGpioChipDriver::AddToEpoll(int epfd)
             return;
         }
 
-        struct epoll_event ep_event
-        {};
+        struct epoll_event ep_event{};
 
         ep_event.events = EPOLLIN | EPOLLPRI;
         ep_event.data.fd = line->GetFd();
@@ -221,10 +220,7 @@ bool TGpioChipDriver::HandleGpioInterrupt(const PGpioLine& line, const TInterrup
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);
-    struct timeval tv
-    {
-        0
-    }; // do not block
+    struct timeval tv{0}; // do not block
 
     while (auto retVal = select(fd + 1, &rfds, nullptr, nullptr, &tv)) {
         if (retVal < 0) {
