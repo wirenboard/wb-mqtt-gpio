@@ -1,3 +1,11 @@
+wb-mqtt-gpio (2.19.0) stable; urgency=medium
+
+  * Exit with code 7 when config defines no GPIO channels and on SIGTERM/SIGINT
+  * Validate debug arguments before checking for configured channels
+  * systemd unit: treat exit code 7 as success and do not restart on codes 2 and 6
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.com>  Thu, 20 Aug 2026 13:18:25 +0000
+
 wb-mqtt-gpio (2.18.3) stable; urgency=medium
 
   * Fix coverage reporting with GNU make 4.4 (trixie): export coverage

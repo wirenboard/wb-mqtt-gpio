@@ -10,7 +10,8 @@ RestartSec=1
 User=root
 ExecStart=/usr/bin/wb-mqtt-gpio
 ExecStartPre=/usr/lib/wb-mqtt-gpio/generate-system-config.py
-RestartPreventExitStatus=2 3 4 5 6 7
+RestartPreventExitStatus=2 6
+SuccessExitStatus=7
 
 [Install]
 WantedBy=multi-user.target

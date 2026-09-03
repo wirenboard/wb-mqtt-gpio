@@ -75,10 +75,6 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                            .SetDoLoadPrevious(false))
                           .GetValue();
 
-        if (config.Chips.empty()) {
-            wb_throw(TGpioDriverException, "no chips defined in config. Nothing to do");
-        }
-
         for (const auto& chipConfig: config.Chips) {
             if (chipConfig.Lines.empty()) {
                 LOG(Warn) << "No lines for chip at '" << chipConfig.Path << "'. Skipping";
