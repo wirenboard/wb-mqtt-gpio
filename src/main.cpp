@@ -15,6 +15,7 @@
 // From LSB
 #define EXIT_INVALIDARGUMENT 2 // Invalid or excess arguments
 #define EXIT_NOTCONFIGURED 6   // The program is not configured
+#define EXIT_NOTRUNNING 7      // The program is not running (nothing to do)
 
 using namespace std;
 
@@ -222,6 +223,10 @@ int main(int argc, char* argv[])
     string configFileName;
     ParseCommandLine(argc, argv, mqttConfig, configFileName, debugLevel);
 
+    if (debugLevel != DebugLevel::NONE) {
+        SetDebugLevel(debugLevel);
+    }
+
     WBMQTT::TPromise<void> initialized;
 
     WBMQTT::SetThreadName("wb-mqtt-gpio");
@@ -242,8 +247,6 @@ int main(int argc, char* argv[])
         LOG(Error) << "Driver takes too long to stop. Exiting.";
         exit(EXIT_FAILURE);
     });
-    WBMQTT::SignalHandling::Start();
-
     TLinuxKernelVersion kernel = GetLinuxKernelVersion();
 
     if (HasMonotonicClockForInterruptionTimestamps(kernel)) {
@@ -264,11 +267,16 @@ int main(int argc, char* argv[])
         return EXIT_NOTCONFIGURED;
     }
 
-    if (debugLevel != DebugLevel::NONE) {
-        SetDebugLevel(debugLevel);
-    } else if (config.Debug) {
+    if (config.Chips.empty()) {
+        LOG(Info) << "No GPIO channels defined in config. Nothing to do";
+        return EXIT_NOTRUNNING;
+    }
+
+    if (debugLevel == DebugLevel::NONE && config.Debug) {
         SetDebugLevel(DebugLevel::DEBUG_GPIO);
     }
+
+    WBMQTT::SignalHandling::Start();
 
     try {
         auto mqttDriver =
@@ -299,5 +307,5 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    return EXIT_SUCCESS;
+    return EXIT_NOTRUNNING;
 }
