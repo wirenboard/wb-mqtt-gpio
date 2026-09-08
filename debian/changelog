@@ -1,3 +1,9 @@
+wb-mqtt-gpio (2.18.4) stable; urgency=medium
+
+  * Drop configs for unsupported boards
+
+ -- Nikolay Korotkiy <nikolay.korotkiy@wirenboard.com>  Tue, 08 Sep 2026 10:20:00 +0400
+
 wb-mqtt-gpio (2.18.3) stable; urgency=medium
 
   * Fix coverage reporting with GNU make 4.4 (trixie): export coverage
