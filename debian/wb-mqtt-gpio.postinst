@@ -24,7 +24,7 @@ function get_version()
     is_installed "$1"
 }
 
-KERNEL_VERSION=$(get_version linux-image-wb2 || get_version linux-image-wb6 || true)
+KERNEL_VERSION=$(get_version linux-image-wb6 || true)
 
 if [ -z "$KERNEL_VERSION" ]; then
     # wb7 or newer, so no default config
@@ -34,28 +34,8 @@ elif of_node_exists /wirenboard/gpios && dpkg --compare-versions "$KERNEL_VERSIO
 else
     # older kernel version contained incomplete gpios devicetree node
     case "$WB_VERSION" in
-        "61" | "60" | "58" | "55" | "52" )
+        "61" | "60" )
             BOARD_CONF="wb${WB_VERSION}"
-        ;;
-
-        "50" )
-            BOARD_CONF="wbsh5"
-        ;;
-
-        "41" )
-            BOARD_CONF="wbsh4"
-        ;;
-
-        "32" )
-            BOARD_CONF="wbsh3"
-        ;;
-
-        "KMON1" )
-            BOARD_CONF="mka3"
-        ;;
-
-        "CQC10" )
-            BOARD_CONF="cqc10"
         ;;
 
         * )

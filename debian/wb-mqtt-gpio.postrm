@@ -8,7 +8,7 @@ OLD_CONFFILE_NAME=wb-homa-gpio.conf
 OLD_CONFFILE=/etc/$OLD_CONFFILE_NAME
 
 BACKUP_DIR=/usr/share/wb-mqtt-gpio
-OLD_CONFFILE_BACKUP=$BACKUP_DIR/$OLD_CONFFILE_NAME.old 
+OLD_CONFFILE_BACKUP=$BACKUP_DIR/$OLD_CONFFILE_NAME.old
 
 rm -f /var/lib/wb-mqtt-confed/schemas/wb-mqtt-gpio.schema.json
 
