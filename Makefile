@@ -23,7 +23,7 @@ SRC_DIR = src
 COMMON_SRCS := $(shell find $(SRC_DIR) -name "*.cpp" -and -not -name main.cpp)
 COMMON_OBJS := $(COMMON_SRCS:%=$(BUILD_DIR)/%.o)
 
-CXXFLAGS = -Wall -std=c++17 -I$(SRC_DIR)
+CXXFLAGS = -Wall -std=c++20 -I$(SRC_DIR)
 LDFLAGS = -lwbmqtt1 -lpthread
 
 ifeq ($(DEBUG),)
