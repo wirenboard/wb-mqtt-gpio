@@ -47,6 +47,7 @@ struct TGpioDriverConfig
     bool Debug;
     std::string DeviceName;
     WBMQTT::TPublishParameters PublishParameters;
+    std::chrono::milliseconds PublishPeriod = std::chrono::milliseconds(0);
     std::vector<TGpioChipConfig> Chips;
 };
 
