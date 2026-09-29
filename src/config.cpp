@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <unordered_set>
+#include <unordered_map>
 
 #define LOG(logger) ::logger.Log() << "[config] "
 
@@ -91,6 +91,9 @@ namespace
             Get(channel, "open_drain", lineConfig.IsOpenDrain);
             Get(channel, "open_source", lineConfig.IsOpenSource);
             Get(channel, "type", lineConfig.Type);
+            Get(channel, "title", lineConfig.Title);
+            Get(channel, "title_total", lineConfig.TitleTotal);
+            Get(channel, "title_current", lineConfig.TitleCurrent);
             Get(channel, "multiplier", lineConfig.Multiplier);
             Get(channel, "decimal_points_current", lineConfig.DecimalPlacesCurrent);
             Get(channel, "decimal_points_total", lineConfig.DecimalPlacesTotal);
@@ -114,6 +117,71 @@ namespace
             AppendLine(cfg, path, lineConfig);
         }
         return cfg;
+    }
+
+    // Title keys and postfixes of controls they are applied to (see TGpioCounter)
+    const pair<const char*, const char*> TitleKeys[] = {{"title", ""},
+                                                        {"title_total", "_total"},
+                                                        {"title_current", "_current"}};
+
+    // The title a control has when it is not set in the main config:
+    // the one from system configs or the control id that is shown by homeui instead of a title
+    string GetDefaultTitle(const Json::Value& channel,
+                           const Json::Value& systemChannel,
+                           const char* key,
+                           const char* idPostfix)
+    {
+        if (systemChannel.isMember(key)) {
+            return systemChannel[key].asString();
+        }
+        return channel["name"].asString() + idPostfix;
+    }
+
+    // "title" is filled for all channels. "title_total" and "title_current" are filled only for inputs,
+    // as any input can be switched to a counter in confed and the fields must not appear empty
+    void FillDefaultTitles(Json::Value& channel, const Json::Value& systemChannel)
+    {
+        const auto& direction = channel.isMember("direction") ? channel["direction"] : systemChannel["direction"];
+        bool isInput = (direction.asString() == "input");
+        for (const auto& [key, idPostfix]: TitleKeys) {
+            bool isCounterTitle = (string(key) != "title");
+            if (isCounterTitle && !isInput) {
+                continue;
+            }
+            if (!channel.isMember(key)) {
+                channel[key] = GetDefaultTitle(channel, systemChannel, key, idPostfix);
+            }
+        }
+    }
+
+    void RemoveDefaultTitles(Json::Value& channel, const Json::Value& systemChannel)
+    {
+        for (const auto& [key, idPostfix]: TitleKeys) {
+            if (channel.isMember(key) && channel[key].isString() &&
+                (channel[key].asString().empty() ||
+                 channel[key].asString() == GetDefaultTitle(channel, systemChannel, key, idPostfix)))
+            {
+                channel.removeMember(key);
+            }
+        }
+    }
+
+    // Channels from all system configs in order of appearance
+    vector<Json::Value> LoadSystemChannels(const string& systemConfigsDir, const Json::Value& noDeviceNameSchema)
+    {
+        vector<Json::Value> res;
+        try {
+            IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
+                auto cfg = Parse(f);
+                Validate(cfg, noDeviceNameSchema);
+                for (const auto& ch: cfg["channels"]) {
+                    res.push_back(ch);
+                }
+                return false;
+            });
+        } catch (const TNoDirError&) {
+        }
+        return res;
     }
 
     Json::Value RemoveDeviceNameRequirement(const Json::Value& schema)
@@ -206,10 +274,9 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
     return cfg;
 }
 
-void MakeJsonForConfed(const string& configFile, const string& systemConfigsDir, const string& schemaFile)
+Json::Value BuildJsonForConfed(const string& configFile, const string& systemConfigsDir, const string& schemaFile)
 {
     Json::Value schema = Parse(schemaFile);
-    Json::Value noDeviceNameSchema = RemoveDeviceNameRequirement(schema);
     auto config = Parse(configFile);
     Validate(config, schema);
     unordered_map<string, Json::Value> configuredChannels;
@@ -217,26 +284,19 @@ void MakeJsonForConfed(const string& configFile, const string& systemConfigsDir,
         configuredChannels.emplace(ch["name"].asString(), ch);
     }
     Json::Value newChannels(Json::arrayValue);
-    try {
-        IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
-            auto cfg = Parse(f);
-            Validate(cfg, noDeviceNameSchema);
-            for (const auto& ch: cfg["channels"]) {
-                auto name = ch["name"].asString();
-                auto it = configuredChannels.find(name);
-                if (it != configuredChannels.end()) {
-                    newChannels.append(it->second);
-                    configuredChannels.erase(name);
-                } else {
-                    Json::Value v;
-                    v["name"] = ch["name"];
-                    v["direction"] = ch["direction"];
-                    newChannels.append(v);
-                }
-            }
-            return false;
-        });
-    } catch (const TNoDirError&) {
+    for (const auto& ch: LoadSystemChannels(systemConfigsDir, RemoveDeviceNameRequirement(schema))) {
+        auto name = ch["name"].asString();
+        auto it = configuredChannels.find(name);
+        Json::Value v;
+        if (it != configuredChannels.end()) {
+            v = it->second;
+            configuredChannels.erase(name);
+        } else {
+            v["name"] = ch["name"];
+            v["direction"] = ch["direction"];
+        }
+        FillDefaultTitles(v, ch);
+        newChannels.append(v);
     }
 
     // Add custom channels.
@@ -245,41 +305,30 @@ void MakeJsonForConfed(const string& configFile, const string& systemConfigsDir,
     for (const auto& ch: config["channels"]) {
         auto it = configuredChannels.find(ch["name"].asString());
         if (it != configuredChannels.end() && ch.isMember("gpio")) {
-            newChannels.append(ch);
+            Json::Value v = ch;
+            FillDefaultTitles(v, Json::Value());
+            newChannels.append(v);
         }
     }
     config["channels"].swap(newChannels);
-    MakeWriter("", "None")->write(config, &cout);
+    return config;
 }
 
-void MakeConfigFromConfed(const string& systemConfigsDir, const string& schemaFile)
+Json::Value BuildConfigFromConfed(const Json::Value& confedConfig,
+                                  const string& systemConfigsDir,
+                                  const string& schemaFile)
 {
-    Json::Value noDeviceNameSchema = RemoveDeviceNameRequirement(Parse(schemaFile));
-    unordered_set<string> systemChannels;
-    try {
-        IterateDirByPattern(systemConfigsDir, ".conf", [&](const string& f) {
-            auto cfg = Parse(f);
-            Validate(cfg, noDeviceNameSchema);
-            for (const auto& ch: cfg["channels"]) {
-                systemChannels.insert(ch["name"].asString());
-            }
-            return false;
-        });
-    } catch (const TNoDirError&) {
+    unordered_map<string, Json::Value> systemChannels;
+    for (auto& ch: LoadSystemChannels(systemConfigsDir, RemoveDeviceNameRequirement(Parse(schemaFile)))) {
+        systemChannels[ch["name"].asString()] = std::move(ch);
     }
 
-    Json::Value config;
-    Json::CharReaderBuilder readerBuilder;
-    Json::String errs;
-
-    if (!Json::parseFromStream(readerBuilder, cin, &config, &errs)) {
-        throw runtime_error("Failed to parse JSON:" + errs);
-    }
-
+    Json::Value config = confedConfig;
     Json::Value newChannels(Json::arrayValue);
     for (auto& ch: config["channels"]) {
         auto it = systemChannels.find(ch["name"].asString());
         if (it != systemChannels.end()) {
+            RemoveDefaultTitles(ch, it->second);
             for (const auto& pr: ProtectedProperties) {
                 ch.removeMember(pr);
             }
@@ -287,9 +336,27 @@ void MakeConfigFromConfed(const string& systemConfigsDir, const string& schemaFi
                 newChannels.append(ch);
             }
         } else {
+            RemoveDefaultTitles(ch, Json::Value());
             newChannels.append(ch);
         }
     }
     config["channels"].swap(newChannels);
-    MakeWriter("  ", "None")->write(config, &cout);
+    return config;
+}
+
+void MakeJsonForConfed(const string& configFile, const string& systemConfigsDir, const string& schemaFile)
+{
+    MakeWriter("", "None")->write(BuildJsonForConfed(configFile, systemConfigsDir, schemaFile), &cout);
+}
+
+void MakeConfigFromConfed(const string& systemConfigsDir, const string& schemaFile)
+{
+    Json::Value confedConfig;
+    Json::CharReaderBuilder readerBuilder;
+    Json::String errs;
+
+    if (!Json::parseFromStream(readerBuilder, cin, &confedConfig, &errs)) {
+        throw runtime_error("Failed to parse JSON:" + errs);
+    }
+    MakeWriter("  ", "None")->write(BuildConfigFromConfed(confedConfig, systemConfigsDir, schemaFile), &cout);
 }

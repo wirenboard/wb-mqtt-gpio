@@ -140,6 +140,23 @@ TEST_F(TGpioCounterGetEdgeTest, counter_update_current)
     ASSERT_EQ(fakeGpioLine->GetCounter()->GetCurrent(), assumedCurrent / 4);
 }
 
+TEST_F(TGpioCounterGetEdgeTest, counter_controls_metadata)
+{
+    fakeGpioLineConfig.Title = "Ignored for counters";
+    fakeGpioLineConfig.TitleTotal = "Water total";
+    TGpioCounter counter(fakeGpioLineConfig);
+
+    const auto metadata = counter.GetControlsMetadata("testline");
+    ASSERT_EQ(metadata.size(), 2);
+    ASSERT_EQ(metadata[0].Id, "testline_total");
+    ASSERT_EQ(metadata[0].Type, "water_consumption");
+    ASSERT_EQ(metadata[0].Title, "Water total");
+    ASSERT_EQ(metadata[1].Id, "testline_current");
+    ASSERT_EQ(metadata[1].Type, "water_flow");
+    // Not set: "title" is not used as a fallback
+    ASSERT_EQ(metadata[1].Title, "");
+}
+
 // Regression harness for the "all inputs disappearing" bug. A counter line on a
 // chip without interrupt support shares a single polled fd with all the other
 // inputs. AutoDetectInterruptEdges() must NOT call ReListenLine() for such a

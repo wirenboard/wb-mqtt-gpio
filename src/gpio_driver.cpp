@@ -52,6 +52,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
                                                TControlArgs{}
                                                    .SetId(lineConfig.Name)
                                                    .SetType("switch")
+                                                   .SetTitle(lineConfig.Title)
                                                    .SetReadonly(false)
                                                    .SetUserData(line)
                                                    .SetRawValue(lineConfig.InitialState ? "1" : "0")
@@ -117,17 +118,15 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                 auto futureControl = TPromise<PControl>::GetValueFuture(nullptr);
 
                 if (const auto& counter = line->GetCounter()) {
-                    for (auto& idType: counter->GetIdsAndTypes(lineConfig.Name)) {
-                        auto& id = idType.first;
-                        auto& type = idType.second;
-
-                        bool isTotal = EndsWith(id, "_total");
+                    for (auto& meta: counter->GetControlsMetadata(lineConfig.Name)) {
+                        bool isTotal = EndsWith(meta.Id, "_total");
 
                         futureControl = device->CreateControl(
                             tx,
                             TControlArgs{}
-                                .SetId(move(id))
-                                .SetType(move(type))
+                                .SetId(move(meta.Id))
+                                .SetType(move(meta.Type))
+                                .SetTitle(move(meta.Title))
                                 .SetReadonly(lineConfig.Direction == EGpioDirection::Input && !isTotal)
                                 .SetUserData(line)
                                 .SetError(line->GetError())
@@ -146,6 +145,7 @@ TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDri
                                                               TControlArgs{}
                                                                   .SetId(lineConfig.Name)
                                                                   .SetType("switch")
+                                                                  .SetTitle(lineConfig.Title)
                                                                   .SetReadonly(true)
                                                                   .SetUserData(line)
                                                                   .SetError(line->GetError())
