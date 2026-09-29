@@ -345,6 +345,14 @@
             "default": -1,
             "propertyOrder": 3
         },
+        "publish_period_ms": {
+            "type": "integer",
+            "title": "Minimal publishing interval (ms)",
+            "description": "publish_period_ms_description",
+            "default": 0,
+            "minimum": 0,
+            "propertyOrder": 4
+        },
         "channels": {
             "type": "array",
             "title": "List of GPIO channels",
@@ -363,7 +371,7 @@
                     { "$ref": "#/definitions/undefined_channel" }
                 ]
             },
-            "propertyOrder": 4,
+            "propertyOrder": 5,
             "options": {
                 "disable_array_reorder": true,
                 "disable_collapse": true,
@@ -382,6 +390,7 @@
     "_format": "merge-default",
     "default" : {
         "max_unchanged_interval": -1,
+        "publish_period_ms": 0,
         "debug": false
     },
     "options": {
@@ -392,7 +401,8 @@
 
     "translations": {
         "en": {
-            "max_unchanged_interval_description": "Specifies the maximum interval in seconds between posting the same values to MQTT.  Negative value (default) - update on change. Zero - update after every read from the device."
+            "max_unchanged_interval_description": "Specifies the maximum interval in seconds between posting the same values to MQTT.  Negative value (default) - update on change. Zero - update after every read from the device.",
+            "publish_period_ms_description": "Minimal interval in milliseconds between publishing values to MQTT. Pulses are always counted, only the publishing rate is limited. Zero (default) publishes every update. Raise it if high frequency pulse counters load the controller."
         },
         "ru": {
             "GPIO Driver Configuration Type": "Дискретные входы и выходы (GPIO)",
@@ -427,6 +437,8 @@
             "System output": "Системный выход",
             "Unchanged value posting interval": "Интервал публикации неизменившегося состояния (с)",
             "max_unchanged_interval_description": "Задает интервал публикации состояния, если оно не изменилось. Ноль задает публикацию после каждого чтения данных из устройства. По умолчанию публикация происходит по изменению состояния. Отрицательное число задает поведение по умолчанию",
+            "Minimal publishing interval (ms)": "Минимальный интервал публикации (мс)",
+            "publish_period_ms_description": "Задает минимальный интервал между публикациями значений в MQTT в миллисекундах. Импульсы считаются всегда, ограничивается только частота публикации. Ноль (по умолчанию) задает публикацию при каждом обновлении. Увеличьте значение, если высокочастотные счетчики импульсов нагружают контроллер",
             "List of GPIO channels": "Список каналов GPIO",
             "GPIO channel": "Канал GPIO",
             "Direction": "Режим канала",
