@@ -205,8 +205,8 @@ TEST_F(TConfigTest, good_config_debug_option)
 TEST_F(TConfigTest, confed_default_titles)
 {
     auto json = BuildJsonForConfed(testRootDir + "/confed/wb-mqtt-gpio.conf",
-                                  testRootDir + "/confed/wb-mqtt-gpio.conf.d",
-                                  schemaFile);
+                                   testRootDir + "/confed/wb-mqtt-gpio.conf.d",
+                                   schemaFile);
     // "title" is filled for all channels, counter titles only for inputs (direction may come from system config)
     auto expected = ParseJson(R"({
         "device_name": "Discrete I/O",
