@@ -65,6 +65,7 @@ TFuture<PControl> CreateOutputControl(WBMQTT::PLocalDevice device,
 
 TGpioDriver::TGpioDriver(const WBMQTT::PDeviceDriver& mqttDriver, const TGpioDriverConfig& config)
     : MqttDriver(mqttDriver),
+      PublishPeriod(config.PublishPeriod),
       Active(false)
 {
     try {
@@ -240,6 +241,7 @@ void TGpioDriver::Start()
 
                                     int epfd = epoll_create(1); // creating epoll for Interrupts
                                     struct epoll_event events[EPOLL_EVENT_COUNT]{};
+                                    auto lastPublishTime = chrono::steady_clock::now();
 
                                     WB_SCOPE_EXIT(close(epfd);)
 
@@ -263,6 +265,12 @@ void TGpioDriver::Start()
                                         if (!isHandled) {
                                             continue;
                                         }
+
+                                        auto now = chrono::steady_clock::now();
+                                        if (PublishPeriod > now - lastPublishTime) {
+                                            continue;
+                                        }
+                                        lastPublishTime = now;
 
                                         auto tx = MqttDriver->BeginTx();
                                         auto device = tx->GetDevice(Name);

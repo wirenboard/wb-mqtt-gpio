@@ -66,6 +66,7 @@ TEST_F(TConfigTest, good_config)
 {
     TGpioDriverConfig cfg = LoadConfig(testRootDir + "/good1/wb-mqtt-gpio.conf", "", "", schemaFile);
     ASSERT_EQ(cfg.DeviceName, "Discrete I/O");
+    ASSERT_EQ(cfg.PublishPeriod, std::chrono::milliseconds(250));
     ASSERT_EQ(cfg.Chips.size(), 1);
     ASSERT_EQ(cfg.Chips[0].Lines.size(), 1);
     ASSERT_EQ(cfg.Chips[0].Path, "/dev/gpiochip2");
@@ -90,6 +91,7 @@ TEST_F(TConfigTest, optional_config)
     TGpioDriverConfig cfg =
         LoadConfig(testRootDir + "/good1/wb-mqtt-gpio.conf", testRootDir + "/good1/optional.conf", "", schemaFile);
     ASSERT_EQ(cfg.DeviceName, "I/O");
+    ASSERT_EQ(cfg.PublishPeriod, std::chrono::milliseconds(0));
     ASSERT_EQ(cfg.Chips.size(), 1);
     ASSERT_EQ(cfg.Chips[0].Lines.size(), 1);
     ASSERT_EQ(cfg.Chips[0].Path, "/dev/gpiochip22");

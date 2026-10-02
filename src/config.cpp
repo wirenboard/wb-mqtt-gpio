@@ -62,6 +62,8 @@ namespace
         Get(root, "max_unchanged_interval", maxUnchangedInterval);
         cfg.PublishParameters.Set(maxUnchangedInterval);
 
+        Get(root, "publish_period_ms", cfg.PublishPeriod);
+
         for (const auto& channel: channels) {
             if (!channel.isMember("gpio")) {
                 LOG(Warn) << "Skip GPIO \"" << channel["name"].asString()

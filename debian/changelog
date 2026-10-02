@@ -1,8 +1,14 @@
-wb-mqtt-gpio (2.19.0) stable; urgency=medium
+wb-mqtt-gpio (2.20.0) stable; urgency=medium
 
   * Add channel titles to config
 
- -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.com>  Thu, 24 Sep 2026 12:00:00 +0500
+ -- Petr Krasnoshchekov <petr.krasnoshchekov@wirenboard.com>  Fri, 02 Oct 2026 15:42:59 +0500
+
+wb-mqtt-gpio (2.19.0) stable; urgency=medium
+
+  * Add publish_period_ms option for MQTT publishing rate limiting
+
+ -- Ilya Titov <ilya.titov@wirenboard.com>  Tue, 29 Sep 2026 12:24:21 +0300
 
 wb-mqtt-gpio (2.18.4) stable; urgency=medium
 
