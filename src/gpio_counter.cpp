@@ -26,6 +26,8 @@ TGpioCounter::TGpioCounter(const TGpioLineConfig& config)
       InitialTotal(0),
       Total(0),
       Current(0),
+      TitleTotal(config.TitleTotal),
+      TitleCurrent(config.TitleCurrent),
       DecimalPlacesTotal(config.DecimalPlacesTotal),
       DecimalPlacesCurrent(config.DecimalPlacesCurrent),
       Counts(0),
@@ -97,9 +99,10 @@ uint64_t TGpioCounter::GetCounts() const
     return Counts;
 }
 
-vector<TGpioCounter::TMetadataPair> TGpioCounter::GetIdsAndTypes(const string& baseId) const
+vector<TGpioCounter::TControlMetadata> TGpioCounter::GetControlsMetadata(const string& baseId) const
 {
-    return {{baseId + ID_POSTFIX_TOTAL, TotalType}, {baseId + ID_POSTFIX_CURRENT, CurrentType}};
+    return {{baseId + ID_POSTFIX_TOTAL, TotalType, TitleTotal},
+            {baseId + ID_POSTFIX_CURRENT, CurrentType, TitleCurrent}};
 }
 
 vector<TGpioCounter::TValuePair> TGpioCounter::GetIdsAndValues(const string& baseId) const

@@ -8,7 +8,15 @@
 
 class TGpioCounter
 {
-    using TMetadataPair = std::pair<std::string, std::string>;
+public:
+    struct TControlMetadata
+    {
+        std::string Id;
+        std::string Type;
+        std::string Title;
+    };
+
+private:
     using TValuePair = std::pair<std::string, std::string>;
 
     float Multiplier,
@@ -19,6 +27,8 @@ class TGpioCounter
     TValue<float> Total, Current;
 
     const char *TotalType, *CurrentType;
+
+    std::string TitleTotal, TitleCurrent;
 
     int DecimalPlacesTotal, DecimalPlacesCurrent;
 
@@ -39,7 +49,7 @@ public:
     float GetCurrent() const;
     float GetTotal() const;
     uint64_t GetCounts() const;
-    std::vector<TMetadataPair> GetIdsAndTypes(const std::string& baseId) const;
+    std::vector<TControlMetadata> GetControlsMetadata(const std::string& baseId) const;
     std::vector<TValuePair> GetIdsAndValues(const std::string& baseId) const;
     std::string GetRoundedTotal() const;
 

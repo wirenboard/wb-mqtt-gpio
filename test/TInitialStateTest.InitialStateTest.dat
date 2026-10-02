@@ -3,7 +3,7 @@ Publish: /devices/wb-gpio/meta: '{"driver":"test","title":{"en":"test"}}' (QoS 1
 Publish: /devices/wb-gpio/meta/driver: 'test' (QoS 1, retained)
 Publish: /devices/wb-gpio/meta/error: '' (QoS 1, retained)
 Publish: /devices/wb-gpio/meta/name: 'test' (QoS 1, retained)
-Publish: /devices/wb-gpio/controls/test/meta: '{"order":1,"readonly":false,"type":"switch"}' (QoS 1, retained)
+Publish: /devices/wb-gpio/controls/test/meta: '{"order":1,"readonly":false,"title":{"en":"Test title"},"type":"switch"}' (QoS 1, retained)
 Publish: /devices/wb-gpio/controls/test/meta/error: '' (QoS 1, retained)
 Publish: /devices/wb-gpio/controls/test/meta/order: '1' (QoS 1, retained)
 Publish: /devices/wb-gpio/controls/test/meta/readonly: '0' (QoS 1, retained)
