@@ -1,3 +1,11 @@
+wb-mqtt-gpio (2.20.1) stable; urgency=medium
+
+  * Update LICENSE: Wiren Board as the copyright holder,
+    2014 as the first publication year, use restricted to Wiren Board equipment
+  * Fill debian/copyright in the DEP-5 format
+
+ -- Ekaterina Volkova <ekaterina.volkova@wirenboard.com>  Thu, 26 Nov 2026 18:14:05 +0300
+
 wb-mqtt-gpio (2.20.0) stable; urgency=medium
 
   * Add channel titles to config
