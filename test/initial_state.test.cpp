@@ -76,6 +76,7 @@ TEST_F(TInitialStateTest, InitialStateTest)
     ::testing::MockFunction<void(uint8_t)> mockSetValue;
     {
         lineConfig.Name = "test";
+        lineConfig.Title = "Test title";
         lineConfig.InitialState = 1;
         lineConfig.LoadPreviousState = false;
 
@@ -86,6 +87,7 @@ TEST_F(TInitialStateTest, InitialStateTest)
 
     {
         lineConfig.Name = "test2";
+        lineConfig.Title.clear();
         lineConfig.InitialState = 0;
         lineConfig.LoadPreviousState = false;
 

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <vector>
 #include <wblib/driver_args.h>
+#include <wblib/json_utils.h>
 
 const int DEFAULT_DECIMAL_PLACES = 3;
 
@@ -20,6 +21,9 @@ struct TGpioLineConfig
     bool IsOpenSource = false;
     bool IsActiveLow = false;
     std::string Name;
+    std::string Title;        // meta title of <Name> control, used for channels without type
+    std::string TitleTotal;   // meta title of <Name>_total control, used for counters
+    std::string TitleCurrent; // meta title of <Name>_current control, used for counters
     EGpioDirection Direction = EGpioDirection::Output;
     EGpioEdge InterruptEdge = EGpioEdge::AUTO;
     std::string Type;
@@ -81,8 +85,20 @@ TGpioDriverConfig LoadConfig(const std::string& mainConfigFile,
                              const std::string& schemaFile,
                              const TConfigValidationHints& validationHints = {false});
 
+// Titles that are not set in the config are filled with default ones, so confed shows what homeui displays
+Json::Value BuildJsonForConfed(const std::string& configFile,
+                               const std::string& systemConfigsDir,
+                               const std::string& schemaFile);
+
+// Titles equal to default ones are not saved
+Json::Value BuildConfigFromConfed(const Json::Value& confedConfig,
+                                  const std::string& systemConfigsDir,
+                                  const std::string& schemaFile);
+
+// Prints BuildJsonForConfed result to stdout
 void MakeJsonForConfed(const std::string& configFile,
                        const std::string& systemConfigsDir,
                        const std::string& schemaFile);
 
+// Reads confed JSON from stdin and prints BuildConfigFromConfed result to stdout
 void MakeConfigFromConfed(const std::string& systemConfigsDir, const std::string& schemaFile);

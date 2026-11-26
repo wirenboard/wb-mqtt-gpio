@@ -16,28 +16,28 @@
                     "title": "Open drain",
                     "default": false,
                     "_format": "checkbox",
-                    "propertyOrder": 7
+                    "propertyOrder": 9
                 },
                 "open_source": {
                     "type": "boolean",
                     "title": "Open source",
                     "default": false,
                     "_format": "checkbox",
-                    "propertyOrder": 8
+                    "propertyOrder": 10
                 },
                 "initial_state": {
                     "type": "boolean",
                     "title": "Output initial state",
                     "default": false,
                     "_format": "checkbox",
-                    "propertyOrder": 13
+                    "propertyOrder": 15
                 },
                 "load_previous_state": {
                     "type": "boolean",
                     "title": "Load output previous state after restart",
                     "default": true,
                     "_format": "checkbox",
-                    "propertyOrder": 14
+                    "propertyOrder": 16
                 }
             },
             "defaultProperties": [ "inverted", "open_drain", "open_source", "initial_state", "load_previous_state" ]
@@ -47,12 +47,20 @@
                 "type": {
                     "type": "string",
                     "title": "Pulse counter type",
-                    "enum": [ "", "watt_meter", "water_meter" ],
+                    "pattern": "^(|watt_meter|water_meter)$",
+                    "enumSource": [
+                        {
+                            "source": [
+                                { "value": "", "title": "without pulse counting" },
+                                { "value": "watt_meter", "title": "watt meter" },
+                                { "value": "water_meter", "title": "water meter" }
+                            ],
+                            "title": "{{item.title}}",
+                            "value": "{{item.value}}"
+                        }
+                    ],
                     "default": "",
-                    "propertyOrder": 6,
-                    "options": {
-                        "enum_titles": [ "without pulse counting", "watt meter", "water meter" ]
-                    }
+                    "propertyOrder": 6
                 },
                 "edge": {
                     "type": "string",
@@ -60,7 +68,7 @@
                     "title": "Pulse counter interrupt edge",
                     "enum": [ "rising", "falling", "both" ],
                     "default": "both",
-                    "propertyOrder": 9,
+                    "propertyOrder": 11,
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
@@ -76,7 +84,7 @@
                     "type": "number",
                     "title": "Number of pulses per unit (kWh or m^3)",
                     "default": 1,
-                    "propertyOrder": 10,
+                    "propertyOrder": 12,
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
@@ -88,7 +96,7 @@
                     "title": "Number of decimal places in _current topic",
                     "default": 2,
                     "min": 0,
-                    "propertyOrder": 11,
+                    "propertyOrder": 13,
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
@@ -100,7 +108,29 @@
                     "title": "Number of decimal places in _total topic",
                     "default": 2,
                     "min": 0,
-                    "propertyOrder": 12,
+                    "propertyOrder": 14,
+                    "options": {
+                        "dependencies": {
+                            "type": ["watt_meter", "water_meter"]
+                        }
+                    }
+                },
+                "title_total": {
+                    "type": "string",
+                    "title": "Title of _total control",
+                    "minLength": 1,
+                    "propertyOrder": 7,
+                    "options": {
+                        "dependencies": {
+                            "type": ["watt_meter", "water_meter"]
+                        }
+                    }
+                },
+                "title_current": {
+                    "type": "string",
+                    "title": "Title of _current control",
+                    "minLength": 1,
+                    "propertyOrder": 8,
                     "options": {
                         "dependencies": {
                             "type": ["watt_meter", "water_meter"]
@@ -168,6 +198,17 @@
                         "disable_properties": true
                     }
                 },
+                "title": {
+                    "type": "string",
+                    "title": "Control title",
+                    "minLength": 1,
+                    "propertyOrder": 7,
+                    "options": {
+                        "dependencies": {
+                            "type": [""]
+                        }
+                    }
+                },
                 "direction": {
                     "type": "string",
                     "title": "Direction",
@@ -191,7 +232,7 @@
                 { "$ref": "#/definitions/output_properties" }
             ],
             "required": [ "name", "gpio", "direction" ],
-            "defaultProperties": [ "name", "gpio", "direction" ],
+            "defaultProperties": [ "name", "gpio", "title", "direction", "type", "title_total", "title_current" ],
             "options": {
                 "wb": {
                     "controls_on_top": true
@@ -203,6 +244,17 @@
             "type": "object",
             "_format": "merge-default",
             "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Control title",
+                    "minLength": 1,
+                    "propertyOrder": 7,
+                    "options": {
+                        "dependencies": {
+                            "type": [""]
+                        }
+                    }
+                },
                 "name": {
                     "type": "string",
                     "options": {
@@ -248,6 +300,12 @@
             "type": "object",
             "_format": "merge-default",
             "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Control title",
+                    "minLength": 1,
+                    "propertyOrder": 3
+                },
                 "initial_state": {
                     "type": "boolean",
                     "title": "Output initial state",
@@ -411,10 +469,10 @@
             "Open source": "Открытый эмиттер",
             "Output initial state": "Начальное состояние выхода",
             "Load output previous state after restart": "Восстанавливать состояние выхода после перезапуска",
-            "without pulse counting": "Без счета импульсов",
-            "watt meter": "Счетчик электрической энергии",
-            "water meter": "Счетчик расхода воды",
-            "Pulse counter interrupt edge": "Фронт срабатывания счетчика импульсов",
+            "without pulse counting": "Без счёта импульсов",
+            "watt meter": "Счётчик электрической энергии",
+            "water meter": "Счётчик расхода воды",
+            "Pulse counter interrupt edge": "Фронт срабатывания счётчика импульсов",
             "rising": "Передний фронт",
             "falling": "Задний фронт",
             "both": "Передний и задний фронт",
@@ -428,7 +486,7 @@
             "GPIO chip character device and line offset": "Символьное устройство GPIO и смещение линии",
             "Path to chip character device": "Путь к устройству",
             "example: \"/dev/gpiochip0\"": "например: \"/dev/gpiochip0\"",
-            "GPIO line offset": "Смещении линии GPIO",
+            "GPIO line offset": "Смещение линии GPIO",
             "(deprecated) GPIO number": "Номер GPIO (устаревшее)",
             "Input": "Вход",
             "Output": "Выход",
@@ -442,7 +500,10 @@
             "List of GPIO channels": "Список каналов GPIO",
             "GPIO channel": "Канал GPIO",
             "Direction": "Режим канала",
-            "Pulse counter type": "Тип счетчика импульсов",
+            "Pulse counter type": "Тип счётчика импульсов",
+            "Control title": "Отображаемое название канала",
+            "Title of _total control": "Отображаемое название канала с суммарным показанием",
+            "Title of _current control": "Отображаемое название канала с текущим показанием",
             "Enable debug logging": "Включить отладочные сообщения"
         }
     }
